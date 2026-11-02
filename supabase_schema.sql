@@ -142,17 +142,48 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- -------------------------------------------------------------
--- 8. POLÍTICAS DE SEGURANÇA (Row Level Security - RLS)
+-- 8. TABELA DE CONFIGURAÇÃO DA RÁDIO INDOOR (radio_config)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.radio_config (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    station_name TEXT NOT NULL DEFAULT 'Rádio Supermercado Alvorada FM',
+    slogan TEXT DEFAULT 'A rádio da economia e das melhores ofertas para a sua família!',
+    is_on_air BOOLEAN NOT NULL DEFAULT false,
+    mode TEXT NOT NULL DEFAULT 'intervalo_tempo',
+    spots_every_n_tracks INTEGER NOT NULL DEFAULT 1,
+    spots_interval_seconds INTEGER NOT NULL DEFAULT 45,
+    only_offers_pause_seconds INTEGER NOT NULL DEFAULT 4,
+    music_volume NUMERIC(3,2) NOT NULL DEFAULT 0.75,
+    spot_volume NUMERIC(3,2) NOT NULL DEFAULT 1.0,
+    ducking_level NUMERIC(3,2) NOT NULL DEFAULT 0.12,
+    selected_music_category TEXT NOT NULL DEFAULT 'todas',
+    active_playlist_id TEXT NOT NULL DEFAULT 'todas',
+    playlists JSONB NOT NULL DEFAULT '[]'::jsonb,
+    queue JSONB NOT NULL DEFAULT '[]'::jsonb,
+    music_tracks JSONB NOT NULL DEFAULT '[]'::jsonb,
+    auto_publish_new_audios BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Inserir configuração de rádio padrão
+INSERT INTO public.radio_config (id, station_name, slogan, is_on_air)
+VALUES (1, 'Rádio Supermercado Alvorada FM', 'A rádio da economia e das melhores ofertas para a sua família!', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- -------------------------------------------------------------
+-- 9. POLÍTICAS DE SEGURANÇA (Row Level Security - RLS)
 -- -------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.voices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.radio_config ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Leitura Pública/Geral para vozes e configurações
+-- Políticas de Leitura Pública/Geral para vozes, rádio e configurações
 CREATE POLICY "Permitir leitura de vozes para todos" ON public.voices FOR SELECT USING (true);
 CREATE POLICY "Permitir leitura de settings para todos" ON public.admin_settings FOR SELECT USING (true);
+CREATE POLICY "Permitir leitura de radio para todos" ON public.radio_config FOR SELECT USING (true);
 
 -- Políticas para Profiles
 CREATE POLICY "Usuários podem ver seu próprio perfil" ON public.profiles FOR SELECT USING (true);

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './server/routes.ts';
-import { audioBinaryStore, saveAudioBinary } from './server/db.ts';
+import { db, audioBinaryStore, saveAudioBinary } from './server/db.ts';
 import { convertWavToMp3 } from './server/mp3_converter.ts';
 
 dotenv.config();
@@ -14,7 +14,8 @@ const __dirname = path.dirname(__filename);
 
 import { initializeRealVoiceDemos } from './server/tts.ts';
 
-initializeRealVoiceDemos().catch((e) => console.warn('Real voice demos init warning:', e));
+db.initPostgres().catch((e: any) => console.warn('PostgreSQL init warning:', e));
+initializeRealVoiceDemos().catch((e: any) => console.warn('Real voice demos init warning:', e));
 
 async function startServer() {
   const app = express();

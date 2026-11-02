@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import pg from 'pg';
+const { Pool } = pg;
 import {
   Project, UserProfile, CreditTransaction, VoicePreset, AudioGenerationItem,
   RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist
@@ -614,6 +616,7 @@ function buildInitialRadioConfig(projects: Project[]): RadioStationConfig {
 
 class Database {
   private data: DbData;
+  private pool: pg.Pool | null = null;
 
   constructor() {
     this.data = this.load();
@@ -623,6 +626,472 @@ class Database {
     } else if (!this.data.radioConfig.musicTracks || this.data.radioConfig.musicTracks.length === 0) {
       this.data.radioConfig.musicTracks = DEFAULT_RADIO_MUSIC_TRACKS;
       this.save();
+    }
+  }
+
+  public async initPostgres(): Promise<void> {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      console.log('[Database] DATABASE_URL não definida. Operando com persistência JSON local (.locucao_db.json).');
+      return;
+    }
+
+    try {
+      console.log('[PostgreSQL] Conectando ao banco de dados...');
+      this.pool = new Pool({
+        connectionString: dbUrl,
+        ssl: dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')
+          ? false
+          : { rejectUnauthorized: false }
+      });
+
+      await this.pool.query('SELECT 1');
+      console.log('[PostgreSQL] Conectado ao banco de dados com sucesso!');
+
+      // Create schema tables if not exist
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS profiles (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          phone TEXT,
+          company_name TEXT,
+          city TEXT,
+          role TEXT DEFAULT 'supermarket_owner',
+          plan TEXT DEFAULT 'pro_varejo',
+          status TEXT DEFAULT 'ativo',
+          notes TEXT,
+          credits_balance INTEGER DEFAULT 500,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          last_login TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS projects (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          store_name TEXT DEFAULT '',
+          store_city TEXT DEFAULT '',
+          objective TEXT DEFAULT '',
+          campaign_type TEXT DEFAULT 'ofertas_dia',
+          style TEXT DEFAULT 'energetica_supermercado',
+          desired_duration TEXT DEFAULT '30s',
+          tone TEXT DEFAULT 'persuasivo',
+          presentation_format TEXT DEFAULT 'abertura_sequencia_encerramento',
+          custom_opening TEXT DEFAULT '',
+          custom_closing TEXT DEFAULT '',
+          free_instructions TEXT DEFAULT '',
+          products JSONB DEFAULT '[]'::jsonb,
+          scripts JSONB DEFAULT '[]'::jsonb,
+          current_script_index INTEGER DEFAULT 0,
+          audios JSONB DEFAULT '[]'::jsonb,
+          soundtrack_id TEXT DEFAULT 'sem_trilha',
+          soundtrack_volume NUMERIC(3,2) DEFAULT 0.20,
+          status TEXT DEFAULT 'draft',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_transactions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          amount INTEGER NOT NULL,
+          description TEXT NOT NULL,
+          reference_id TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS voices (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          gender TEXT NOT NULL,
+          description TEXT NOT NULL,
+          eleven_voice_id TEXT,
+          gemini_voice_name TEXT DEFAULT 'Fenrir',
+          accent TEXT DEFAULT 'Português Brasileiro',
+          style_tag TEXT DEFAULT 'Varejo & Supermercado',
+          category TEXT DEFAULT 'premade',
+          is_default BOOLEAN DEFAULT false,
+          preview_url TEXT,
+          sample_audio_url TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS admin_settings (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          default_voice_id TEXT DEFAULT 'daniel-varejo',
+          credits_per_generation INTEGER DEFAULT 10,
+          initial_credits INTEGER DEFAULT 500,
+          eleven_labs_model TEXT DEFAULT 'eleven_multilingual_v2',
+          gemini_model TEXT DEFAULT 'gemini-3.8-flash',
+          system_announcement TEXT,
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS radio_config (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          station_name TEXT NOT NULL DEFAULT 'Rádio Supermercado Alvorada FM',
+          slogan TEXT DEFAULT '',
+          is_on_air BOOLEAN DEFAULT false,
+          mode TEXT DEFAULT 'intervalo_tempo',
+          spots_every_n_tracks INTEGER DEFAULT 1,
+          spots_interval_seconds INTEGER DEFAULT 45,
+          only_offers_pause_seconds INTEGER DEFAULT 4,
+          music_volume NUMERIC(3,2) DEFAULT 0.75,
+          spot_volume NUMERIC(3,2) DEFAULT 1.0,
+          ducking_level NUMERIC(3,2) DEFAULT 0.12,
+          selected_music_category TEXT DEFAULT 'todas',
+          active_playlist_id TEXT DEFAULT 'todas',
+          playlists JSONB DEFAULT '[]'::jsonb,
+          queue JSONB DEFAULT '[]'::jsonb,
+          music_tracks JSONB DEFAULT '[]'::jsonb,
+          auto_publish_new_audios BOOLEAN DEFAULT true,
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+
+      const { rows } = await this.pool.query('SELECT count(*)::int AS cnt FROM profiles');
+      const count = rows[0]?.cnt || 0;
+
+      if (count === 0) {
+        console.log('[PostgreSQL] Base vazia. Semeando dados iniciais no PostgreSQL...');
+        for (const u of this.data.users) await this.pgSaveUser(u);
+        for (const p of this.data.projects) await this.pgSaveProject(p);
+        for (const v of this.data.voices) await this.pgSaveVoice(v);
+        for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
+        if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
+        if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
+        console.log('[PostgreSQL] Dados iniciais salvos com sucesso no PostgreSQL!');
+      } else {
+        console.log('[PostgreSQL] Carregando dados do PostgreSQL para o cache em memória...');
+        await this.pgLoadAll();
+        console.log(`[PostgreSQL] Sincronização concluída: ${this.data.users.length} usuários, ${this.data.projects.length} projetos.`);
+      }
+    } catch (err) {
+      console.error('[PostgreSQL] Falha na inicialização do PostgreSQL:', err);
+    }
+  }
+
+  private async pgLoadAll() {
+    if (!this.pool) return;
+    try {
+      const usersRes = await this.pool.query('SELECT * FROM profiles');
+      if (usersRes.rows.length > 0) {
+        this.data.users = usersRes.rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          phone: r.phone || undefined,
+          companyName: r.company_name || 'Supermercado',
+          city: r.city || undefined,
+          role: r.role || 'supermarket_owner',
+          plan: r.plan || 'pro_varejo',
+          status: r.status || 'ativo',
+          notes: r.notes || undefined,
+          creditsBalance: r.credits_balance ?? 500,
+          createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+          lastLogin: r.last_login ? new Date(r.last_login).toISOString() : undefined,
+        }));
+      }
+
+      const projRes = await this.pool.query('SELECT * FROM projects ORDER BY updated_at DESC');
+      if (projRes.rows.length > 0) {
+        this.data.projects = projRes.rows.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          title: r.title,
+          storeName: r.store_name,
+          storeCity: r.store_city,
+          objective: r.objective,
+          campaignType: r.campaign_type,
+          style: r.style,
+          desiredDuration: r.desired_duration,
+          tone: r.tone,
+          presentationFormat: r.presentation_format,
+          customOpening: r.custom_opening,
+          customClosing: r.custom_closing,
+          freeInstructions: r.free_instructions,
+          products: r.products || [],
+          scripts: r.scripts || [],
+          currentScriptIndex: r.current_script_index ?? 0,
+          audios: r.audios || [],
+          soundtrackId: r.soundtrack_id,
+          soundtrackVolume: Number(r.soundtrack_volume) || 0.2,
+          status: r.status,
+          createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+          updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+        }));
+      }
+
+      const txRes = await this.pool.query('SELECT * FROM credit_transactions ORDER BY created_at DESC LIMIT 200');
+      if (txRes.rows.length > 0) {
+        this.data.creditTransactions = txRes.rows.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          type: r.type,
+          amount: r.amount,
+          description: r.description,
+          referenceId: r.reference_id,
+          createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+        }));
+      }
+
+      const voiceRes = await this.pool.query('SELECT * FROM voices');
+      if (voiceRes.rows.length > 0) {
+        this.data.voices = voiceRes.rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          gender: r.gender,
+          description: r.description,
+          elevenVoiceId: r.eleven_voice_id,
+          geminiVoiceName: r.gemini_voice_name,
+          accent: r.accent,
+          styleTag: r.style_tag,
+          category: r.category,
+          isDefault: r.is_default,
+          previewUrl: r.preview_url,
+          sampleAudioUrl: r.sample_audio_url,
+        }));
+      }
+
+      const adminRes = await this.pool.query('SELECT * FROM admin_settings WHERE id = 1');
+      if (adminRes.rows.length > 0) {
+        const a = adminRes.rows[0];
+        this.data.adminSettings = {
+          defaultVoiceId: a.default_voice_id || 'daniel-varejo',
+          creditsPerGeneration: a.credits_per_generation ?? 10,
+          initialCredits: a.initial_credits ?? 500,
+          elevenLabsModel: a.eleven_labs_model || 'eleven_multilingual_v2',
+          systemAnnouncement: a.system_announcement,
+        };
+      }
+
+      const radioRes = await this.pool.query('SELECT * FROM radio_config WHERE id = 1');
+      if (radioRes.rows.length > 0) {
+        const rc = radioRes.rows[0];
+        this.data.radioConfig = {
+          stationName: rc.station_name,
+          slogan: rc.slogan,
+          isOnAir: rc.is_on_air,
+          mode: rc.mode,
+          spotsEveryNTracks: rc.spots_every_n_tracks,
+          spotsIntervalSeconds: rc.spots_interval_seconds,
+          onlyOffersPauseSeconds: rc.only_offers_pause_seconds,
+          musicVolume: Number(rc.music_volume) || 0.75,
+          spotVolume: Number(rc.spot_volume) || 1.0,
+          duckingLevel: Number(rc.ducking_level) || 0.12,
+          selectedMusicCategory: rc.selected_music_category,
+          activePlaylistId: rc.active_playlist_id,
+          playlists: rc.playlists || DEFAULT_RADIO_PLAYLISTS,
+          queue: rc.queue || [],
+          musicTracks: rc.music_tracks || DEFAULT_RADIO_MUSIC_TRACKS,
+          autoPublishNewAudios: rc.auto_publish_new_audios ?? true,
+        };
+      }
+
+      this.save();
+    } catch (err) {
+      console.error('[PostgreSQL] Erro ao carregar dados:', err);
+    }
+  }
+
+  private async pgSaveUser(u: UserProfile) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO profiles (id, name, email, phone, company_name, city, role, plan, status, notes, credits_balance, created_at, last_login)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone,
+          company_name = EXCLUDED.company_name,
+          city = EXCLUDED.city,
+          role = EXCLUDED.role,
+          plan = EXCLUDED.plan,
+          status = EXCLUDED.status,
+          notes = EXCLUDED.notes,
+          credits_balance = EXCLUDED.credits_balance,
+          last_login = EXCLUDED.last_login
+      `, [
+        u.id, u.name, u.email, u.phone || null, u.companyName, u.city || null,
+        u.role, u.plan, u.status || 'ativo', u.notes || null, u.creditsBalance,
+        u.createdAt || new Date().toISOString(), u.lastLogin || new Date().toISOString()
+      ]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao salvar profile ${u.id}:`, err);
+    }
+  }
+
+  private async pgDeleteUser(id: string) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query('DELETE FROM profiles WHERE id = $1', [id]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao deletar profile ${id}:`, err);
+    }
+  }
+
+  private async pgSaveProject(p: Project) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO projects (
+          id, user_id, title, store_name, store_city, objective,
+          campaign_type, style, desired_duration, tone, presentation_format,
+          custom_opening, custom_closing, free_instructions, products, scripts,
+          current_script_index, audios, soundtrack_id, soundtrack_volume, status,
+          created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15::jsonb, $16::jsonb, $17, $18::jsonb, $19, $20, $21, $22, $23
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          store_name = EXCLUDED.store_name,
+          store_city = EXCLUDED.store_city,
+          objective = EXCLUDED.objective,
+          campaign_type = EXCLUDED.campaign_type,
+          style = EXCLUDED.style,
+          desired_duration = EXCLUDED.desired_duration,
+          tone = EXCLUDED.tone,
+          presentation_format = EXCLUDED.presentation_format,
+          custom_opening = EXCLUDED.custom_opening,
+          custom_closing = EXCLUDED.custom_closing,
+          free_instructions = EXCLUDED.free_instructions,
+          products = EXCLUDED.products,
+          scripts = EXCLUDED.scripts,
+          current_script_index = EXCLUDED.current_script_index,
+          audios = EXCLUDED.audios,
+          soundtrack_id = EXCLUDED.soundtrack_id,
+          soundtrack_volume = EXCLUDED.soundtrack_volume,
+          status = EXCLUDED.status,
+          updated_at = EXCLUDED.updated_at
+      `, [
+        p.id, p.userId, p.title, p.storeName || '', p.storeCity || '', p.objective || '',
+        p.campaignType || 'ofertas_dia', p.style || 'energetica_supermercado',
+        p.desiredDuration || '30s', p.tone || 'persuasivo',
+        p.presentationFormat || 'abertura_sequencia_encerramento',
+        p.customOpening || '', p.customClosing || '', p.freeInstructions || '',
+        JSON.stringify(p.products || []), JSON.stringify(p.scripts || []),
+        p.currentScriptIndex || 0, JSON.stringify(p.audios || []),
+        p.soundtrackId || 'sem_trilha', p.soundtrackVolume || 0.2, p.status || 'draft',
+        p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
+      ]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao salvar projeto ${p.id}:`, err);
+    }
+  }
+
+  private async pgDeleteProject(id: string) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query('DELETE FROM projects WHERE id = $1', [id]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao deletar projeto ${id}:`, err);
+    }
+  }
+
+  private async pgSaveTransaction(tx: CreditTransaction) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO credit_transactions (id, user_id, type, amount, description, reference_id, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (id) DO NOTHING
+      `, [tx.id, tx.userId, tx.type, tx.amount, tx.description, tx.referenceId || null, tx.createdAt]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao salvar transação ${tx.id}:`, err);
+    }
+  }
+
+  private async pgSaveVoice(v: VoicePreset) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO voices (id, name, gender, description, eleven_voice_id, gemini_voice_name, accent, style_tag, category, is_default, preview_url, sample_audio_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          gender = EXCLUDED.gender,
+          description = EXCLUDED.description,
+          eleven_voice_id = EXCLUDED.eleven_voice_id,
+          gemini_voice_name = EXCLUDED.gemini_voice_name,
+          accent = EXCLUDED.accent,
+          style_tag = EXCLUDED.style_tag,
+          category = EXCLUDED.category,
+          is_default = EXCLUDED.is_default,
+          preview_url = EXCLUDED.preview_url,
+          sample_audio_url = EXCLUDED.sample_audio_url
+      `, [
+        v.id, v.name, v.gender, v.description, v.elevenVoiceId || null, v.geminiVoiceName || 'Fenrir',
+        v.accent, v.styleTag, v.category || 'premade', v.isDefault || false, v.previewUrl || null, v.sampleAudioUrl || null
+      ]);
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao salvar voz ${v.id}:`, err);
+    }
+  }
+
+  private async pgSaveAdminSettings(s: DbData['adminSettings']) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO admin_settings (id, default_voice_id, credits_per_generation, initial_credits, eleven_labs_model, system_announcement, updated_at)
+        VALUES (1, $1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          default_voice_id = EXCLUDED.default_voice_id,
+          credits_per_generation = EXCLUDED.credits_per_generation,
+          initial_credits = EXCLUDED.initial_credits,
+          eleven_labs_model = EXCLUDED.eleven_labs_model,
+          system_announcement = EXCLUDED.system_announcement,
+          updated_at = NOW()
+      `, [s.defaultVoiceId, s.creditsPerGeneration, s.initialCredits, s.elevenLabsModel, s.systemAnnouncement || null]);
+    } catch (err) {
+      console.error('[PostgreSQL] Erro ao salvar admin settings:', err);
+    }
+  }
+
+  private async pgSaveRadioConfig(rc: RadioStationConfig) {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(`
+        INSERT INTO radio_config (
+          id, station_name, slogan, is_on_air, mode, spots_every_n_tracks,
+          spots_interval_seconds, only_offers_pause_seconds, music_volume,
+          spot_volume, ducking_level, selected_music_category, active_playlist_id,
+          playlists, queue, music_tracks, auto_publish_new_audios, updated_at
+        ) VALUES (
+          1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+          $13::jsonb, $14::jsonb, $15::jsonb, $16, NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          station_name = EXCLUDED.station_name,
+          slogan = EXCLUDED.slogan,
+          is_on_air = EXCLUDED.is_on_air,
+          mode = EXCLUDED.mode,
+          spots_every_n_tracks = EXCLUDED.spots_every_n_tracks,
+          spots_interval_seconds = EXCLUDED.spots_interval_seconds,
+          only_offers_pause_seconds = EXCLUDED.only_offers_pause_seconds,
+          music_volume = EXCLUDED.music_volume,
+          spot_volume = EXCLUDED.spot_volume,
+          ducking_level = EXCLUDED.ducking_level,
+          selected_music_category = EXCLUDED.selected_music_category,
+          active_playlist_id = EXCLUDED.active_playlist_id,
+          playlists = EXCLUDED.playlists,
+          queue = EXCLUDED.queue,
+          music_tracks = EXCLUDED.music_tracks,
+          auto_publish_new_audios = EXCLUDED.auto_publish_new_audios,
+          updated_at = NOW()
+      `, [
+        rc.stationName, rc.slogan, rc.isOnAir, rc.mode, rc.spotsEveryNTracks,
+        rc.spotsIntervalSeconds, rc.onlyOffersPauseSeconds, rc.musicVolume,
+        rc.spotVolume, rc.duckingLevel, rc.selectedMusicCategory, rc.activePlaylistId,
+        JSON.stringify(rc.playlists || []), JSON.stringify(rc.queue || []),
+        JSON.stringify(rc.musicTracks || []), rc.autoPublishNewAudios ?? true
+      ]);
+    } catch (err) {
+      console.error('[PostgreSQL] Erro ao salvar radio_config:', err);
     }
   }
 
@@ -676,6 +1145,7 @@ class Database {
   createUser(user: UserProfile): UserProfile {
     this.data.users.push(user);
     this.save();
+    this.pgSaveUser(user);
     return user;
   }
 
@@ -684,6 +1154,7 @@ class Database {
     if (idx === -1) return null;
     this.data.users[idx] = { ...this.data.users[idx], ...updates };
     this.save();
+    this.pgSaveUser(this.data.users[idx]);
     return this.data.users[idx];
   }
 
@@ -691,7 +1162,10 @@ class Database {
     const initialLen = this.data.users.length;
     this.data.users = this.data.users.filter(u => u.id !== id);
     const deleted = this.data.users.length < initialLen;
-    if (deleted) this.save();
+    if (deleted) {
+      this.save();
+      this.pgDeleteUser(id);
+    }
     return deleted;
   }
 
@@ -699,7 +1173,7 @@ class Database {
     const user = this.getUser(userId);
     if (!user) return 0;
     user.creditsBalance += delta;
-    this.data.creditTransactions.unshift({
+    const tx: CreditTransaction = {
       id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId,
       type: delta >= 0 ? 'credit' : 'debit',
@@ -707,8 +1181,11 @@ class Database {
       description,
       referenceId,
       createdAt: new Date().toISOString()
-    });
+    };
+    this.data.creditTransactions.unshift(tx);
     this.save();
+    this.pgSaveUser(user);
+    this.pgSaveTransaction(tx);
     return user.creditsBalance;
   }
 
@@ -733,6 +1210,7 @@ class Database {
       this.data.projects.unshift(project);
     }
     this.save();
+    this.pgSaveProject(this.data.projects[idx >= 0 ? idx : 0]);
     return project;
   }
 
@@ -740,7 +1218,10 @@ class Database {
     const initialLen = this.data.projects.length;
     this.data.projects = this.data.projects.filter(p => !(p.id === id && p.userId === userId));
     const deleted = this.data.projects.length < initialLen;
-    if (deleted) this.save();
+    if (deleted) {
+      this.save();
+      this.pgDeleteProject(id);
+    }
     return deleted;
   }
 
@@ -781,6 +1262,7 @@ class Database {
       ...updates,
     };
     this.save();
+    this.pgSaveRadioConfig(this.data.radioConfig);
     return this.data.radioConfig;
   }
 
@@ -788,6 +1270,7 @@ class Database {
     const config = this.getRadioConfig();
     config.musicTracks = [track, ...config.musicTracks];
     this.save();
+    this.pgSaveRadioConfig(config);
     return config;
   }
 
@@ -795,6 +1278,7 @@ class Database {
     const config = this.getRadioConfig();
     config.musicTracks = config.musicTracks.filter(t => t.id !== id);
     this.save();
+    this.pgSaveRadioConfig(config);
     return config;
   }
 
@@ -802,6 +1286,7 @@ class Database {
     const config = this.getRadioConfig();
     config.musicTracks = config.musicTracks.map(t => (t.id === id ? { ...t, ...updates } : t));
     this.save();
+    this.pgSaveRadioConfig(config);
     return config;
   }
 
@@ -811,6 +1296,7 @@ class Database {
     if (!existing.some(p => p.id === playlist.id)) {
       config.playlists = [...existing, playlist];
       this.save();
+      this.pgSaveRadioConfig(config);
     }
     return config;
   }
@@ -826,6 +1312,7 @@ class Database {
       config.activePlaylistId = 'todas';
     }
     this.save();
+    this.pgSaveRadioConfig(config);
     return config;
   }
 
@@ -865,6 +1352,7 @@ class Database {
     }
 
     this.save();
+    this.pgSaveRadioConfig(config);
     return queueItem;
   }
 
@@ -872,6 +1360,7 @@ class Database {
     const config = this.getRadioConfig();
     config.queue = config.queue.filter(q => q.id !== idOrAudioId && q.audioId !== idOrAudioId);
     this.save();
+    this.pgSaveRadioConfig(config);
     return config;
   }
 
@@ -883,6 +1372,7 @@ class Database {
   updateVoices(voices: VoicePreset[]) {
     this.data.voices = voices;
     this.save();
+    for (const v of voices) this.pgSaveVoice(v);
   }
 
   // Transactions
@@ -915,6 +1405,7 @@ class Database {
   updateAdminSettings(settings: Partial<DbData['adminSettings']>) {
     this.data.adminSettings = { ...this.data.adminSettings, ...settings };
     this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
     return this.data.adminSettings;
   }
 }
