@@ -79,6 +79,12 @@ export function getSoundtrackPreviewBuffer(trackId: SoundtrackId): Buffer {
     return fs.readFileSync(filePath);
   }
 
+  // Fallback para uma trilha real existente (.mp3) caso esta específica não exista no disco
+  const defaultTrack = path.join(audioDir, 'soundtrack_varejo_alegre.mp3');
+  if (fs.existsSync(defaultTrack)) {
+    return fs.readFileSync(defaultTrack);
+  }
+
   // Fallback synthetic WAV if file not yet downloaded
   return generateSoundtrackWav(trackId, 10.0);
 }
