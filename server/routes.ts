@@ -6,7 +6,8 @@ import { db, audioBinaryStore, getAudioBinary, saveAudioBinary } from './db.ts';
 import { parseProductsWithGemini, generateSupermarketScript, refineSupermarketScript, formatSpokenPriceBR, saveGeminiApiKeyToEnv, fetchGeminiAccountInfo } from './gemini.ts';
 import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio } from './elevenlabs.ts';
 import { convertWavToMp3 } from './mp3_converter.ts';
-import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer } from './soundtracks.ts';
+import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer, mixVoiceAndSoundtrack } from './soundtracks.ts';
+import { fetchRealBrazilianTTS } from './tts.ts';
 import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 
@@ -551,17 +552,40 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
 });
 
 // Stream audio binary or download file
-apiRouter.get('/audio/:filename', (req: Request, res: Response) => {
+apiRouter.get('/audio/:filename', async (req: Request, res: Response) => {
   const filename = req.params.filename;
   const audioId = filename.replace(/\.(mp3|wav)$/i, '');
   let stored = getAudioBinary(audioId);
 
-  // If not found in storage (e.g. initial demo IDs or freshly reset cache), synthesize on the fly
+  // If not found in storage (e.g. freshly installed server without local audio cache), synthesize real audio on the fly!
   if (!stored) {
-    console.log(`[Audio Server] Generating on-demand MP3 for audioId: ${audioId}...`);
-    const wavBuffer = generateStyleDemoWav('energetica_supermercado');
-    const mp3Buffer = convertWavToMp3(wavBuffer);
-    stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+    console.log(`[Audio Server] Generating on-demand real audio for audioId: ${audioId}...`);
+    try {
+      const isMusicTrack = audioId.startsWith('music-') || audioId.startsWith('track-') || audioId.startsWith('bg_');
+      if (isMusicTrack) {
+        // Para músicas de fundo que não estão no disco, fornece a trilha de varejo alegre
+        const previewWav = getSoundtrackPreviewBuffer('varejo_alegre');
+        const mp3Buffer = convertWavToMp3(previewWav);
+        stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `${audioId}.mp3`);
+      } else {
+        // Para locuções da rádio, sintetiza a voz humana real com o título correspondente
+        const config = db.getRadioConfig();
+        const queueItem = config.queue.find(q => q.audioId === audioId || q.id === audioId);
+        const storeName = queueItem?.storeName || config.storeName || 'Supermercado';
+        const titleText = queueItem?.title || 'Super Oferta da Semana';
+        const spokenText = `Atenção clientes do ${storeName}! ${titleText}. Venha conferir agora mesmo em nossos corredores as melhores ofertas e descontos especiais da loja!`;
+
+        const voiceWav = await fetchRealBrazilianTTS(spokenText);
+        const mixedWav = mixVoiceAndSoundtrack(voiceWav, 'varejo_alegre', 0.22);
+        const mp3Buffer = convertWavToMp3(mixedWav);
+        stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+      }
+    } catch (synthErr) {
+      console.warn('[Audio Server] Fallback voice synthesis error:', synthErr);
+      const wavBuffer = generateStyleDemoWav('energetica_supermercado');
+      const mp3Buffer = convertWavToMp3(wavBuffer);
+      stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+    }
   }
 
   // Ensure buffer is MP3 format
@@ -650,6 +674,21 @@ apiRouter.post('/audio/download-zip', async (req: Request, res: Response) => {
     res.end(zipContent);
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao compilar arquivo ZIP' });
+  }
+});
+
+// Endpoint para sincronizar áudios entre computadores / VPS
+apiRouter.post('/sync/audio', (req: Request, res: Response) => {
+  const { id, filename, mimeType, fileBase64 } = req.body;
+  if (!id || !fileBase64) {
+    return res.status(400).json({ error: 'Missing id or fileBase64' });
+  }
+  try {
+    const buffer = Buffer.from(fileBase64, 'base64');
+    saveAudioBinary(id, buffer, mimeType || 'audio/mpeg', filename || `${id}.mp3`);
+    res.json({ success: true, id, size: buffer.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
