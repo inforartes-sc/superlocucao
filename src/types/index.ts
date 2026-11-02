@@ -1,0 +1,286 @@
+export type ProjectNiche = 'supermercado';
+export type NicheType = ProjectNiche;
+
+export type CampaignType =
+  | 'ofertas_dia'
+  | 'ofertas_semana'
+  | 'superofertas'
+  | 'quarta_carne'
+  | 'festival_hortifruti'
+  | 'queima_estoque'
+  | 'inauguracao'
+  | 'aniversario'
+  | 'black_friday'
+  | 'datas_comemorativas'
+  | 'divulgacao_produtos'
+  | 'institucional'
+  | 'personalizada';
+
+export type LocutionStyle =
+  | 'energetica_supermercado'
+  | 'animada_promocional'
+  | 'natural_amigavel'
+  | 'urgente_oportunidade'
+  | 'elegante_institucional'
+  | 'popular_descontraida';
+
+export type LocutionTone =
+  | 'persuasivo'
+  | 'alegre'
+  | 'direto'
+  | 'familiar'
+  | 'festivo'
+  | 'inspirador'
+  | 'solene'
+  | 'urgente'
+  | 'confiante';
+
+export type PresentationFormat =
+  | 'unico_completo'
+  | 'bloco_por_produto'
+  | 'abertura_sequencia_encerramento'
+  | 'individual_por_produto';
+
+export type DesiredDuration = '15s' | '30s' | '45s' | '60s' | 'custom';
+
+export type SalesUnit =
+  | 'unidade'
+  | 'kg'
+  | 'g'
+  | 'litro'
+  | 'ml'
+  | 'pacote'
+  | 'caixa'
+  | 'bandeja'
+  | 'duzia'
+  | 'fardo'
+  | 'outro';
+
+export type SoundtrackId =
+  | 'sem_trilha'
+  | 'varejo_alegre'
+  | 'batida_comercial'
+  | 'black_friday_urgente'
+  | 'acustico_hortifruti'
+  | 'institucional_gourmet';
+
+export interface SoundtrackOption {
+  id: SoundtrackId;
+  name: string;
+  category: string;
+  bpm: number;
+  description: string;
+  previewUrl: string;
+  isPopular?: boolean;
+}
+
+export interface ProductItem {
+  id: string;
+  name: string;
+  brand?: string;
+  packaging?: string;
+  promotionalPrice: number;
+  previousPrice?: number;
+  unit: SalesUnit | string;
+  notes?: string;
+  spokenPrice?: string; // e.g. "vinte e quatro reais e noventa e nove centavos"
+}
+
+export interface ScriptVersion {
+  id: string;
+  text: string;
+  spokenPhoneticText?: string;
+  estimatedDurationSeconds: number;
+  wordCount: number;
+  createdAt: string;
+  note?: string;
+}
+
+export interface AudioGenerationItem {
+  id: string;
+  projectId: string;
+  scriptId?: string;
+  productId?: string;
+  productName?: string;
+  title: string;
+  voiceId: string;
+  voiceName: string;
+  soundtrackId?: SoundtrackId;
+  soundtrackName?: string;
+  soundtrackVolume?: number;
+  provider: 'elevenlabs' | 'gemini_tts' | 'studio_synthesizer';
+  format: 'mp3' | 'wav';
+  durationSeconds: number;
+  audioUrl: string;
+  downloadUrl: string;
+  status: 'processing' | 'ready' | 'failed';
+  creditsUsed: number;
+  createdAt: string;
+  fileSizeBytes?: number;
+  errorMessage?: string;
+}
+
+export interface Project {
+  id: string;
+  userId: string;
+  title: string;
+  niche?: ProjectNiche;
+  storeName?: string;
+  storeCity?: string;
+  objective?: string;
+  campaignType: CampaignType;
+  style: LocutionStyle;
+  desiredDuration: DesiredDuration;
+  tone: LocutionTone;
+  presentationFormat: PresentationFormat;
+  soundtrackId?: SoundtrackId;
+  soundtrackVolume?: number; // 0 to 1, default 0.20 (20%)
+  customOpening?: string;
+  customClosing?: string;
+  urgencyText?: string;
+  freeInstructions?: string;
+  products: ProductItem[];
+  scripts: ScriptVersion[];
+  currentScriptIndex: number;
+  audios: AudioGenerationItem[];
+  status: 'draft' | 'scripted' | 'ready' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoicePreset {
+  id: string;
+  name: string;
+  gender: 'masculino' | 'feminino';
+  description: string;
+  sampleAudioUrl?: string;
+  previewUrl?: string;
+  elevenVoiceId: string;
+  geminiVoiceName?: string;
+  accent: string;
+  styleTag: string;
+  tone?: string;
+  category?: string;
+  isDefault?: boolean;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  companyName?: string;
+  city?: string;
+  role: 'supermarket_owner' | 'manager' | 'admin';
+  plan: 'gratuito' | 'pro_varejo' | 'redes_atacarejo';
+  status?: 'ativo' | 'bloqueado';
+  notes?: string;
+  creditsBalance: number;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export type User = UserProfile;
+
+export interface CreditTransaction {
+  id: string;
+  userId: string;
+  type: 'debit' | 'credit' | 'bonus';
+  amount: number;
+  description: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface AdminMetrics {
+  totalUsers: number;
+  totalProjects: number;
+  totalAudiosGenerated: number;
+  totalCreditsUsed: number;
+  elevenLabsConfigured: boolean;
+  elevenLabsApiKeyMasked?: string;
+  elevenLabsApiKey?: string;
+  elevenLabsSubscription?: {
+    tier: string;
+    characterCount: number;
+    characterLimit: number;
+    percentUsed: number;
+  };
+  elevenLabsVoicesCount?: number;
+  geminiConfigured: boolean;
+  geminiApiKeyMasked?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
+  recentTransactions: CreditTransaction[];
+  users?: UserProfile[];
+  settings?: any;
+}
+
+export interface RadioQueueItem {
+  id: string;
+  audioId: string;
+  projectId?: string;
+  title: string;
+  audioUrl: string;
+  downloadUrl?: string;
+  durationSeconds: number;
+  voiceName: string;
+  campaignType?: string;
+  storeName?: string;
+  type: 'oferta' | 'vinheta' | 'aviso' | 'relampago' | 'comunicado';
+  active: boolean;
+  priority: 'alta' | 'normal';
+  playCount?: number;
+  lastPlayedAt?: string;
+  repeatIntervalMinutes?: number; // Opcional: tocar a cada X minutos (ex: 5, 10, 15, 30, 60 min)
+  daysOfWeek?: number[]; // [0, 1, 2, 3, 4, 5, 6] onde 0=Domingo, 1=Segunda, ..., 6=Sábado. Se indefinido ou vazio, toca todos os dias.
+  addedAt: string;
+}
+
+export interface RadioPlaylist {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isCustom?: boolean;
+}
+
+export interface RadioMusicTrack {
+  id: string;
+  title: string;
+  artist: string;
+  style?: string;
+  category: string;
+  playlistId?: string;
+  audioUrl: string;
+  durationSeconds: number;
+  bpm?: number;
+  active: boolean;
+  isCustom?: boolean;
+}
+
+export interface RadioStationConfig {
+  stationName: string;
+  storeName?: string;
+  slogan: string;
+  isOnAir: boolean;
+  mode: 'intervalo_tempo' | 'intercalado_musicas' | 'somente_ofertas';
+  spotsEveryNTracks: number;
+  offerEveryNSongs?: number;
+  spotsIntervalSeconds: number;
+  offerIntervalSeconds?: number;
+  onlyOffersPauseSeconds: number;
+  musicVolume: number;
+  spotVolume: number;
+  voiceVolume?: number;
+  duckingLevel: number;
+  selectedMusicCategory: string;
+  activePlaylistId?: string;
+  playlists?: RadioPlaylist[];
+  autoPublishNewAudios: boolean;
+  queue: RadioQueueItem[];
+  musicTracks: RadioMusicTrack[];
+}
+
+export * from './campaigns.ts';

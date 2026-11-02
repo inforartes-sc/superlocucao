@@ -1,0 +1,1278 @@
+import { Router, Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import JSZip from 'jszip';
+import { db, audioBinaryStore, getAudioBinary, saveAudioBinary } from './db.ts';
+import { parseProductsWithGemini, generateSupermarketScript, refineSupermarketScript, formatSpokenPriceBR, saveGeminiApiKeyToEnv, fetchGeminiAccountInfo } from './gemini.ts';
+import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio } from './elevenlabs.ts';
+import { convertWavToMp3 } from './mp3_converter.ts';
+import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer } from './soundtracks.ts';
+import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack } from '../src/types/index.ts';
+import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
+
+export const apiRouter = Router();
+
+// Middleware to get user from X-User-Id header or default to demo user
+function getUserId(req: Request): string {
+  const headerId = req.headers['x-user-id'] as string;
+  if (headerId && db.getUser(headerId)) {
+    return headerId;
+  }
+  return 'user-alvorada';
+}
+
+// -------------------------------------------------------------
+// AUTH & USER
+// -------------------------------------------------------------
+apiRouter.get('/auth/me', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+  res.json({ user });
+});
+
+apiRouter.post('/auth/demo', (req: Request, res: Response) => {
+  const { demoId } = req.body;
+  const user = db.getUser(demoId || 'user-alvorada');
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário demo não encontrado' });
+  }
+  res.json({ user, token: user.id });
+});
+
+apiRouter.post('/auth/login', (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Informe o e-mail' });
+  }
+  const existing = db.getUserByEmail(email);
+  if (existing) {
+    return res.json({ user: existing, token: existing.id });
+  }
+
+  // Auto create or log demo
+  const newUser = db.createUser({
+    id: `user-${Date.now()}`,
+    name: email.split('@')[0],
+    email,
+    role: 'supermarket_owner',
+    plan: 'pro_varejo',
+    creditsBalance: db.getAdminSettings()?.initialCredits ?? 500,
+    createdAt: new Date().toISOString(),
+  });
+  const bonus = db.getAdminSettings()?.initialCredits ?? 500;
+  db.updateUserCredits(newUser.id, bonus, 'Bônus de Boas-Vindas');
+  res.json({ user: newUser, token: newUser.id });
+});
+
+apiRouter.post('/auth/register', (req: Request, res: Response) => {
+  const { name, email, companyName } = req.body;
+  if (!email || !name) {
+    return res.status(400).json({ error: 'Nome e e-mail são obrigatórios' });
+  }
+  const existing = db.getUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'E-mail já cadastrado. Faça login.' });
+  }
+
+  const initialBonus = db.getAdminSettings()?.initialCredits ?? 500;
+  const user = db.createUser({
+    id: `user-${Date.now()}`,
+    name,
+    email,
+    companyName: companyName || 'Supermercado',
+    role: 'supermarket_owner',
+    plan: 'pro_varejo',
+    creditsBalance: initialBonus,
+    createdAt: new Date().toISOString(),
+  });
+  db.updateUserCredits(user.id, initialBonus, 'Bônus de Boas-Vindas (Cadastro)');
+  res.json({ user, token: user.id });
+});
+
+// -------------------------------------------------------------
+// PROJECTS
+// -------------------------------------------------------------
+apiRouter.get('/projects', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const projects = db.getProjects(userId);
+  res.json({ projects });
+});
+
+apiRouter.get('/projects/:id', (req: Request, res: Response) => {
+  const project = db.getProject(req.params.id);
+  if (!project) {
+    return res.status(404).json({ error: 'Projeto não encontrado' });
+  }
+  res.json({ project });
+});
+
+apiRouter.post('/projects', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const data = req.body;
+
+  const project: Project = {
+    id: data.id || `proj-${Date.now()}`,
+    userId,
+    niche: data.niche || 'supermercado',
+    title: data.title || 'Nova Campanha de Ofertas',
+    storeName: data.storeName || '',
+    storeCity: data.storeCity || '',
+    objective: data.objective || '',
+    campaignType: data.campaignType || 'ofertas_dia',
+    style: data.style || 'energetica_supermercado',
+    desiredDuration: data.desiredDuration || '30s',
+    tone: data.tone || 'persuasivo',
+    presentationFormat: data.presentationFormat || 'abertura_sequencia_encerramento',
+    customOpening: data.customOpening || '',
+    customClosing: data.customClosing || '',
+    freeInstructions: data.freeInstructions || '',
+    products: data.products || [],
+    scripts: data.scripts || [],
+    currentScriptIndex: data.currentScriptIndex ?? 0,
+    audios: data.audios || [],
+    status: data.status || 'draft',
+    createdAt: data.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const saved = db.saveProject(project);
+  res.json({ project: saved });
+});
+
+apiRouter.put('/projects/:id', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const existing = db.getProject(req.params.id);
+  if (!existing) {
+    const created = db.saveProject({
+      ...req.body,
+      id: req.params.id,
+      userId,
+      createdAt: req.body?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return res.json({ project: created });
+  }
+  const updated = db.saveProject({
+    ...existing,
+    ...req.body,
+    id: existing.id,
+    userId: existing.userId,
+    updatedAt: new Date().toISOString(),
+  });
+  res.json({ project: updated });
+});
+
+apiRouter.delete('/projects/:id', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const deleted = db.deleteProject(req.params.id, userId);
+  if (!deleted) {
+    return res.status(404).json({ error: 'Projeto não encontrado ou sem permissão' });
+  }
+  res.json({ success: true });
+});
+
+apiRouter.post('/projects/:id/duplicate', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const original = db.getProject(req.params.id);
+  if (!original) {
+    return res.status(404).json({ error: 'Projeto não encontrado' });
+  }
+
+  const duplicated: Project = {
+    ...original,
+    id: `proj-${Date.now()}`,
+    userId,
+    title: `${original.title} (Cópia)`,
+    audios: [], // Reset audios for new generation
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  db.saveProject(duplicated);
+  res.json({ project: duplicated });
+});
+
+// -------------------------------------------------------------
+// AI SERVICES (GEMINI 3.8 FLASH)
+// -------------------------------------------------------------
+apiRouter.post('/ai/parse-products', async (req: Request, res: Response) => {
+  const { text, niche } = req.body;
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Texto não fornecido' });
+  }
+
+  try {
+    const products = await parseProductsWithGemini(text, niche);
+    res.json({ products });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao processar lista de produtos' });
+  }
+});
+
+apiRouter.post('/ai/generate-script', async (req: Request, res: Response) => {
+  try {
+    const scriptResult = await generateSupermarketScript(req.body);
+    scriptResult.text = expandUnitsAndMeasuresToWords(scriptResult.text);
+    scriptResult.spokenPhoneticText = expandUnitsAndMeasuresToWords(scriptResult.spokenPhoneticText || scriptResult.text);
+    res.json(scriptResult);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao gerar roteiro comercial' });
+  }
+});
+
+apiRouter.post('/ai/refine-script', async (req: Request, res: Response) => {
+  const { currentText, action, instruction, products, niche } = req.body;
+  if (!currentText) {
+    return res.status(400).json({ error: 'Texto atual não fornecido' });
+  }
+
+  try {
+    const refinedText = await refineSupermarketScript(currentText, action, instruction, products, niche);
+    res.json({ text: expandUnitsAndMeasuresToWords(refinedText) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro ao aprimorar roteiro' });
+  }
+});
+
+// -------------------------------------------------------------
+// VOICES, SOUNDTRACKS & AUDIO SAMPLES
+// -------------------------------------------------------------
+apiRouter.get('/voices', async (_req: Request, res: Response) => {
+  const elevenVoices = await getElevenLabsVoices(false, true);
+  const hasElevenKey = Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_API_KEY !== 'YOUR_ELEVENLABS_API_KEY');
+
+  let voicesToReturn: VoicePreset[];
+  if (elevenVoices && elevenVoices.length > 0) {
+    voicesToReturn = elevenVoices;
+  } else {
+    voicesToReturn = db.getVoices();
+  }
+
+  res.json({
+    voices: voicesToReturn,
+    hasElevenKey,
+    totalVoices: voicesToReturn.length,
+    elevenVoicesCount: elevenVoices.length,
+  });
+});
+
+const handleVoicePreview = async (req: Request, res: Response) => {
+  const voiceId = req.params.voiceId;
+  try {
+    const buffer = await getVoicePreviewAudio(voiceId);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.end(buffer);
+  } catch (err: any) {
+    console.error(`Erro ao carregar prévia da voz ${voiceId}:`, err);
+    res.status(500).json({ error: 'Erro ao carregar prévia da voz' });
+  }
+};
+
+apiRouter.get('/voices/:voiceId/preview', handleVoicePreview);
+apiRouter.get('/elevenlabs/voices/:voiceId/preview', handleVoicePreview);
+
+apiRouter.get('/soundtracks', (_req: Request, res: Response) => {
+  res.json({ soundtracks: SOUNDTRACKS_LIST });
+});
+
+apiRouter.get('/soundtracks/:id/preview.:ext', (req: Request, res: Response) => {
+  const trackId = req.params.id as SoundtrackId;
+  const buffer = getSoundtrackPreviewBuffer(trackId);
+  const isMp3 = buffer.length > 3 && (buffer[0] === 0x49 || (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0));
+  const contentType = isMp3 ? 'audio/mpeg' : 'audio/wav';
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Length', buffer.length);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.end(buffer);
+});
+
+apiRouter.get('/samples/style/:styleId.:ext', (req: Request, res: Response) => {
+  const styleId = req.params.styleId;
+  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  const mp3Path = path.join(audioDir, `style_${styleId}.mp3`);
+  if (fs.existsSync(mp3Path)) {
+    const buffer = fs.readFileSync(mp3Path);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    return res.end(buffer);
+  }
+  const wavBuffer = generateStyleDemoWav(styleId);
+  res.setHeader('Content-Type', 'audio/wav');
+  res.setHeader('Content-Length', wavBuffer.length);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.end(wavBuffer);
+});
+
+apiRouter.get('/samples/voice/:voiceId.:ext', async (req: Request, res: Response) => {
+  const voiceId = req.params.voiceId;
+  try {
+    const buffer = await getVoicePreviewAudio(voiceId);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.end(buffer);
+  } catch (err: any) {
+    console.error(`Erro ao carregar amostra da voz ${voiceId}:`, err);
+    res.status(500).json({ error: 'Erro ao carregar amostra' });
+  }
+});
+
+apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  const {
+    projectId,
+    scriptText,
+    voiceId,
+    title,
+    productId,
+    productName,
+    soundtrackId,
+    soundtrackVolume
+  } = req.body;
+
+  if (!scriptText || !scriptText.trim()) {
+    return res.status(400).json({ error: 'O roteiro não pode estar vazio' });
+  }
+
+  // Check credits
+  const settings = db.getAdminSettings();
+  const creditCost = settings?.creditsPerGeneration ?? 10;
+  if (user.creditsBalance < creditCost) {
+    return res.status(402).json({
+      error: 'Créditos insuficientes',
+      required: creditCost,
+      current: user.creditsBalance,
+    });
+  }
+
+  try {
+    const cleanScript = expandUnitsAndMeasuresToWords(scriptText);
+    const ttsResult = await synthesizeSpeech({
+      text: cleanScript,
+      voiceId,
+      soundtrackId,
+      soundtrackVolume: soundtrackVolume ?? 0.20,
+    });
+
+    // Deduct credits and log transaction
+    const newBalance = db.updateUserCredits(
+      userId,
+      -creditCost,
+      `Geração de Locução: ${title || 'Áudio Promocional'}`,
+      ttsResult.audioId
+    );
+
+    const elevenVoices = await getElevenLabsVoices(false, true);
+    const voices = elevenVoices.length > 0 ? elevenVoices : db.getVoices();
+    const voiceObj = voices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId) || voices[0];
+
+    const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === soundtrackId);
+
+    const audioItem: AudioGenerationItem = {
+      id: ttsResult.audioId,
+      projectId: projectId || 'standalone',
+      title: title || 'Locução de Ofertas',
+      productId,
+      productName,
+      voiceId: voiceObj.id,
+      voiceName: voiceObj.name,
+      soundtrackId: soundtrackId || 'sem_trilha',
+      soundtrackName: soundtrackObj?.name || 'Sem Trilha',
+      soundtrackVolume: soundtrackVolume ?? 0.20,
+      provider: ttsResult.provider,
+      format: ttsResult.format,
+      durationSeconds: ttsResult.durationSeconds,
+      audioUrl: ttsResult.audioUrl,
+      downloadUrl: ttsResult.downloadUrl,
+      status: 'ready',
+      creditsUsed: creditCost,
+      createdAt: new Date().toISOString(),
+      fileSizeBytes: ttsResult.fileSizeBytes,
+    };
+
+    // If projectId provided, attach to project
+    let projectStoreName = '';
+    if (projectId) {
+      const project = db.getProject(projectId);
+      if (project) {
+        projectStoreName = project.storeName || '';
+        project.audios.unshift(audioItem);
+        project.status = 'ready';
+        db.saveProject(project);
+      }
+    }
+
+    // Automatically publish to Web Radio queue if enabled or requested
+    const radioCfg = db.getRadioConfig();
+    const shouldPublishToRadio = req.body.publishToRadio !== undefined
+      ? Boolean(req.body.publishToRadio)
+      : radioCfg.autoPublishNewAudios;
+    let radioQueueItem = null;
+    if (shouldPublishToRadio) {
+      radioQueueItem = db.addAudioToRadioQueue(audioItem, {
+        storeName: projectStoreName || req.body.storeName,
+        type: 'oferta',
+        priority: req.body.radioPriority || 'normal',
+      });
+    }
+
+    res.json({
+      audio: audioItem,
+      radioQueueItem,
+      creditsBalance: newBalance,
+    });
+  } catch (err: any) {
+    console.error('Audio generation failed:', err);
+    res.status(500).json({ error: err.message || 'Falha ao sintetizar locução de áudio' });
+  }
+});
+
+apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+  const { projectId, products, voiceId, storeName, soundtrackId, soundtrackVolume } = req.body;
+  if (!products || !Array.isArray(products) || products.length === 0) {
+    return res.status(400).json({ error: 'Nenhum produto fornecido para lote' });
+  }
+
+  const settings = db.getAdminSettings();
+  const costPerAudio = settings?.creditsPerGeneration ?? 10;
+  const totalCost = products.length * costPerAudio;
+  if (user.creditsBalance < totalCost) {
+    return res.status(402).json({
+      error: `Créditos insuficientes para gerar lote (${products.length} produtos x ${costPerAudio} = ${totalCost} créditos). Saldo atual: ${user.creditsBalance}`,
+      required: totalCost,
+      current: user.creditsBalance,
+    });
+  }
+
+  const generatedAudios: AudioGenerationItem[] = [];
+  const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === soundtrackId);
+
+  for (let i = 0; i < products.length; i++) {
+    const prod = products[i];
+    const spokenPrice = formatSpokenPriceBR(prod.promotionalPrice, prod.unit);
+    const prodName = expandUnitsAndMeasuresToWords(prod.name);
+    const rawSpotText = `Atenção clientes${storeName ? ` do ${storeName}` : ''}! Superoferta do dia: ${prodName}${prod.brand ? ` ${prod.brand}` : ''}, por apenas ${spokenPrice}! Aproveite agora mesmo!`;
+    const spotText = expandUnitsAndMeasuresToWords(rawSpotText);
+
+    try {
+      const ttsResult = await synthesizeSpeech({
+        text: spotText,
+        voiceId,
+        soundtrackId,
+        soundtrackVolume: soundtrackVolume ?? 0.20,
+      });
+
+      db.updateUserCredits(
+        userId,
+        -costPerAudio,
+        `Geração Lote: ${prod.name}`,
+        ttsResult.audioId
+      );
+
+      const voices = db.getVoices();
+      const voiceObj = voices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId) || voices[0];
+
+      const item: AudioGenerationItem = {
+        id: ttsResult.audioId,
+        projectId: projectId || 'batch',
+        productId: prod.id,
+        productName: prod.name,
+        title: `Oferta — ${prod.name}`,
+        voiceId: voiceObj.id,
+        voiceName: voiceObj.name,
+        soundtrackId: soundtrackId || 'sem_trilha',
+        soundtrackName: soundtrackObj?.name || 'Sem Trilha',
+        soundtrackVolume: soundtrackVolume ?? 0.20,
+        provider: ttsResult.provider,
+        format: ttsResult.format,
+        durationSeconds: ttsResult.durationSeconds,
+        audioUrl: ttsResult.audioUrl,
+        downloadUrl: ttsResult.downloadUrl,
+        status: 'ready',
+        creditsUsed: costPerAudio,
+        createdAt: new Date().toISOString(),
+        fileSizeBytes: ttsResult.fileSizeBytes,
+      };
+
+      generatedAudios.push(item);
+    } catch (e) {
+      console.error(`Failed to generate audio for product ${prod.name}:`, e);
+    }
+  }
+
+  // Update project if attached
+  if (projectId) {
+    const project = db.getProject(projectId);
+    if (project) {
+      project.audios.unshift(...generatedAudios);
+      project.status = 'ready';
+      db.saveProject(project);
+    }
+  }
+
+  // Automatically publish generated batch items to Web Radio queue if enabled
+  const radioCfg = db.getRadioConfig();
+  const shouldPublishToRadio = req.body.publishToRadio !== undefined
+    ? Boolean(req.body.publishToRadio)
+    : radioCfg.autoPublishNewAudios;
+  if (shouldPublishToRadio) {
+    for (const item of generatedAudios) {
+      db.addAudioToRadioQueue(item, {
+        storeName,
+        type: 'oferta',
+        priority: 'normal',
+      });
+    }
+  }
+
+  const updatedUser = db.getUser(userId);
+  res.json({
+    audios: generatedAudios,
+    creditsBalance: updatedUser?.creditsBalance ?? 0,
+  });
+});
+
+// Stream audio binary or download file
+apiRouter.get('/audio/:filename', (req: Request, res: Response) => {
+  const filename = req.params.filename;
+  const audioId = filename.replace(/\.(mp3|wav)$/i, '');
+  let stored = getAudioBinary(audioId);
+
+  // If not found in storage (e.g. initial demo IDs or freshly reset cache), synthesize on the fly
+  if (!stored) {
+    console.log(`[Audio Server] Generating on-demand MP3 for audioId: ${audioId}...`);
+    const wavBuffer = generateStyleDemoWav('energetica_supermercado');
+    const mp3Buffer = convertWavToMp3(wavBuffer);
+    stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+  }
+
+  // Ensure buffer is MP3 format
+  let finalBuffer = stored.buffer;
+  if (stored.mimeType === 'audio/wav' || finalBuffer.toString('ascii', 0, 4) === 'RIFF') {
+    try {
+      finalBuffer = convertWavToMp3(finalBuffer);
+      stored = saveAudioBinary(audioId, finalBuffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+    } catch (e) {
+      console.warn('WAV to MP3 on-demand conversion failed:', e);
+    }
+  }
+
+  let downloadFilename = stored.filename || `locucao-${audioId}.mp3`;
+  if (!downloadFilename.toLowerCase().endsWith('.mp3')) {
+    downloadFilename = downloadFilename.replace(/\.[a-z0-9]+$/i, '') + '.mp3';
+  }
+
+  // Sanitize filename for HTTP header Content-Disposition (RFC 5987 / ASCII safe)
+  const safeAsciiFilename = downloadFilename
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_.-]/g, '_');
+  const encodedFilename = encodeURIComponent(downloadFilename);
+
+  const isDownload = req.query.download === '1' || req.query.download === 'true';
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Content-Length', finalBuffer.length);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+  if (isDownload) {
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeAsciiFilename}"; filename*=UTF-8''${encodedFilename}`
+    );
+  } else {
+    res.setHeader('Content-Disposition', `inline; filename="${safeAsciiFilename}"`);
+  }
+
+  res.end(finalBuffer);
+});
+
+// Bulk ZIP download
+apiRouter.post('/audio/download-zip', async (req: Request, res: Response) => {
+  const { audioIds, zipName } = req.body;
+  if (!audioIds || !Array.isArray(audioIds) || audioIds.length === 0) {
+    return res.status(400).json({ error: 'Nenhum áudio selecionado' });
+  }
+
+  try {
+    const zip = new JSZip();
+
+    for (let i = 0; i < audioIds.length; i++) {
+      const id = audioIds[i];
+      let stored = getAudioBinary(id);
+      if (!stored) {
+        const wavBuffer = generateStyleDemoWav('energetica_supermercado');
+        const mp3Buffer = convertWavToMp3(wavBuffer);
+        stored = saveAudioBinary(id, mp3Buffer, 'audio/mpeg', `locucao-${id}.mp3`);
+      }
+
+      let fileBuffer = stored.buffer;
+      if (stored.mimeType === 'audio/wav' || fileBuffer.toString('ascii', 0, 4) === 'RIFF') {
+        fileBuffer = convertWavToMp3(fileBuffer);
+      }
+
+      let zipFileName = stored.filename || `oferta-${id}.mp3`;
+      if (!zipFileName.toLowerCase().endsWith('.mp3')) {
+        zipFileName = zipFileName.replace(/\.[a-z0-9]+$/i, '') + '.mp3';
+      }
+
+      zip.file(zipFileName, fileBuffer);
+    }
+
+    const zipContent = await zip.generateAsync({ type: 'nodebuffer' });
+    const finalZipName = zipName || `locucoes-supermercado-${Date.now()}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${finalZipName}"`);
+    res.setHeader('Content-Length', zipContent.length);
+    res.end(zipContent);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao compilar arquivo ZIP' });
+  }
+});
+
+// -------------------------------------------------------------
+// WEB RADIO SUPERMERCADO (AUTODJ & DIVULGAÇÃO AO VIVO)
+// -------------------------------------------------------------
+apiRouter.get('/radio', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const config = db.getRadioConfig();
+  const projects = db.getProjects(userId);
+  const availableAudios = projects.flatMap(p =>
+    (p.audios || [])
+      .filter(a => a.status === 'ready')
+      .map(a => ({
+        ...a,
+        storeName: p.storeName || config.storeName,
+        projectTitle: p.title,
+      }))
+  );
+
+  res.json({
+    config,
+    availableAudios,
+  });
+});
+
+apiRouter.put('/radio', (req: Request, res: Response) => {
+  const updated = db.updateRadioConfig(req.body);
+  res.json({ config: updated });
+});
+
+apiRouter.post('/radio/queue', (req: Request, res: Response) => {
+  const { audio, storeName, type, priority } = req.body;
+  if (!audio || !audio.audioUrl) {
+    return res.status(400).json({ error: 'Dados do áudio inválidos para adicionar à Rádio Web' });
+  }
+
+  const queueItem = db.addAudioToRadioQueue(audio, {
+    storeName,
+    type: type || 'oferta',
+    priority: priority || 'normal',
+  });
+
+  res.json({
+    queueItem,
+    config: db.getRadioConfig(),
+  });
+});
+
+apiRouter.delete('/radio/queue/:id', (req: Request, res: Response) => {
+  const updated = db.removeRadioQueueItem(req.params.id);
+  res.json({ config: updated });
+});
+
+apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
+  try {
+    const { fileName, fileBase64, title, type, priority, storeName, durationSeconds } = req.body;
+    if (!fileBase64) {
+      return res.status(400).json({ error: 'Nenhum arquivo de áudio fornecido' });
+    }
+
+    const base64Data = fileBase64.replace(/^data:audio\/[^;]+;base64,/, '');
+    let buffer = Buffer.from(base64Data, 'base64');
+
+    const extMatch = (fileName || '').match(/\.(mp3|wav|ogg|m4a|aac)$/i);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'mp3';
+    const mimeType = ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg';
+
+    const audioId = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const safeTitle = (title || fileName || 'Áudio do Computador')
+      .replace(/\.(mp3|wav|ogg|m4a|aac)$/i, '')
+      .trim();
+
+    try {
+      const normalized = normalizeVoiceAudio(buffer);
+      if (normalized && normalized.length > 0) {
+        buffer = Buffer.from(normalized);
+      }
+    } catch {
+      // Keep original buffer if normalizer encounters raw or custom format
+    }
+
+    const filename = `${safeTitle}.${ext === 'wav' ? 'wav' : 'mp3'}`;
+    saveAudioBinary(audioId, buffer, mimeType, filename);
+
+    const audioUrl = `/api/audio/${audioId}.${ext === 'wav' ? 'wav' : 'mp3'}`;
+    const audioItem: AudioGenerationItem = {
+      id: audioId,
+      projectId: 'upload-computer',
+      title: safeTitle,
+      productName: safeTitle,
+      voiceId: 'upload-proprio',
+      voiceName: 'Áudio do Computador',
+      soundtrackId: 'sem_trilha',
+      soundtrackName: 'Áudio Próprio',
+      durationSeconds: Number(durationSeconds) || 25,
+      audioUrl,
+      downloadUrl: `${audioUrl}?download=1`,
+      status: 'ready',
+      provider: 'studio_synthesizer',
+      format: (ext === 'wav' ? 'wav' : 'mp3') as any,
+      creditsUsed: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    const queueItem = db.addAudioToRadioQueue(audioItem, {
+      storeName: storeName || 'Supermercado',
+      type: type || 'oferta',
+      priority: priority || 'normal',
+    });
+
+    res.json({
+      queueItem,
+      config: db.getRadioConfig(),
+    });
+  } catch (error: any) {
+    console.error('Error uploading audio to radio queue:', error);
+    res.status(500).json({ error: error.message || 'Erro ao processar áudio do computador' });
+  }
+});
+
+apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
+  try {
+    const { fileName, fileBase64, title, artist, playlistId, durationSeconds } = req.body;
+    if (!fileBase64) {
+      return res.status(400).json({ error: 'Nenhum arquivo de música fornecido' });
+    }
+
+    const base64Data = fileBase64.replace(/^data:audio\/[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const extMatch = (fileName || '').match(/\.(mp3|wav|ogg|m4a|aac)$/i);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'mp3';
+    const mimeType = ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg';
+
+    const musicId = `music-upload-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const safeTitle = (title || fileName || 'Música da Loja')
+      .replace(/\.(mp3|wav|ogg|m4a|aac)$/i, '')
+      .trim();
+
+    saveAudioBinary(musicId, buffer, mimeType, `${musicId}.${ext === 'wav' ? 'wav' : 'mp3'}`);
+
+    const targetPlaylistId = playlistId || 'pop_varejo';
+    const currentConfig = db.getRadioConfig();
+    const targetPlaylist = (currentConfig.playlists || []).find(p => p.id === targetPlaylistId);
+
+    const newTrack: RadioMusicTrack = {
+      id: musicId,
+      title: safeTitle,
+      artist: artist || 'MP3 Próprio da Loja',
+      style: `Música Própria • ${targetPlaylist?.name || 'Varejo'}`,
+      category: targetPlaylistId,
+      playlistId: targetPlaylistId,
+      audioUrl: `/api/audio/${musicId}.${ext === 'wav' ? 'wav' : 'mp3'}`,
+      durationSeconds: Number(durationSeconds) || 180,
+      active: true,
+      isCustom: true,
+    };
+
+    const updatedConfig = db.addMusicTrack(newTrack);
+
+    res.json({
+      track: newTrack,
+      config: updatedConfig,
+    });
+  } catch (error: any) {
+    console.error('Error uploading music track:', error);
+    res.status(500).json({ error: error.message || 'Erro ao processar arquivo de música' });
+  }
+});
+
+apiRouter.post('/radio/playlists', (req: Request, res: Response) => {
+  try {
+    const { name, description, icon, color } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nome da playlist é obrigatório' });
+    }
+    const id = `pl-custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const playlist: RadioPlaylist = {
+      id,
+      name: name.trim(),
+      description: description?.trim() || '',
+      icon: icon || '🎵',
+      color: color || 'orange',
+      isCustom: true,
+    };
+    const updated = db.addPlaylist(playlist);
+    res.json({ playlist, config: updated });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Erro ao criar playlist' });
+  }
+});
+
+apiRouter.delete('/radio/playlists/:id', (req: Request, res: Response) => {
+  const updated = db.deletePlaylist(req.params.id);
+  res.json({ config: updated });
+});
+
+apiRouter.delete('/radio/music/:id', (req: Request, res: Response) => {
+  const updated = db.removeMusicTrack(req.params.id);
+  res.json({ config: updated });
+});
+
+apiRouter.patch('/radio/music/:id', (req: Request, res: Response) => {
+  const updated = db.updateMusicTrack(req.params.id, req.body);
+  res.json({ config: updated });
+});
+
+apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  const {
+    title,
+    scriptText,
+    storeName,
+    voiceId,
+    soundtrackId,
+    soundtrackVolume,
+    type,
+    priority,
+    addToQueue,
+  } = req.body;
+
+  if (!scriptText || !scriptText.trim()) {
+    return res.status(400).json({ error: 'Digite o texto da oferta relâmpago ou comunicado para divulgar na rádio' });
+  }
+
+  // Regra de Consumo de Créditos na Rádio Web:
+  // - Avisos & Informativos (comunicado) e Vinhetas da Loja (vinheta) são 100% gratuitos (NÃO consomem créditos)
+  // - Apenas a aba "Criar Locução" (ofertas relâmpago e comerciais) consome créditos do usuário
+  const isFreeRadioItem = type === 'comunicado' || type === 'vinheta';
+  const settings = db.getAdminSettings();
+  const creditCost = isFreeRadioItem ? 0 : (settings?.creditsPerGeneration ?? 10);
+
+  if (creditCost > 0 && user.creditsBalance < creditCost) {
+    return res.status(402).json({
+      error: `Créditos insuficientes para gerar a locução na Rádio Web. Necessário: ${creditCost} créditos, saldo atual: ${user.creditsBalance}.`,
+      required: creditCost,
+      current: user.creditsBalance,
+    });
+  }
+
+  try {
+    const cleanScript = expandUnitsAndMeasuresToWords(scriptText);
+    const ttsResult = await synthesizeSpeech({
+      text: cleanScript,
+      voiceId: voiceId || 'daniel-varejo',
+      soundtrackId: soundtrackId || 'varejo_alegre',
+      soundtrackVolume: soundtrackVolume ?? 0.22,
+    });
+
+    // Debitar créditos apenas se creditCost > 0
+    let newBalance = user.creditsBalance;
+    if (creditCost > 0) {
+      newBalance = db.updateUserCredits(
+        userId,
+        -creditCost,
+        `Locução Rádio Web: ${title || 'Oferta Relâmpago'}`,
+        ttsResult.audioId
+      );
+    }
+
+    const elevenVoices = await getElevenLabsVoices(false, true);
+    const voices = elevenVoices.length > 0 ? elevenVoices : db.getVoices();
+    const voiceObj = voices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId) || voices[0];
+    const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === (soundtrackId || 'varejo_alegre'));
+
+    const audioItem: AudioGenerationItem = {
+      id: ttsResult.audioId,
+      projectId: 'radio-web',
+      title: title || 'Oferta Relâmpago — Rádio Web',
+      voiceId: voiceObj.id,
+      voiceName: voiceObj.name,
+      soundtrackId: soundtrackId || 'varejo_alegre',
+      soundtrackName: soundtrackObj?.name || 'Varejo Alegre',
+      soundtrackVolume: soundtrackVolume ?? 0.22,
+      provider: ttsResult.provider,
+      format: ttsResult.format,
+      durationSeconds: ttsResult.durationSeconds,
+      audioUrl: ttsResult.audioUrl,
+      downloadUrl: ttsResult.downloadUrl,
+      status: 'ready',
+      creditsUsed: creditCost,
+      createdAt: new Date().toISOString(),
+      fileSizeBytes: ttsResult.fileSizeBytes,
+    };
+
+    // Attach to user's latest project or create a "Rádio Web — Ofertas Ao Vivo" project so it's also saved in Library
+    const userProjects = db.getProjects(userId);
+    let radioProject = userProjects.find(p => p.id === 'proj-radio-live' || p.title.includes('Rádio Web'));
+    if (!radioProject) {
+      radioProject = db.saveProject({
+        id: 'proj-radio-live',
+        userId,
+        niche: 'supermercado',
+        title: 'Rádio Web — Ofertas & Avisos Ao Vivo',
+        storeName: storeName || db.getRadioConfig().storeName || 'Supermercado',
+        storeCity: 'Loja',
+        objective: 'Locuções geradas direto na Rádio Web do Supermercado',
+        campaignType: 'superofertas',
+        style: 'urgente_oportunidade',
+        desiredDuration: '30s',
+        tone: 'urgente',
+        presentationFormat: 'abertura_sequencia_encerramento',
+        products: [],
+        scripts: [
+          {
+            id: `scr-${Date.now()}`,
+            text: cleanScript,
+            estimatedDurationSeconds: ttsResult.durationSeconds,
+            wordCount: cleanScript.split(/\s+/).filter(Boolean).length,
+            createdAt: new Date().toISOString(),
+            note: audioItem.title,
+          },
+        ],
+        currentScriptIndex: 0,
+        audios: [audioItem],
+        status: 'ready',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      radioProject.audios.unshift(audioItem);
+      radioProject.scripts.unshift({
+        id: `scr-${Date.now()}`,
+        text: cleanScript,
+        estimatedDurationSeconds: ttsResult.durationSeconds,
+        wordCount: cleanScript.split(/\s+/).filter(Boolean).length,
+        createdAt: new Date().toISOString(),
+        note: audioItem.title,
+      });
+      radioProject.status = 'ready';
+      db.saveProject(radioProject);
+    }
+
+    // Só adiciona na grade se addToQueue for explicitamente true. Padrão: NÃO adicionar na grade.
+    const shouldAddToQueue = Boolean(addToQueue);
+    let queueItem = null;
+    if (shouldAddToQueue) {
+      queueItem = db.addAudioToRadioQueue(audioItem, {
+        storeName: storeName || db.getRadioConfig().storeName,
+        type: type || 'relampago',
+        priority: priority || 'alta',
+      });
+    }
+
+    res.json({
+      audio: audioItem,
+      queueItem,
+      config: db.getRadioConfig(),
+      creditsBalance: newBalance,
+    });
+  } catch (err: any) {
+    console.error('Radio flash spot generation failed:', err);
+    res.status(500).json({ error: err.message || 'Erro ao gerar locução para a Rádio Web' });
+  }
+});
+
+// -------------------------------------------------------------
+// CREDITS & BILLING
+// -------------------------------------------------------------
+apiRouter.get('/credits/history', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const transactions = db.getTransactions(userId);
+  const user = db.getUser(userId);
+  res.json({
+    creditsBalance: user?.creditsBalance ?? 0,
+    transactions,
+  });
+});
+
+apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const { packageId, amount } = req.body;
+  const creditsToAdd = amount || (packageId === 'pacote-pro' ? 1000 : 300);
+
+  const balance = db.updateUserCredits(
+    userId,
+    creditsToAdd,
+    `Recarga de Créditos (${packageId || 'Pacote Avulso'})`
+  );
+
+  res.json({
+    success: true,
+    creditsBalance: balance,
+    message: `${creditsToAdd} créditos adicionados com sucesso!`,
+  });
+});
+
+apiRouter.get('/settings', (_req: Request, res: Response) => {
+  const settings = db.getAdminSettings();
+  res.json({
+    systemAnnouncement: settings?.systemAnnouncement || '',
+    creditsPerGeneration: settings?.creditsPerGeneration ?? 10,
+    initialCredits: settings?.initialCredits ?? 500,
+    defaultVoiceId: settings?.defaultVoiceId || 'daniel-varejo',
+  });
+});
+
+// -------------------------------------------------------------
+// ADMIN
+// -------------------------------------------------------------
+apiRouter.get('/admin/metrics', async (_req: Request, res: Response) => {
+  const metrics = db.getAdminMetrics();
+  const elevenInfo = await fetchElevenLabsAccountInfo();
+  const geminiInfo = await fetchGeminiAccountInfo();
+
+  res.json({
+    ...metrics,
+    elevenLabsConfigured: elevenInfo.configured,
+    elevenLabsApiKeyMasked: elevenInfo.apiKeyMasked,
+    elevenLabsApiKey: elevenInfo.apiKey,
+    elevenLabsSubscription: elevenInfo.subscription,
+    elevenLabsVoicesCount: elevenInfo.voicesCount,
+    geminiConfigured: geminiInfo.configured,
+    geminiApiKeyMasked: geminiInfo.apiKeyMasked,
+    geminiApiKey: geminiInfo.apiKey,
+    geminiModel: geminiInfo.model,
+  });
+});
+
+apiRouter.post('/admin/gemini/key', async (req: Request, res: Response) => {
+  const { apiKey } = req.body;
+  if (!apiKey || !apiKey.trim()) {
+    return res.status(400).json({ error: 'Chave API do Gemini não informada' });
+  }
+
+  const cleanKey = apiKey.trim();
+
+  // Test Gemini key with a quick ping
+  try {
+    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`;
+    const testRes = await fetch(testUrl);
+    if (!testRes.ok) {
+      const err = await testRes.text();
+      return res.status(400).json({ error: `Chave do Gemini inválida ou sem permissão: ${err}` });
+    }
+
+    const saved = saveGeminiApiKeyToEnv(cleanKey);
+    if (!saved) {
+      return res.status(500).json({ error: 'Erro ao salvar chave no arquivo .env' });
+    }
+
+    const geminiInfo = await fetchGeminiAccountInfo();
+    res.json({
+      success: true,
+      message: 'Chave da Google Gemini API conectada e validada com sucesso!',
+      geminiInfo,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Erro ao validar chave Gemini: ${err.message}` });
+  }
+});
+
+apiRouter.post('/admin/elevenlabs/key', async (req: Request, res: Response) => {
+  const { apiKey } = req.body;
+  if (!apiKey || !apiKey.trim()) {
+    return res.status(400).json({ error: 'Chave API da ElevenLabs não informada' });
+  }
+
+  const cleanKey = apiKey.trim();
+  try {
+    const testRes = await fetch('https://api.elevenlabs.io/v1/user', {
+      headers: { 'xi-api-key': cleanKey },
+    });
+    if (!testRes.ok) {
+      const err = await testRes.text();
+      return res.status(400).json({ error: `Chave ElevenLabs inválida: ${err}` });
+    }
+
+    const saved = saveElevenLabsApiKeyToEnv(cleanKey);
+    if (!saved) {
+      return res.status(500).json({ error: 'Erro ao salvar chave no arquivo .env' });
+    }
+
+    const accountInfo = await fetchElevenLabsAccountInfo();
+    const freshVoices = await getElevenLabsVoices(true);
+
+    res.json({
+      success: true,
+      message: 'Chave ElevenLabs conectada e validada com sucesso!',
+      accountInfo,
+      voicesCount: freshVoices.length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Erro ao conectar com ElevenLabs: ${err.message}` });
+  }
+});
+
+apiRouter.post('/admin/elevenlabs/sync', async (_req: Request, res: Response) => {
+  try {
+    const freshVoices = await getElevenLabsVoices(true);
+    const accountInfo = await fetchElevenLabsAccountInfo();
+    res.json({
+      success: true,
+      message: `${freshVoices.length} vozes oficiais sincronizadas com sucesso!`,
+      voicesCount: freshVoices.length,
+      accountInfo,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Erro na sincronização: ${err.message}` });
+  }
+});
+
+apiRouter.post('/admin/settings', (req: Request, res: Response) => {
+  const updated = db.updateAdminSettings(req.body);
+  res.json({ settings: updated });
+});
+
+// -------------------------------------------------------------
+// ADMIN - CLIENT / USER MANAGEMENT
+// -------------------------------------------------------------
+apiRouter.get('/admin/users', (_req: Request, res: Response) => {
+  const users = db.getUsers();
+  const enrichedUsers = users.map(u => {
+    const userProjects = db.getProjects(u.id);
+    const userAudiosCount = userProjects.reduce((acc, p) => acc + (p.audios?.length || 0), 0);
+    const userTransactions = db.getTransactions(u.id);
+    const creditsUsed = userTransactions
+      .filter(t => t.type === 'debit')
+      .reduce((acc, t) => acc + t.amount, 0);
+
+    return {
+      ...u,
+      status: u.status || 'ativo',
+      projectsCount: userProjects.length,
+      audiosCount: userAudiosCount,
+      creditsUsed,
+      lastActivity: userProjects[0]?.updatedAt || u.createdAt
+    };
+  });
+
+  res.json({ users: enrichedUsers });
+});
+
+apiRouter.post('/admin/users', (req: Request, res: Response) => {
+  const { name, email, phone, companyName, city, plan, creditsBalance, role, notes } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Nome e e-mail são obrigatórios.' });
+  }
+
+  const existing = db.getUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'Já existe um cliente cadastrado com este e-mail.' });
+  }
+
+  const initialCredits = Number(creditsBalance) || 500;
+  const newUser = db.createUser({
+    id: `user-${Date.now()}`,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    phone: phone?.trim() || '',
+    companyName: companyName?.trim() || 'Supermercado',
+    city: city?.trim() || '',
+    role: role || 'supermarket_owner',
+    plan: plan || 'pro_varejo',
+    status: 'ativo',
+    notes: notes?.trim() || '',
+    creditsBalance: initialCredits,
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  });
+
+  if (initialCredits > 0) {
+    db.updateUserCredits(newUser.id, initialCredits, 'Saldo inicial atribuído pelo Administrador');
+  }
+
+  res.json({ success: true, user: newUser });
+});
+
+apiRouter.put('/admin/users/:id', (req: Request, res: Response) => {
+  const userId = req.params.id;
+  const updates = req.body;
+  
+  const updated = db.updateUser(userId, updates);
+  if (!updated) {
+    return res.status(404).json({ error: 'Cliente não encontrado.' });
+  }
+
+  res.json({ success: true, user: updated });
+});
+
+apiRouter.delete('/admin/users/:id', (req: Request, res: Response) => {
+  const userId = req.params.id;
+  if (userId === 'user-admin') {
+    return res.status(400).json({ error: 'Não é permitido excluir o usuário Administrador Principal.' });
+  }
+
+  const deleted = db.deleteUser(userId);
+  if (!deleted) {
+    return res.status(404).json({ error: 'Cliente não encontrado.' });
+  }
+
+  res.json({ success: true, message: 'Cliente removido com sucesso.' });
+});
+
+apiRouter.post('/admin/users/:id/credits', (req: Request, res: Response) => {
+  const userId = req.params.id;
+  const { amount, reason } = req.body;
+  
+  const delta = Number(amount);
+  if (isNaN(delta) || delta === 0) {
+    return res.status(400).json({ error: 'Quantidade de créditos inválida.' });
+  }
+
+  const user = db.getUser(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'Cliente não encontrado.' });
+  }
+
+  const newBalance = db.updateUserCredits(
+    userId,
+    delta,
+    reason || (delta > 0 ? 'Ajuste manual de créditos (Adição pelo Admin)' : 'Ajuste manual de créditos (Estorno pelo Admin)')
+  );
+
+  res.json({
+    success: true,
+    creditsBalance: newBalance,
+    message: `${Math.abs(delta)} créditos ${delta > 0 ? 'adicionados' : 'debitados'} com sucesso!`
+  });
+});

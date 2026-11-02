@@ -1,0 +1,6 @@
+{
+  "name": "Locução Super IA",
+  "description": "Criação profissional de locuções comerciais com IA para supermercados, atacarejos e mercearias com geração de voz e download MP3.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

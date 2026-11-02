@@ -1,0 +1,353 @@
+import {
+  User,
+  Project,
+  ProductItem,
+  VoicePreset,
+  AudioGenerationItem,
+  CreditTransaction,
+  AdminMetrics,
+  SoundtrackOption,
+  SoundtrackId,
+  NicheType,
+  RadioStationConfig,
+  RadioQueueItem,
+  RadioPlaylist,
+  RadioMusicTrack,
+} from '../types';
+
+const STORAGE_USER_KEY = 'superlocucao_user_id';
+
+export function getActiveUserId(): string {
+  return localStorage.getItem(STORAGE_USER_KEY) || 'user-alvorada';
+}
+
+export function setActiveUserId(id: string) {
+  localStorage.setItem(STORAGE_USER_KEY, id);
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const userId = getActiveUserId();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-user-id': userId,
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`/api${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorMsg = 'Erro na comunicação com o servidor';
+    try {
+      const errData = await response.json();
+      errorMsg = errData.error || errorMsg;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return response.json();
+}
+
+export const api = {
+  // Auth
+  getMe: () => request<{ user: User }>('/auth/me'),
+  loginDemo: (demoId?: string) =>
+    request<{ user: User; token: string }>('/auth/demo', {
+      method: 'POST',
+      body: JSON.stringify({ demoId }),
+    }),
+  switchDemo: (demoId?: string) =>
+    request<{ user: User; token: string }>('/auth/demo', {
+      method: 'POST',
+      body: JSON.stringify({ demoId }),
+    }),
+  login: (email: string) =>
+    request<{ user: User; token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  register: (name: string, email: string, companyName: string) =>
+    request<{ user: User; token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, companyName }),
+    }),
+
+  // Projects
+  getProjects: () => request<{ projects: Project[] }>('/projects'),
+  getProject: (id: string) => request<{ project: Project }>(`/projects/${id}`),
+  createProject: (data: Partial<Project>) =>
+    request<{ project: Project }>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  saveProject: (data: Partial<Project>) => {
+    if (data.id) {
+      return request<{ project: Project }>(`/projects/${data.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }).catch(() =>
+        request<{ project: Project }>('/projects', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        })
+      );
+    }
+    return request<{ project: Project }>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  updateProject: (id: string, data: Partial<Project>) =>
+    request<{ project: Project }>(`/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteProject: (id: string) =>
+    request<{ success: boolean }>(`/projects/${id}`, {
+      method: 'DELETE',
+    }),
+  duplicateProject: (id: string) =>
+    request<{ project: Project }>(`/projects/${id}/duplicate`, {
+      method: 'POST',
+    }),
+
+  // AI Services
+  parseProducts: (text: string, niche?: NicheType) =>
+    request<{ products: ProductItem[] }>('/ai/parse-products', {
+      method: 'POST',
+      body: JSON.stringify({ text, niche }),
+    }),
+  generateScript: (params: any) =>
+    request<{
+      text: string;
+      spokenPhoneticText?: string;
+      estimatedDurationSec?: number;
+      estimatedDurationSeconds: number;
+      wordCount: number;
+    }>('/ai/generate-script', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  refineScript: (currentText: string, action: string, instruction?: string, products?: ProductItem[], niche?: NicheType) =>
+    request<{ text: string }>('/ai/refine-script', {
+      method: 'POST',
+      body: JSON.stringify({ currentText, action, instruction, products, niche }),
+    }),
+
+  // Voices & Audio
+  getVoices: () => request<{ voices: VoicePreset[]; hasElevenKey: boolean }>('/voices'),
+  getSoundtracks: () => request<{ soundtracks: SoundtrackOption[] }>('/soundtracks'),
+  generateAudio: (params: {
+    projectId?: string;
+    scriptText: string;
+    voiceId: string;
+    title?: string;
+    productId?: string;
+    productName?: string;
+    soundtrackId?: SoundtrackId;
+    soundtrackVolume?: number;
+    publishToRadio?: boolean;
+    radioPriority?: 'alta' | 'normal';
+    storeName?: string;
+  }) =>
+    request<{ audio: AudioGenerationItem; radioQueueItem?: RadioQueueItem | null; creditsBalance: number }>('/audio/generate', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  generateBatchAudios: (params: {
+    projectId?: string;
+    products: ProductItem[];
+    voiceId: string;
+    storeName?: string;
+    soundtrackId?: SoundtrackId;
+    soundtrackVolume?: number;
+    publishToRadio?: boolean;
+  }) =>
+    request<{ audios: AudioGenerationItem[]; creditsBalance: number }>('/audio/generate-batch', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  downloadZip: async (audioIds: string[], zipName?: string): Promise<Blob> => {
+    const userId = getActiveUserId();
+    const res = await fetch('/api/audio/download-zip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: JSON.stringify({ audioIds, zipName }),
+    });
+    if (!res.ok) {
+      throw new Error('Erro ao gerar pacote ZIP de áudios');
+    }
+    return res.blob();
+  },
+
+  // Web Radio Supermercado
+  getRadio: () =>
+    request<{
+      config: RadioStationConfig;
+      availableAudios: (AudioGenerationItem & { storeName?: string; projectTitle?: string })[];
+    }>('/radio'),
+  updateRadioConfig: (data: Partial<RadioStationConfig>) =>
+    request<{ config: RadioStationConfig }>('/radio', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  addAudioToRadioQueue: (params: {
+    audio: AudioGenerationItem;
+    storeName?: string;
+    type?: RadioQueueItem['type'];
+    priority?: RadioQueueItem['priority'];
+  }) =>
+    request<{ queueItem: RadioQueueItem; config: RadioStationConfig }>('/radio/queue', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  removeRadioQueueItem: (id: string) =>
+    request<{ config: RadioStationConfig }>(`/radio/queue/${id}`, {
+      method: 'DELETE',
+    }),
+  uploadAudioToRadioQueue: (params: {
+    fileName: string;
+    fileBase64: string;
+    title?: string;
+    type?: RadioQueueItem['type'];
+    priority?: RadioQueueItem['priority'];
+    storeName?: string;
+    durationSeconds?: number;
+  }) =>
+    request<{ queueItem: RadioQueueItem; config: RadioStationConfig }>('/radio/queue/upload', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  uploadRadioMusic: (params: {
+    fileName: string;
+    fileBase64: string;
+    title?: string;
+    artist?: string;
+    playlistId?: string;
+    durationSeconds?: number;
+  }) =>
+    request<{ track: RadioMusicTrack; config: RadioStationConfig }>('/radio/music/upload', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  createRadioPlaylist: (data: { name: string; description?: string; icon?: string; color?: string }) =>
+    request<{ playlist: RadioPlaylist; config: RadioStationConfig }>('/radio/playlists', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteRadioPlaylist: (id: string) =>
+    request<{ config: RadioStationConfig }>(`/radio/playlists/${id}`, {
+      method: 'DELETE',
+    }),
+  deleteRadioMusicTrack: (id: string) =>
+    request<{ config: RadioStationConfig }>(`/radio/music/${id}`, {
+      method: 'DELETE',
+    }),
+  updateRadioMusicTrack: (id: string, updates: Partial<RadioMusicTrack>) =>
+    request<{ config: RadioStationConfig }>(`/radio/music/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+  createRadioFlashSpot: (params: {
+    title: string;
+    scriptText: string;
+    storeName?: string;
+    voiceId: string;
+    soundtrackId?: SoundtrackId;
+    soundtrackVolume?: number;
+    type?: RadioQueueItem['type'];
+    priority?: RadioQueueItem['priority'];
+    addToQueue?: boolean;
+  }) =>
+    request<{
+      audio: AudioGenerationItem;
+      queueItem?: RadioQueueItem | null;
+      config: RadioStationConfig;
+      creditsBalance: number;
+    }>('/radio/flash', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  // Credits
+  getCreditsHistory: () =>
+    request<{ creditsBalance: number; transactions: CreditTransaction[] }>('/credits/history'),
+  rechargeCredits: (packageId: string, amount: number) =>
+    request<{ success: boolean; creditsBalance: number; message: string }>('/credits/recharge', {
+      method: 'POST',
+      body: JSON.stringify({ packageId, amount }),
+    }),
+  getPublicSettings: () =>
+    request<{
+      systemAnnouncement: string;
+      creditsPerGeneration: number;
+      initialCredits: number;
+      defaultVoiceId: string;
+    }>('/settings'),
+
+  // Admin
+  getAdminMetrics: () => request<AdminMetrics>('/admin/metrics'),
+  saveElevenLabsKey: (apiKey: string) =>
+    request<{ success: boolean; message: string; voicesCount: number }>('/admin/elevenlabs/key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    }),
+  updateElevenLabsKey: (apiKey: string) =>
+    request<{ success: boolean; message: string; voicesCount: number }>('/admin/elevenlabs/key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    }),
+  saveGeminiKey: (apiKey: string) =>
+    request<{ success: boolean; message: string }>('/admin/gemini/key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    }),
+  updateGeminiKey: (apiKey: string) =>
+    request<{ success: boolean; message: string }>('/admin/gemini/key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    }),
+  syncElevenLabsVoices: () =>
+    request<{ success: boolean; message: string; voicesCount: number }>('/admin/elevenlabs/sync', {
+      method: 'POST',
+    }),
+  updateAdminSettings: (settings: any) =>
+    request<{ settings: any }>('/admin/settings', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    }),
+
+  // Admin - Users / Clients
+  getAdminUsers: () => request<{ users: any[] }>('/admin/users'),
+  createAdminUser: (data: Partial<User>) =>
+    request<{ success: boolean; user: User }>('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateAdminUser: (id: string, data: Partial<User>) =>
+    request<{ success: boolean; user: User }>(`/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteAdminUser: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/users/${id}`, {
+      method: 'DELETE',
+    }),
+  adjustAdminUserCredits: (id: string, amount: number, reason?: string) =>
+    request<{ success: boolean; creditsBalance: number; message: string }>(`/admin/users/${id}/credits`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, reason }),
+    }),
+  adjustUserCredits: (id: string, amount: number, reason?: string) =>
+    request<{ success: boolean; creditsBalance: number; message: string }>(`/admin/users/${id}/credits`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, reason }),
+    }),
+};
