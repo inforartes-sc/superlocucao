@@ -2,21 +2,21 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Instalar ffmpeg e ferramentas de build compativeis com ARM64 e x86_64
+# Instalar ffmpeg e certificados SSL
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    python3 \
-    make \
-    g++ \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-# Garantir instalacao de todas as dependencias necessarias para o build
-RUN npm install --include=dev
+COPY package.json ./
+COPY .npmrc* ./
+
+# Instalar dependencias limpas diretamente para a arquitetura do servidor (ARM64)
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
-# Fazer o build dos assets estaticos do React
+# Build da aplicacao web
 RUN npm run build
 
 EXPOSE 3000
