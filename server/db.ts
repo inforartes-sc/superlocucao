@@ -638,11 +638,10 @@ class Database {
 
     try {
       console.log('[PostgreSQL] Conectando ao banco de dados...');
+      const useSsl = dbUrl.includes('sslmode=require') || dbUrl.includes('ssl=true');
       this.pool = new Pool({
         connectionString: dbUrl,
-        ssl: dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')
-          ? false
-          : { rejectUnauthorized: false }
+        ssl: useSsl ? { rejectUnauthorized: false } : false
       });
 
       await this.pool.query('SELECT 1');
