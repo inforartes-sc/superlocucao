@@ -1092,12 +1092,14 @@ apiRouter.get('/credits/history', (req: Request, res: Response) => {
 apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
   const userId = getUserId(req);
   const { packageId, amount } = req.body;
-  const creditsToAdd = amount || (packageId === 'pacote-pro' ? 1000 : 300);
+  const settings = db.getAdminSettings();
+  const matchedPkg = settings?.rechargePackages?.find(p => p.id === packageId);
+  const creditsToAdd = amount || matchedPkg?.credits || (packageId === 'pacote-pro' ? 1000 : 300);
 
   const balance = db.updateUserCredits(
     userId,
     creditsToAdd,
-    `Recarga de Créditos (${packageId || 'Pacote Avulso'})`
+    `Recarga de Créditos (${matchedPkg?.name || packageId || 'Pacote Avulso'})`
   );
 
   res.json({
@@ -1114,6 +1116,8 @@ apiRouter.get('/settings', (_req: Request, res: Response) => {
     creditsPerGeneration: settings?.creditsPerGeneration ?? 5,
     initialCredits: settings?.initialCredits ?? 50,
     defaultVoiceId: settings?.defaultVoiceId || 'daniel-varejo',
+    rechargePackages: settings?.rechargePackages || [],
+    commercialPlans: settings?.commercialPlans || [],
   });
 });
 

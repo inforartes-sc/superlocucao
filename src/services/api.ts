@@ -13,6 +13,8 @@ import {
   RadioQueueItem,
   RadioPlaylist,
   RadioMusicTrack,
+  RechargePackage,
+  CommercialPlan,
 } from '../types';
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
@@ -295,6 +297,8 @@ export const api = {
       creditsPerGeneration: number;
       initialCredits: number;
       defaultVoiceId: string;
+      rechargePackages?: RechargePackage[];
+      commercialPlans?: CommercialPlan[];
     }>('/settings'),
 
   // Admin

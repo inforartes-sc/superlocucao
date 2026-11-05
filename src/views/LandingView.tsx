@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
+import { api } from '../services/api.ts';
+import { CommercialPlan } from '../types/index.ts';
 
 interface LandingViewProps {
   onStartCreating: () => void;
@@ -1134,139 +1136,61 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Card 1: Degustação */}
-            <div className="bg-[#181b24] rounded-3xl p-6 sm:p-8 border border-zinc-700/80 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Teste Inicial
-                </span>
-                <h3 className="text-2xl font-black text-white">Degustação</h3>
-                <p className="text-xs text-zinc-400">
-                  Perfeito para você experimentar a qualidade na prática na sua loja.
-                </p>
-                <div className="pt-2">
-                  <span className="text-4xl font-black text-white">R$ 0</span>
-                  <span className="text-xs text-zinc-400 ml-1">grátis</span>
+            {commercialPlans.map((plan) => {
+              const isHigh = plan.highlighted || Boolean(plan.badge);
+              return (
+                <div
+                  key={plan.id}
+                  className={`rounded-3xl p-6 sm:p-8 flex flex-col justify-between space-y-6 relative transition-all duration-300 ${
+                    isHigh
+                      ? 'bg-gradient-to-b from-[#1e222e] to-[#181b24] border-2 border-orange-500 shadow-2xl scale-[1.02]'
+                      : 'bg-[#181b24] border border-zinc-700/80 hover:border-zinc-600'
+                  }`}
+                >
+                  {plan.badge && (
+                    <div className="absolute -top-3.5 right-6 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-[11px] font-black rounded-full uppercase tracking-wider shadow">
+                      {plan.badge}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {plan.tag && (
+                      <span className={`text-xs font-black uppercase tracking-wider ${isHigh ? 'text-orange-400' : 'text-zinc-400'}`}>
+                        {plan.tag}
+                      </span>
+                    )}
+                    <h3 className="text-2xl font-black text-white">{plan.name}</h3>
+                    <p className={`text-xs ${isHigh ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                      {plan.subtitle}
+                    </p>
+                    <div className="pt-2">
+                      <span className="text-4xl font-black text-white">R$ {plan.price}</span>
+                      <span className="text-xs text-zinc-400 ml-1">{plan.billingPeriod}</span>
+                    </div>
+
+                    <ul className={`space-y-2.5 text-xs pt-4 border-t border-zinc-800 ${isHigh ? 'text-zinc-200' : 'text-zinc-300'}`}>
+                      {plan.features.map((feat, fIdx) => (
+                        <li key={fIdx} className="flex items-center gap-2">
+                          <CheckCircle2 className={`w-4 h-4 shrink-0 ${isHigh ? 'text-orange-400' : 'text-emerald-400'}`} />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={onOpenRegister}
+                    className={`w-full py-3.5 font-black rounded-xl text-xs sm:text-sm transition cursor-pointer shadow-lg ${
+                      isHigh
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-orange-500/25'
+                        : 'bg-[#242938] hover:bg-[#2d3447] text-white border border-zinc-700/80'
+                    }`}
+                  >
+                    {plan.ctaText || 'Começar Grátis'}
+                  </button>
                 </div>
-                <ul className="space-y-2.5 text-xs text-zinc-300 pt-4 border-t border-zinc-800">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <strong>50 créditos</strong> de boas-vindas
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Acesso a todas as 5 vozes de varejo
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Downloads imediatos em MP3
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Acesso à Rádio Web no navegador
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={onOpenRegister}
-                className="w-full py-3.5 bg-[#242938] hover:bg-[#2d3447] text-white border border-zinc-700/80 font-bold rounded-xl text-xs sm:text-sm transition cursor-pointer"
-              >
-                Começar Grátis
-              </button>
-            </div>
-
-            {/* Card 2: Pro Varejo (Popular) */}
-            <div className="bg-gradient-to-b from-[#1e222e] to-[#181b24] rounded-3xl p-6 sm:p-8 border-2 border-orange-500 shadow-2xl flex flex-col justify-between space-y-6 relative">
-              <div className="absolute -top-3.5 right-6 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-[11px] font-black rounded-full uppercase tracking-wider shadow">
-                Mais Escolhido
-              </div>
-
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-wider text-orange-400">
-                  Supermercados
-                </span>
-                <h3 className="text-2xl font-black text-white">Pro Varejo</h3>
-                <p className="text-xs text-zinc-300">
-                  Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.
-                </p>
-                <div className="pt-2">
-                  <span className="text-4xl font-black text-white">R$ 89</span>
-                  <span className="text-xs text-zinc-400 ml-1">/mês</span>
-                </div>
-                <ul className="space-y-2.5 text-xs text-zinc-200 pt-4 border-t border-zinc-800">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                    <strong>1.500 créditos</strong> mensais renovados
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                    Geração em lote com download em arquivo ZIP
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                    Rádio Web contínua com Auto-Ducking
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                    15 vinhetas personalizadas com o nome da loja
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                    Suporte prioritário via WhatsApp
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={onOpenRegister}
-                className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-orange-500/25 transition cursor-pointer"
-              >
-                Assinar Pro Varejo
-              </button>
-            </div>
-
-            {/* Card 3: Redes & Atacarejo */}
-            <div className="bg-[#181b24] rounded-3xl p-6 sm:p-8 border border-zinc-700/80 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Redes & Filiais
-                </span>
-                <h3 className="text-2xl font-black text-white">Redes & Atacarejo</h3>
-                <p className="text-xs text-zinc-400">
-                  Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.
-                </p>
-                <div className="pt-2">
-                  <span className="text-4xl font-black text-white">R$ 199</span>
-                  <span className="text-xs text-zinc-400 ml-1">/mês</span>
-                </div>
-                <ul className="space-y-2.5 text-xs text-zinc-300 pt-4 border-t border-zinc-800">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <strong>5.000 créditos</strong> mensais
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Múltiplas lojas e filiais gerenciadas
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Clonagem de voz personalizada da marca
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Gerente de conta e suporte dedicado
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={onOpenRegister}
-                className="w-full py-3.5 bg-[#242938] hover:bg-[#2d3447] text-white border border-zinc-700/80 font-bold rounded-xl text-xs sm:text-sm transition cursor-pointer"
-              >
-                Falar com Consultor
-              </button>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>

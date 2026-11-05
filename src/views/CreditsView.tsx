@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, CheckCircle2, ArrowDownLeft, ArrowUpRight, PlusCircle, ShieldCheck } from 'lucide-react';
-import { UserProfile, CreditTransaction } from '../types/index.ts';
+import { UserProfile, CreditTransaction, RechargePackage } from '../types/index.ts';
 import { api } from '../services/api.ts';
 
 interface CreditsViewProps {
@@ -10,12 +10,23 @@ interface CreditsViewProps {
 
 export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser }) => {
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const [packages, setPackages] = useState<RechargePackage[]>([
+    { id: 'pacote-basico', name: 'Pacote Básico', credits: 300, price: 29, description: 'Aproximadamente 30 locuções comerciais' },
+    { id: 'pacote-pro', name: 'Pacote Pro Varejo', credits: 1000, price: 69, description: 'Aproximadamente 100 locuções comerciais', badge: 'Melhor Custo-Benefício', highlighted: true },
+    { id: 'pacote-atacado', name: 'Pacote Atacarejo', credits: 3000, price: 149, description: 'Aproximadamente 300 locuções comerciais' },
+  ]);
   const [isRecharging, setIsRecharging] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     api.getCreditsHistory().then((res) => {
       setTransactions(res.transactions);
+    }).catch(console.warn);
+
+    api.getPublicSettings().then((res) => {
+      if (res.rechargePackages && res.rechargePackages.length > 0) {
+        setPackages(res.rechargePackages);
+      }
     }).catch(console.warn);
   }, [user?.creditsBalance]);
 
@@ -83,56 +94,40 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
           Pacotes de Recarga Imediata
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div>
-              <span className="text-xs font-bold uppercase text-slate-400">Pacote Básico</span>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">300 Créditos</h3>
-              <p className="text-xs text-slate-500 mt-1">Aproximadamente 30 locuções comerciais</p>
-              <div className="mt-4 text-3xl font-extrabold text-slate-900">R$ 29</div>
-            </div>
-            <button
-              onClick={() => handleRecharge('pacote-basico', 300)}
-              disabled={isRecharging}
-              className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-            >
-              Adicionar 300 Créditos
-            </button>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border-2 border-blue-600 shadow-md flex flex-col justify-between relative">
-            <div className="absolute -top-3 right-6 px-2.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">
-              Melhor Custo-Benefício
-            </div>
-            <div>
-              <span className="text-xs font-bold uppercase text-blue-600">Pacote Pro Varejo</span>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">1.000 Créditos</h3>
-              <p className="text-xs text-slate-500 mt-1">Aproximadamente 100 locuções comerciais</p>
-              <div className="mt-4 text-3xl font-extrabold text-slate-900">R$ 69</div>
-            </div>
-            <button
-              onClick={() => handleRecharge('pacote-pro', 1000)}
-              disabled={isRecharging}
-              className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-            >
-              Adicionar 1.000 Créditos
-            </button>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div>
-              <span className="text-xs font-bold uppercase text-slate-400">Pacote Atacarejo</span>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">3.000 Créditos</h3>
-              <p className="text-xs text-slate-500 mt-1">Aproximadamente 300 locuções comerciais</p>
-              <div className="mt-4 text-3xl font-extrabold text-slate-900">R$ 149</div>
-            </div>
-            <button
-              onClick={() => handleRecharge('pacote-atacado', 3000)}
-              disabled={isRecharging}
-              className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-            >
-              Adicionar 3.000 Créditos
-            </button>
-          </div>
+          {packages.map((pkg) => {
+            const isHigh = pkg.highlighted || Boolean(pkg.badge);
+            return (
+              <div
+                key={pkg.id}
+                className={`bg-white rounded-3xl p-6 flex flex-col justify-between relative transition ${isHigh ? 'border-2 border-blue-600 shadow-md' : 'border border-slate-200 shadow-sm'}`}
+              >
+                {pkg.badge && (
+                  <div className="absolute -top-3 right-6 px-2.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">
+                    {pkg.badge}
+                  </div>
+                )}
+                <div>
+                  <span className={`text-xs font-bold uppercase ${isHigh ? 'text-blue-600' : 'text-slate-400'}`}>
+                    {pkg.name}
+                  </span>
+                  <h3 className="text-2xl font-bold text-slate-900 mt-1">
+                    {pkg.credits.toLocaleString('pt-BR')} Créditos
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">{pkg.description}</p>
+                  <div className="mt-4 text-3xl font-extrabold text-slate-900">
+                    R$ {pkg.price}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRecharge(pkg.id, pkg.credits)}
+                  disabled={isRecharging}
+                  className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  Adicionar {pkg.credits.toLocaleString('pt-BR')} Créditos
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 

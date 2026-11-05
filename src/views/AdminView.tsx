@@ -6,10 +6,10 @@ import {
   MapPin, Calendar, Clock, Lock, Unlock, ArrowUpRight, ArrowDownRight,
   TrendingUp, Award, UserCheck, UserX, BarChart3, ChevronRight, X,
   Play, Pause, LogIn, ExternalLink, Activity, Database, Cpu, HelpCircle,
-  AlertTriangle, FileText, Download, Sliders, Layers
+  AlertTriangle, FileText, Download, Sliders, Layers, CreditCard
 } from 'lucide-react';
 import { api } from '../services/api.ts';
-import { AdminMetrics, User } from '../types/index.ts';
+import { AdminMetrics, User, RechargePackage, CommercialPlan } from '../types/index.ts';
 
 interface ClientItem {
   id: string;
@@ -44,7 +44,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [pinError, setPinError] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'audios' | 'integrations' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'plans' | 'audios' | 'integrations' | 'settings'>('overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +89,98 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [savingSettings, setSavingSettings] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Plans & Recharge Packages State (Editable in Super Admin)
+  const [rechargePackages, setRechargePackages] = useState<RechargePackage[]>([
+    {
+      id: 'pacote-basico',
+      name: 'Pacote Básico',
+      credits: 300,
+      price: 29,
+      description: 'Aproximadamente 30 locuções comerciais',
+      badge: '',
+      highlighted: false,
+    },
+    {
+      id: 'pacote-pro',
+      name: 'Pacote Pro Varejo',
+      credits: 1000,
+      price: 69,
+      description: 'Aproximadamente 100 locuções comerciais',
+      badge: 'Melhor Custo-Benefício',
+      highlighted: true,
+    },
+    {
+      id: 'pacote-atacado',
+      name: 'Pacote Atacarejo',
+      credits: 3000,
+      price: 149,
+      description: 'Aproximadamente 300 locuções comerciais',
+      badge: '',
+      highlighted: false,
+    },
+  ]);
+
+  const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
+    {
+      id: 'degustacao',
+      name: 'Degustação',
+      tag: 'Teste Inicial',
+      subtitle: 'Perfeito para você experimentar a qualidade na prática na sua loja.',
+      price: 0,
+      billingPeriod: 'grátis',
+      creditsAmount: 50,
+      features: [
+        '50 créditos de boas-vindas',
+        'Acesso a todas as 5 vozes de varejo',
+        'Downloads imediatos em MP3',
+        'Acesso à Rádio Web no navegador',
+      ],
+      ctaText: 'Começar Grátis',
+      badge: '',
+      highlighted: false,
+    },
+    {
+      id: 'pro_varejo',
+      name: 'Pro Varejo',
+      tag: 'Supermercados',
+      subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
+      price: 89,
+      billingPeriod: '/mês',
+      creditsAmount: 1500,
+      features: [
+        '1.500 créditos mensais renovados',
+        'Geração em lote com download em arquivo ZIP',
+        'Rádio Web contínua com Auto-Ducking',
+        '15 vinhetas personalizadas com o nome da loja',
+        'Suporte prioritário via WhatsApp',
+      ],
+      ctaText: 'Assinar Pro Varejo',
+      badge: 'Mais Escolhido',
+      highlighted: true,
+    },
+    {
+      id: 'redes_atacarejo',
+      name: 'Redes & Atacarejo',
+      tag: 'Redes & Filiais',
+      subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
+      price: 199,
+      billingPeriod: '/mês',
+      creditsAmount: 5000,
+      features: [
+        '5.000 créditos mensais',
+        'Múltiplas lojas e filiais gerenciadas',
+        'Clonagem de voz personalizada da marca',
+        'Gerente de conta e suporte dedicado',
+      ],
+      ctaText: 'Falar com Consultor',
+      badge: '',
+      highlighted: false,
+    },
+  ]);
+
+  const [savingPlans, setSavingPlans] = useState(false);
+  const [plansSavedSuccess, setPlansSavedSuccess] = useState(false);
+
   // ElevenLabs
   const [showApiKey, setShowApiKey] = useState(false);
   const [isEditingKey, setIsEditingKey] = useState(false);
@@ -118,6 +210,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         setNewClientBonus(metricsRes.settings?.initialCredits ?? 50);
         setInputKey(metricsRes.elevenLabsApiKey || '');
         setInputGeminiKey(metricsRes.geminiApiKey || '');
+
+        if (metricsRes.settings?.rechargePackages && metricsRes.settings.rechargePackages.length > 0) {
+          setRechargePackages(metricsRes.settings.rechargePackages);
+        }
+        if (metricsRes.settings?.commercialPlans && metricsRes.settings.commercialPlans.length > 0) {
+          setCommercialPlans(metricsRes.settings.commercialPlans);
+        }
       }
 
       if (usersRes && usersRes.users) {
@@ -270,6 +369,125 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       alert(`Erro ao ajustar créditos: ${err.message}`);
     } finally {
       setSubmittingCredits(false);
+    }
+  };
+
+  // Handlers for Plans & Packages
+  const handleUpdateRechargePackage = (id: string, field: keyof RechargePackage, value: any) => {
+    setRechargePackages(prev =>
+      prev.map(pkg => (pkg.id === id ? { ...pkg, [field]: value } : pkg))
+    );
+  };
+
+  const handleAddRechargePackage = () => {
+    const newId = `pacote-${Date.now()}`;
+    const newPkg: RechargePackage = {
+      id: newId,
+      name: 'Novo Pacote',
+      credits: 500,
+      price: 49,
+      description: 'Aproximadamente 50 locuções comerciais',
+      badge: '',
+      highlighted: false,
+    };
+    setRechargePackages(prev => [...prev, newPkg]);
+  };
+
+  const handleRemoveRechargePackage = (id: string) => {
+    if (confirm('Tem certeza que deseja remover este pacote de recarga?')) {
+      setRechargePackages(prev => prev.filter(pkg => pkg.id !== id));
+    }
+  };
+
+  const handleUpdateCommercialPlan = (id: string, field: keyof CommercialPlan, value: any) => {
+    setCommercialPlans(prev =>
+      prev.map(plan => (plan.id === id ? { ...plan, [field]: value } : plan))
+    );
+  };
+
+  const handleAddCommercialPlan = () => {
+    const newId = `plano-${Date.now()}`;
+    const newPlan: CommercialPlan = {
+      id: newId,
+      name: 'Novo Plano',
+      tag: 'Supermercados',
+      subtitle: 'Descrição do novo plano comercial.',
+      price: 99,
+      billingPeriod: '/mês',
+      creditsAmount: 1000,
+      features: [
+        '1.000 créditos mensais inclusos',
+        'Acesso à Rádio Web no navegador',
+        'Downloads em MP3 de alta fidelidade',
+      ],
+      ctaText: 'Assinar Plano',
+      badge: '',
+      highlighted: false,
+    };
+    setCommercialPlans(prev => [...prev, newPlan]);
+  };
+
+  const handleRemoveCommercialPlan = (id: string) => {
+    if (confirm('Tem certeza que deseja remover este plano da página comercial?')) {
+      setCommercialPlans(prev => prev.filter(plan => plan.id !== id));
+    }
+  };
+
+  const handleAddPlanFeature = (planId: string) => {
+    setCommercialPlans(prev =>
+      prev.map(plan => {
+        if (plan.id === planId) {
+          return {
+            ...plan,
+            features: [...plan.features, 'Novo benefício incluso no plano'],
+          };
+        }
+        return plan;
+      })
+    );
+  };
+
+  const handleUpdatePlanFeature = (planId: string, featureIndex: number, text: string) => {
+    setCommercialPlans(prev =>
+      prev.map(plan => {
+        if (plan.id === planId) {
+          const updated = [...plan.features];
+          updated[featureIndex] = text;
+          return { ...plan, features: updated };
+        }
+        return plan;
+      })
+    );
+  };
+
+  const handleRemovePlanFeature = (planId: string, featureIndex: number) => {
+    setCommercialPlans(prev =>
+      prev.map(plan => {
+        if (plan.id === planId) {
+          return {
+            ...plan,
+            features: plan.features.filter((_, idx) => idx !== featureIndex),
+          };
+        }
+        return plan;
+      })
+    );
+  };
+
+  const handleSaveAllPlansAndPackages = async () => {
+    setSavingPlans(true);
+    try {
+      await api.updateAdminSettings({
+        rechargePackages,
+        commercialPlans,
+      });
+      setPlansSavedSuccess(true);
+      await loadData();
+      setTimeout(() => setPlansSavedSuccess(false), 3500);
+    } catch (e: any) {
+      alert(`Erro ao salvar planos e recargas: ${e.message}`);
+    } finally {
+      setSavingPlans(false);
     }
   };
 
@@ -607,6 +825,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         >
           <Building2 className="w-4 h-4" />
           <span>Gestão de Supermercados ({clients.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('plans')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'plans'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
+              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Planos & Recargas</span>
         </button>
 
         <button
@@ -1141,6 +1371,380 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: EDITOR DE PLANOS & PACOTES DE CRÉDITO                            */}
+      {/* ===================================================================== */}
+      {activeTab === 'plans' && (
+        <div className="space-y-8 animate-in fade-in">
+          {/* Header Bar with Save Button */}
+          <div className="bg-[#151822] rounded-3xl p-6 border border-zinc-700/80 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                <h2 className="text-xl font-black text-white">Editor de Preços, Pacotes e Planos</h2>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Edite os valores dos pacotes de recarga de créditos (painel do cliente) e os planos de assinatura da página comercial. Todas as alterações refletem imediatamente.
+              </p>
+            </div>
+
+            <button
+              onClick={handleSaveAllPlansAndPackages}
+              disabled={savingPlans}
+              className="px-6 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-orange-500/25 transition cursor-pointer flex items-center justify-center gap-2 shrink-0"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>{savingPlans ? 'Salvando Alterações...' : 'Salvar Todos os Planos & Pacotes'}</span>
+            </button>
+          </div>
+
+          {plansSavedSuccess && (
+            <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
+              <span><strong>Alterações salvas com sucesso!</strong> Os pacotes de recarga e planos comerciais foram atualizados em toda a plataforma.</span>
+            </div>
+          )}
+
+          {/* SECTION 1: RECHARGE PACKAGES (CREDIT PURCHASE) */}
+          <div className="bg-[#151822] rounded-3xl p-6 sm:p-8 border border-zinc-700/80 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-lg font-black text-white">Pacotes de Recarga Imediata (Compra de Créditos)</h3>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Pacotes exibidos no painel do cliente em &quot;Gestão de Créditos & Consumo&quot;. O cliente clica para adicionar créditos avulsos à conta.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddRechargePackage}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1f2433] hover:bg-[#282f42] text-zinc-200 hover:text-white border border-zinc-700/80 rounded-2xl text-xs font-bold transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4 text-orange-400" />
+                <span>+ Adicionar Pacote de Recarga</span>
+              </button>
+            </div>
+
+            {/* Editable Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rechargePackages.map((pkg, idx) => (
+                <div
+                  key={pkg.id || idx}
+                  className={`rounded-3xl p-5 border flex flex-col justify-between space-y-4 relative transition ${
+                    pkg.highlighted
+                      ? 'bg-[#1a1f2e] border-orange-500/80 shadow-xl shadow-orange-500/10'
+                      : 'bg-[#10121a] border-zinc-700/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400">
+                      Pacote #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRechargePackage(pkg.id)}
+                      title="Excluir este pacote"
+                      className="p-1 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase">Nome do Pacote</label>
+                      <input
+                        type="text"
+                        value={pkg.name}
+                        onChange={(e) => handleUpdateRechargePackage(pkg.id, 'name', e.target.value)}
+                        placeholder="Ex: Pacote Básico"
+                        className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Créditos</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={pkg.credits}
+                          onChange={(e) => handleUpdateRechargePackage(pkg.id, 'credits', Number(e.target.value))}
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-amber-400 font-black text-sm focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Preço (R$)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={pkg.price}
+                          onChange={(e) => handleUpdateRechargePackage(pkg.id, 'price', Number(e.target.value))}
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-emerald-400 font-black text-sm focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase">Descrição / Equivalência</label>
+                      <input
+                        type="text"
+                        value={pkg.description}
+                        onChange={(e) => handleUpdateRechargePackage(pkg.id, 'description', e.target.value)}
+                        placeholder="Ex: Aproximadamente 30 locuções comerciais"
+                        className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase">Badge de Destaque (Opcional)</label>
+                      <input
+                        type="text"
+                        value={pkg.badge || ''}
+                        onChange={(e) => handleUpdateRechargePackage(pkg.id, 'badge', e.target.value)}
+                        placeholder="Ex: MELHOR CUSTO-BENEFÍCIO"
+                        className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(pkg.highlighted)}
+                        onChange={(e) => handleUpdateRechargePackage(pkg.id, 'highlighted', e.target.checked)}
+                        className="rounded border-zinc-700 text-orange-500 focus:ring-orange-500"
+                      />
+                      <span className="font-bold text-[11px]">Destacar com borda e sombra</span>
+                    </label>
+                  </div>
+
+                  {/* Mini Preview Box */}
+                  <div className="pt-3 border-t border-zinc-800/80 text-center space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-zinc-500">Prévia no Painel do Cliente</span>
+                    <div className="p-3 bg-white text-zinc-900 rounded-2xl shadow-sm text-left relative overflow-hidden">
+                      {pkg.badge && (
+                        <div className="inline-block px-2 py-0.5 bg-blue-600 text-white text-[9px] font-bold rounded-full uppercase mb-1">
+                          {pkg.badge}
+                        </div>
+                      )}
+                      <div className="text-[11px] font-bold text-slate-500 uppercase">{pkg.name || 'Pacote'}</div>
+                      <div className="text-lg font-black text-slate-900">{(pkg.credits || 0).toLocaleString('pt-BR')} Créditos</div>
+                      <div className="text-[10px] text-slate-500">{pkg.description || 'Equivalência'}</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-2">R$ {pkg.price}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION 2: COMMERCIAL PLANS (LANDING PAGE SUBSCRIPTIONS) */}
+          <div className="bg-[#151822] rounded-3xl p-6 sm:p-8 border border-zinc-700/80 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-orange-400" />
+                  <h3 className="text-lg font-black text-white">Planos de Assinatura da Página Comercial (Landing Page)</h3>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Planos exibidos na página comercial pública (Degustação, Pro Varejo, Redes & Atacarejo). Permite alterar títulos, preços, créditos mensais e a lista de benefícios de cada plano.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddCommercialPlan}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1f2433] hover:bg-[#282f42] text-zinc-200 hover:text-white border border-zinc-700/80 rounded-2xl text-xs font-bold transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4 text-orange-400" />
+                <span>+ Adicionar Plano Comercial</span>
+              </button>
+            </div>
+
+            {/* Editable Plans List */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {commercialPlans.map((plan, idx) => (
+                <div
+                  key={plan.id || idx}
+                  className={`rounded-3xl p-5 border flex flex-col justify-between space-y-5 relative transition ${
+                    plan.highlighted
+                      ? 'bg-[#1a1f2e] border-orange-500/80 shadow-xl shadow-orange-500/10'
+                      : 'bg-[#10121a] border-zinc-700/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400">
+                      Plano #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCommercialPlan(plan.id)}
+                      title="Excluir este plano"
+                      className="p-1 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Nome do Plano</label>
+                        <input
+                          type="text"
+                          value={plan.name}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'name', e.target.value)}
+                          placeholder="Ex: Pro Varejo"
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Tag Superior</label>
+                        <input
+                          type="text"
+                          value={plan.tag || ''}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'tag', e.target.value)}
+                          placeholder="Ex: Supermercados"
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-orange-400 font-bold text-xs focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase">Subtítulo / Descrição Rápida</label>
+                      <textarea
+                        rows={2}
+                        value={plan.subtitle}
+                        onChange={(e) => handleUpdateCommercialPlan(plan.id, 'subtitle', e.target.value)}
+                        placeholder="Ex: Ideal para mercados que trocam encartes todo dia."
+                        className="w-full mt-1 p-2.5 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Preço (R$)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={plan.price}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'price', Number(e.target.value))}
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-emerald-400 font-black text-sm focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Período de Cobrança</label>
+                        <input
+                          type="text"
+                          value={plan.billingPeriod}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'billingPeriod', e.target.value)}
+                          placeholder="Ex: /mês ou grátis"
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Créditos Inclusos</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={plan.creditsAmount}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'creditsAmount', Number(e.target.value))}
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-amber-400 font-black text-xs focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Texto do Botão CTA</label>
+                        <input
+                          type="text"
+                          value={plan.ctaText}
+                          onChange={(e) => handleUpdateCommercialPlan(plan.id, 'ctaText', e.target.value)}
+                          placeholder="Ex: Assinar Pro Varejo"
+                          className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase">Badge de Destaque</label>
+                      <input
+                        type="text"
+                        value={plan.badge || ''}
+                        onChange={(e) => handleUpdateCommercialPlan(plan.id, 'badge', e.target.value)}
+                        placeholder="Ex: Mais Escolhido ou Recomendado"
+                        className="w-full mt-1 px-3 py-2 bg-[#151822] border border-zinc-700/80 rounded-xl text-zinc-300 text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(plan.highlighted)}
+                        onChange={(e) => handleUpdateCommercialPlan(plan.id, 'highlighted', e.target.checked)}
+                        className="rounded border-zinc-700 text-orange-500 focus:ring-orange-500"
+                      />
+                      <span className="font-bold text-[11px]">Destacar Card com Borda Laranja & Escala</span>
+                    </label>
+
+                    {/* Features Editor */}
+                    <div className="pt-2 border-t border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase">Benefícios do Plano ({plan.features.length})</label>
+                        <button
+                          type="button"
+                          onClick={() => handleAddPlanFeature(plan.id)}
+                          className="text-[10px] font-bold text-orange-400 hover:text-orange-300 transition cursor-pointer flex items-center gap-0.5"
+                        >
+                          <Plus className="w-3 h-3" /> Adicionar Item
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {plan.features.map((feat, fIdx) => (
+                          <div key={fIdx} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={feat}
+                              onChange={(e) => handleUpdatePlanFeature(plan.id, fIdx, e.target.value)}
+                              className="flex-1 px-2.5 py-1.5 bg-[#151822] border border-zinc-700/80 rounded-lg text-white text-[11px] focus:outline-none focus:border-orange-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePlanFeature(plan.id, fIdx)}
+                              className="p-1 rounded text-zinc-500 hover:text-red-400 transition cursor-pointer"
+                              title="Remover benefício"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Save Bar */}
+            <div className="pt-4 border-t border-zinc-800 flex justify-end">
+              <button
+                onClick={handleSaveAllPlansAndPackages}
+                disabled={savingPlans}
+                className="px-6 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-orange-500/25 transition cursor-pointer flex items-center gap-2"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>{savingPlans ? 'Salvando...' : 'Salvar Todos os Planos & Pacotes'}</span>
+              </button>
             </div>
           </div>
         </div>

@@ -4240,7 +4240,7 @@
   ],
   "adminSettings": {
     "defaultVoiceId": "daniel-varejo",
-    "creditsPerGeneration": 10,
+    "creditsPerGeneration": 5,
     "initialCredits": 50,
     "elevenLabsModel": "eleven_multilingual_v2",
     "systemAnnouncement": "Aviso oficial de ofertas especiais."
@@ -4295,7 +4295,9 @@
         "addedAt": "2026-11-01T03:06:30.204Z",
         "daysOfWeek": [
           4
-        ]
+        ],
+        "playCount": 1,
+        "lastPlayedAt": "2026-11-05T04:03:26.010Z"
       },
       {
         "id": "rq-aud-1793500708054-gus0g",
@@ -4334,8 +4336,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T02:37:51.057Z",
-        "playCount": 8,
-        "lastPlayedAt": "2026-11-05T02:42:03.009Z",
+        "playCount": 9,
+        "lastPlayedAt": "2026-11-05T04:05:26.084Z",
         "daysOfWeek": [
           0,
           1,
@@ -4402,8 +4404,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-01T00:51:48.562Z",
-        "playCount": 10,
-        "lastPlayedAt": "2026-11-05T02:43:07.414Z",
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-05T04:04:30.383Z",
         "daysOfWeek": [
           2,
           3,
@@ -4427,8 +4429,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-01T00:39:17.360Z",
-        "playCount": 12,
-        "lastPlayedAt": "2026-11-05T02:45:43.718Z",
+        "playCount": 13,
+        "lastPlayedAt": "2026-11-05T04:06:26.340Z",
         "daysOfWeek": [
           1,
           2,
@@ -4453,8 +4455,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T00:37:25.217Z",
-        "playCount": 15,
-        "lastPlayedAt": "2026-11-05T02:44:09.141Z"
+        "playCount": 16,
+        "lastPlayedAt": "2026-11-05T04:07:27.758Z"
       },
       {
         "id": "rq-aud-1792518599872-mebxa",
@@ -4471,8 +4473,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T21:45:21.343Z",
-        "playCount": 15,
-        "lastPlayedAt": "2026-11-05T02:49:19.003Z"
+        "playCount": 16,
+        "lastPlayedAt": "2026-11-05T04:09:06.597Z"
       },
       {
         "id": "rq-aud-1793491838815-d08hu",
@@ -4489,8 +4491,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T00:10:42.192Z",
-        "playCount": 11,
-        "lastPlayedAt": "2026-11-05T02:47:26.093Z"
+        "playCount": 12,
+        "lastPlayedAt": "2026-11-05T04:10:08.697Z"
       },
       {
         "id": "rq-aud-1793480306003-kl9xd",
@@ -4507,8 +4509,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T22:54:52.607Z",
-        "playCount": 12,
-        "lastPlayedAt": "2026-11-05T02:50:16.922Z"
+        "playCount": 13,
+        "lastPlayedAt": "2026-11-05T04:11:06.350Z"
       },
       {
         "id": "rq-aud-1793473315493-tmv1o",
@@ -4525,8 +4527,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T19:02:00.115Z",
-        "playCount": 17,
-        "lastPlayedAt": "2026-11-05T02:52:00.368Z"
+        "playCount": 18,
+        "lastPlayedAt": "2026-11-05T04:12:15.470Z"
       },
       {
         "id": "rq-aud-1793473235407-kipp5",
@@ -4543,8 +4545,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T19:00:38.478Z",
-        "playCount": 14,
-        "lastPlayedAt": "2026-11-05T02:53:08.405Z"
+        "playCount": 15,
+        "lastPlayedAt": "2026-11-05T04:13:23.492Z"
       },
       {
         "id": "rq-aud-1792869768719-kptxc",
@@ -4561,8 +4563,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-24T19:23:02.044Z",
-        "playCount": 15,
-        "lastPlayedAt": "2026-11-05T02:54:45.696Z"
+        "playCount": 16,
+        "lastPlayedAt": "2026-11-05T04:15:00.751Z"
       },
       {
         "id": "rq-aud-1792637927448-h6z9r",
@@ -4579,8 +4581,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:58:58.330Z",
-        "playCount": 13,
-        "lastPlayedAt": "2026-11-02T23:02:22.354Z"
+        "playCount": 14,
+        "lastPlayedAt": "2026-11-05T04:16:27.156Z"
       },
       {
         "id": "rq-aud-1792636832577-m13g8",

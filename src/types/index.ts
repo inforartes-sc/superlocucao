@@ -228,6 +228,30 @@ export interface AdminMetrics {
   settings?: any;
 }
 
+export interface RechargePackage {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
+  description: string;
+  badge?: string;
+  highlighted?: boolean;
+}
+
+export interface CommercialPlan {
+  id: string;
+  name: string;
+  tag?: string;
+  subtitle: string;
+  price: number;
+  billingPeriod: string;
+  creditsAmount: number;
+  features: string[];
+  ctaText: string;
+  badge?: string;
+  highlighted?: boolean;
+}
+
 export interface RadioQueueItem {
   id: string;
   audioId: string;

@@ -4,7 +4,8 @@ import pg from 'pg';
 const { Pool } = pg;
 import {
   Project, UserProfile, CreditTransaction, VoicePreset, AudioGenerationItem,
-  RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist
+  RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist,
+  RechargePackage, CommercialPlan
 } from '../src/types/index.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
@@ -327,6 +328,94 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
   return undefined;
 }
 
+export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
+  {
+    id: 'pacote-basico',
+    name: 'Pacote Básico',
+    credits: 300,
+    price: 29,
+    description: 'Aproximadamente 30 locuções comerciais',
+    badge: '',
+    highlighted: false,
+  },
+  {
+    id: 'pacote-pro',
+    name: 'Pacote Pro Varejo',
+    credits: 1000,
+    price: 69,
+    description: 'Aproximadamente 100 locuções comerciais',
+    badge: 'Melhor Custo-Benefício',
+    highlighted: true,
+  },
+  {
+    id: 'pacote-atacado',
+    name: 'Pacote Atacarejo',
+    credits: 3000,
+    price: 149,
+    description: 'Aproximadamente 300 locuções comerciais',
+    badge: '',
+    highlighted: false,
+  },
+];
+
+export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
+  {
+    id: 'degustacao',
+    name: 'Degustação',
+    tag: 'Teste Inicial',
+    subtitle: 'Perfeito para você experimentar a qualidade na prática na sua loja.',
+    price: 0,
+    billingPeriod: 'grátis',
+    creditsAmount: 50,
+    features: [
+      '50 créditos de boas-vindas',
+      'Acesso a todas as 5 vozes de varejo',
+      'Downloads imediatos em MP3',
+      'Acesso à Rádio Web no navegador',
+    ],
+    ctaText: 'Começar Grátis',
+    badge: '',
+    highlighted: false,
+  },
+  {
+    id: 'pro_varejo',
+    name: 'Pro Varejo',
+    tag: 'Supermercados',
+    subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
+    price: 89,
+    billingPeriod: '/mês',
+    creditsAmount: 1500,
+    features: [
+      '1.500 créditos mensais renovados',
+      'Geração em lote com download em arquivo ZIP',
+      'Rádio Web contínua com Auto-Ducking',
+      '15 vinhetas personalizadas com o nome da loja',
+      'Suporte prioritário via WhatsApp',
+    ],
+    ctaText: 'Assinar Pro Varejo',
+    badge: 'Mais Escolhido',
+    highlighted: true,
+  },
+  {
+    id: 'redes_atacarejo',
+    name: 'Redes & Atacarejo',
+    tag: 'Redes & Filiais',
+    subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
+    price: 199,
+    billingPeriod: '/mês',
+    creditsAmount: 5000,
+    features: [
+      '5.000 créditos mensais',
+      'Múltiplas lojas e filiais gerenciadas',
+      'Clonagem de voz personalizada da marca',
+      'Gerente de conta e suporte dedicado',
+    ],
+    ctaText: 'Falar com Consultor',
+    badge: '',
+    highlighted: false,
+  },
+];
+
 interface DbData {
   users: UserProfile[];
   projects: Project[];
@@ -339,6 +428,8 @@ interface DbData {
     initialCredits: number;
     elevenLabsModel: string;
     systemAnnouncement?: string;
+    rechargePackages?: RechargePackage[];
+    commercialPlans?: CommercialPlan[];
   };
 }
 
@@ -627,6 +718,30 @@ class Database {
       this.data.radioConfig.musicTracks = DEFAULT_RADIO_MUSIC_TRACKS;
       this.save();
     }
+
+    if (!this.data.adminSettings) {
+      this.data.adminSettings = {
+        defaultVoiceId: 'daniel-varejo',
+        creditsPerGeneration: 5,
+        initialCredits: 50,
+        elevenLabsModel: 'eleven_multilingual_v2',
+        systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!',
+        rechargePackages: DEFAULT_RECHARGE_PACKAGES,
+        commercialPlans: DEFAULT_COMMERCIAL_PLANS,
+      };
+      this.save();
+    } else {
+      let changed = false;
+      if (!this.data.adminSettings.rechargePackages || this.data.adminSettings.rechargePackages.length === 0) {
+        this.data.adminSettings.rechargePackages = DEFAULT_RECHARGE_PACKAGES;
+        changed = true;
+      }
+      if (!this.data.adminSettings.commercialPlans || this.data.adminSettings.commercialPlans.length === 0) {
+        this.data.adminSettings.commercialPlans = DEFAULT_COMMERCIAL_PLANS;
+        changed = true;
+      }
+      if (changed) this.save();
+    }
   }
 
   public async initPostgres(): Promise<void> {
@@ -863,6 +978,8 @@ class Database {
           initialCredits: a.initial_credits ?? 50,
           elevenLabsModel: a.eleven_labs_model || 'eleven_multilingual_v2',
           systemAnnouncement: a.system_announcement,
+          rechargePackages: a.recharge_packages ? (typeof a.recharge_packages === 'string' ? JSON.parse(a.recharge_packages) : a.recharge_packages) : DEFAULT_RECHARGE_PACKAGES,
+          commercialPlans: a.commercial_plans ? (typeof a.commercial_plans === 'string' ? JSON.parse(a.commercial_plans) : a.commercial_plans) : DEFAULT_COMMERCIAL_PLANS,
         };
       }
 
@@ -1036,16 +1153,31 @@ class Database {
     if (!this.pool) return;
     try {
       await this.pool.query(`
-        INSERT INTO admin_settings (id, default_voice_id, credits_per_generation, initial_credits, eleven_labs_model, system_announcement, updated_at)
-        VALUES (1, $1, $2, $3, $4, $5, NOW())
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS recharge_packages JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS commercial_plans JSONB;
+      `).catch(() => {});
+
+      await this.pool.query(`
+        INSERT INTO admin_settings (id, default_voice_id, credits_per_generation, initial_credits, eleven_labs_model, system_announcement, recharge_packages, commercial_plans, updated_at)
+        VALUES (1, $1, $2, $3, $4, $5, $6, $7, NOW())
         ON CONFLICT (id) DO UPDATE SET
           default_voice_id = EXCLUDED.default_voice_id,
           credits_per_generation = EXCLUDED.credits_per_generation,
           initial_credits = EXCLUDED.initial_credits,
           eleven_labs_model = EXCLUDED.eleven_labs_model,
           system_announcement = EXCLUDED.system_announcement,
+          recharge_packages = EXCLUDED.recharge_packages,
+          commercial_plans = EXCLUDED.commercial_plans,
           updated_at = NOW()
-      `, [s.defaultVoiceId, s.creditsPerGeneration, s.initialCredits, s.elevenLabsModel, s.systemAnnouncement || null]);
+      `, [
+        s.defaultVoiceId,
+        s.creditsPerGeneration,
+        s.initialCredits,
+        s.elevenLabsModel,
+        s.systemAnnouncement || null,
+        JSON.stringify(s.rechargePackages || DEFAULT_RECHARGE_PACKAGES),
+        JSON.stringify(s.commercialPlans || DEFAULT_COMMERCIAL_PLANS)
+      ]);
     } catch (err) {
       console.error('[PostgreSQL] Erro ao salvar admin settings:', err);
     }
