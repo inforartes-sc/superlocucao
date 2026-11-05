@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Volume2,
   Sparkles,
@@ -29,8 +29,12 @@ import {
   Loader2,
   LogIn,
   UserPlus,
+  SkipForward,
+  RotateCcw,
+  VolumeX,
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
+import { playSupermarketChime } from '../utils/soundboard.ts';
 
 interface LandingViewProps {
   onStartCreating: () => void;
@@ -46,14 +50,207 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [downloadingAudioId, setDownloadingAudioId] = useState<string | null>(null);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleDownloadDemo = async (url: string, id: string, name: string) => {
-    setDownloadingAudioId(id);
-    await downloadAudioMp3(url, `${name}.mp3`, () => {});
-    setTimeout(() => setDownloadingAudioId(null), 1200);
+  // =========================================================================
+  // REAL INTERACTIVE LIVE RADIO WEB DEMO ENGINE
+  // =========================================================================
+  const [isRadioOnAir, setIsRadioOnAir] = useState(false);
+  const [isDucking, setIsDucking] = useState(false);
+  const [activeSpotIndex, setActiveSpotIndex] = useState(0);
+  const [isSpotSpeaking, setIsSpotSpeaking] = useState(false);
+  const [countdown, setCountdown] = useState(15);
+  const [musicVolume, setMusicVolume] = useState(0.70);
+  const [spotCurrentTime, setSpotCurrentTime] = useState(0);
+  const [spotDuration, setSpotDuration] = useState(28);
+
+  const radioMusicRef = useRef<HTMLAudioElement | null>(null);
+  const radioSpotRef = useRef<HTMLAudioElement | null>(null);
+  const duckIntervalRef = useRef<number | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
+
+  const radioDemoOffers = [
+    {
+      id: 'carne',
+      title: 'Quarta da Carne — Alcatra Friboi R$ 36,90 kg',
+      sector: 'Açougue & Carnes',
+      badge: '🥩 Oferta Açougue',
+      voiceName: 'Daniel (Varejo Enérgico)',
+      audioUrl: '/api/audio/aud-demo-1.mp3',
+      durationSeconds: 28,
+      script: 'Atenção clientes do Supermercado! Quarta da Carne com Alcatra Friboi por apenas trinta e seis reais e noventa centavos o quilo! Coxa e sobrecoxa Sadia só oito reais e noventa e nove centavos!',
+    },
+    {
+      id: 'hortifruti',
+      title: 'Festival de Hortifrúti — Tomate & Banana R$ 3,99 kg',
+      sector: 'Hortifrúti Fresco',
+      badge: '🍎 Feirinha do Dia',
+      voiceName: 'Carolina (Vendedora Amigável)',
+      audioUrl: '/api/samples/style/natural_amigavel.mp3',
+      durationSeconds: 25,
+      script: 'Tem feirinha fresca hoje no nosso supermercado! Banana-caturra selecionada por apenas três reais e noventa e nove centavos o quilo! Tomate italiano fresquinho por quatro reais e quarenta e nove centavos o quilo!',
+    },
+    {
+      id: 'churrasco',
+      title: 'Super Fim de Semana — Picanha & Cerveja Heineken',
+      sector: 'Churrasco & Bebidas',
+      badge: '🍺 Queima de Estoque',
+      voiceName: 'Rodrigo (Voz de Impacto Grave)',
+      audioUrl: '/api/audio/aud-demo-2.mp3',
+      durationSeconds: 38,
+      script: 'O fim de semana chegou com tudo no Supermercado Alvorada! Picanha bovina fatiada grill por só cinquenta e nove reais e noventa centavos o quilo! Cerveja Heineken lata bem gelada, quatro reais e oitenta e nove centavos!',
+    },
+    {
+      id: 'institucional',
+      title: 'Clube de Vantagens — Ative seu CPF no Caixa',
+      sector: 'Institucional & Loja',
+      badge: '📢 Comunicado Loja',
+      voiceName: 'Marcos (Institucional)',
+      audioUrl: '/api/samples/style/elegante_institucional.mp3',
+      durationSeconds: 22,
+      script: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
+    },
+  ];
+
+  // Smooth Volume Fader for Auto-Ducking
+  const fadeMusicVolume = useCallback((targetVol: number, durationMs = 350) => {
+    if (!radioMusicRef.current) return;
+    if (duckIntervalRef.current) clearInterval(duckIntervalRef.current);
+    const audio = radioMusicRef.current;
+    const startVol = audio.volume;
+    const diff = targetVol - startVol;
+    const steps = 15;
+    const stepTime = durationMs / steps;
+    let step = 0;
+
+    duckIntervalRef.current = window.setInterval(() => {
+      step++;
+      const current = startVol + diff * (step / steps);
+      audio.volume = Math.max(0, Math.min(1, current));
+      if (step >= steps) {
+        clearInterval(duckIntervalRef.current!);
+        duckIntervalRef.current = null;
+      }
+    }, stepTime);
+  }, []);
+
+  const triggerRadioSpot = useCallback((index?: number) => {
+    const chosenIndex = typeof index === 'number' ? index : activeSpotIndex;
+    const offer = radioDemoOffers[chosenIndex];
+    if (!offer || !radioSpotRef.current || !radioMusicRef.current) return;
+
+    // Pausa sample de áudio da vitrine se estiver tocando
+    if (sampleAudioRef.current) {
+      sampleAudioRef.current.pause();
+      setPlayingAudioId(null);
+    }
+
+    // Se a rádio estiver desligada, liga a rádio
+    if (!isRadioOnAir) {
+      setIsRadioOnAir(true);
+      radioMusicRef.current.volume = musicVolume;
+      radioMusicRef.current.play().catch(console.warn);
+    }
+
+    // Aplica o Auto-Ducking na música: diminui para 12% suavemente
+    setIsDucking(true);
+    setIsSpotSpeaking(true);
+    fadeMusicVolume(0.12, 350);
+
+    const spotEl = radioSpotRef.current;
+    spotEl.src = offer.audioUrl;
+    spotEl.currentTime = 0;
+    spotEl.volume = 1.0;
+    spotEl.play().catch(console.warn);
+  }, [activeSpotIndex, fadeMusicVolume, isRadioOnAir, musicVolume, radioDemoOffers]);
+
+  const handleSpotEnded = useCallback(() => {
+    setIsDucking(false);
+    setIsSpotSpeaking(false);
+    setSpotCurrentTime(0);
+    // Restaura suavemente o volume da música ambiente para 70%
+    fadeMusicVolume(musicVolume, 500);
+    // Avança para a próxima oferta na fila da rádio
+    setActiveSpotIndex(prev => (prev + 1) % radioDemoOffers.length);
+    // Reinicia a contagem regressiva para a próxima oferta
+    setCountdown(20);
+  }, [fadeMusicVolume, musicVolume, radioDemoOffers.length]);
+
+  const toggleRadioOnAir = () => {
+    if (isRadioOnAir) {
+      // Desligar
+      if (radioMusicRef.current) radioMusicRef.current.pause();
+      if (radioSpotRef.current) radioSpotRef.current.pause();
+      setIsRadioOnAir(false);
+      setIsDucking(false);
+      setIsSpotSpeaking(false);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    } else {
+      // Pausa sample de áudio da vitrine se estiver tocando
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
+        setPlayingAudioId(null);
+      }
+      // Ligar
+      if (radioMusicRef.current) {
+        radioMusicRef.current.volume = musicVolume;
+        radioMusicRef.current.play().catch(console.warn);
+      }
+      setIsRadioOnAir(true);
+      setCountdown(15);
+    }
   };
 
+  const handleTriggerChime = () => {
+    if (!isRadioOnAir) {
+      toggleRadioOnAir();
+    }
+    // Aplica ducking na música
+    setIsDucking(true);
+    fadeMusicVolume(0.12, 200);
+    playSupermarketChime(0.8);
+    setTimeout(() => {
+      if (!isSpotSpeaking) {
+        setIsDucking(false);
+        fadeMusicVolume(musicVolume, 400);
+      }
+    }, 2200);
+  };
+
+  // Contagem regressiva automática quando a rádio está no ar
+  useEffect(() => {
+    if (!isRadioOnAir || isSpotSpeaking) {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      return;
+    }
+
+    countdownIntervalRef.current = window.setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          triggerRadioSpot();
+          return 20;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [isRadioOnAir, isSpotSpeaking, triggerRadioSpot]);
+
+  // Cleanup de áudios ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (duckIntervalRef.current) clearInterval(duckIntervalRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (radioMusicRef.current) radioMusicRef.current.pause();
+      if (radioSpotRef.current) radioSpotRef.current.pause();
+      if (sampleAudioRef.current) sampleAudioRef.current.pause();
+    };
+  }, []);
+
+  // Vitrine de Spots de Áudio Individuais
   const demoSpots = [
     {
       id: 'demo-carne',
@@ -97,17 +294,28 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
   ];
 
+  const handleDownloadDemo = async (url: string, id: string, name: string) => {
+    setDownloadingAudioId(id);
+    await downloadAudioMp3(url, `${name}.mp3`, () => {});
+    setTimeout(() => setDownloadingAudioId(null), 1200);
+  };
+
   const handleTogglePlay = (id: string, url: string) => {
+    // Pausa a rádio web se estiver tocando
+    if (isRadioOnAir) {
+      toggleRadioOnAir();
+    }
+
     if (playingAudioId === id) {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
       }
       setPlayingAudioId(null);
     } else {
       setPlayingAudioId(id);
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.play().catch(console.warn);
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.src = url;
+        sampleAudioRef.current.play().catch(console.warn);
       }
     }
   };
@@ -119,9 +327,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
     }
   };
 
+  const currentOffer = radioDemoOffers[activeSpotIndex];
+
   const faqs = [
     {
-      q: 'Como coloco as locuções para tocar no meu supermercado?',
+      q: 'Como coloco as locuções e a rádio para tocar no meu supermercado?',
       a: 'Você tem total flexibilidade: pode deixar a Rádio Web do SuperLocução tocando diretamente no computador conectado ao amplificador da sua loja (com música contínua e locuções automáticas) ou pode baixar os arquivos gerados em formato MP3 de alta qualidade para tocar em pendrive, caixa amplificada ou qualquer tocador de áudio.',
     },
     {
@@ -144,7 +354,23 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
   return (
     <div className="min-h-screen bg-[#0e1118] text-zinc-100 selection:bg-orange-500 selection:text-white flex flex-col font-sans">
-      <audio ref={audioRef} onEnded={() => setPlayingAudioId(null)} />
+      {/* Audio Engine for Sample Showcase */}
+      <audio ref={sampleAudioRef} onEnded={() => setPlayingAudioId(null)} />
+
+      {/* Audio Engine for Dual-Deck Live Radio Web Demo */}
+      <audio
+        ref={radioMusicRef}
+        src="/api/soundtracks/varejo_alegre/preview.mp3"
+        loop
+        preload="auto"
+      />
+      <audio
+        ref={radioSpotRef}
+        preload="auto"
+        onTimeUpdate={() => setSpotCurrentTime(radioSpotRef.current?.currentTime || 0)}
+        onLoadedMetadata={() => setSpotDuration(radioSpotRef.current?.duration || 28)}
+        onEnded={handleSpotEnded}
+      />
 
       {/* ===================================================================== */}
       {/* 1. TOP COMMERCIAL STICKY HEADER                                       */}
@@ -177,6 +403,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
           {/* Center Navigation Links (Desktop) */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-zinc-300">
             <button
+              onClick={() => scrollToSection('radioweb')}
+              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-1.5 text-orange-400 bg-orange-500/10 border border-orange-500/25 px-2.5 py-1 rounded-full"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>Ouvir Rádio da Loja (Ao Vivo)</span>
+            </button>
+            <button
               onClick={() => scrollToSection('recursos')}
               className="hover:text-orange-400 transition cursor-pointer"
             >
@@ -187,13 +420,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
               className="hover:text-orange-400 transition cursor-pointer"
             >
               Amostras de Voz
-            </button>
-            <button
-              onClick={() => scrollToSection('radioweb')}
-              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-1 text-orange-400"
-            >
-              <Radio className="w-3.5 h-3.5" />
-              Rádio Web da Loja
             </button>
             <button
               onClick={() => scrollToSection('comparativo')}
@@ -239,7 +465,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 2. HERO SECTION                                                       */}
       {/* ===================================================================== */}
-      <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28">
+      <section className="relative overflow-hidden pt-12 pb-16 lg:pt-18 lg:pb-24">
         {/* Ambient atmospheric glows */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="absolute top-1/3 right-10 w-[450px] h-[350px] bg-red-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
@@ -272,16 +498,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 onClick={onOpenRegister}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-2xl shadow-xl shadow-orange-500/25 transition flex items-center justify-center gap-2.5 text-base cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
-                <span>Criar Locução Grátis Agora</span>
+                <span>Criar Minha Locução Grátis</span>
                 <ArrowRight className="w-5 h-5 text-zinc-950" />
               </button>
 
               <button
-                onClick={() => scrollToSection('amostras')}
-                className="w-full sm:w-auto px-7 py-4 bg-[#181b24] hover:bg-[#222633] border border-zinc-700/80 text-zinc-200 hover:text-white font-bold rounded-2xl transition shadow-md flex items-center justify-center gap-2 text-base cursor-pointer"
+                onClick={() => scrollToSection('radioweb')}
+                className="w-full sm:w-auto px-7 py-4 bg-[#181b24] hover:bg-[#222633] border border-orange-500/50 text-white font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 text-base cursor-pointer group"
               >
-                <Play className="w-4 h-4 text-orange-400 fill-current" />
-                <span>Ouvir Demonstração</span>
+                <Radio className="w-5 h-5 text-orange-400 group-hover:animate-pulse" />
+                <span>Ouvir Demonstração da Rádio Real</span>
               </button>
             </div>
 
@@ -305,122 +531,332 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* 3. SEÇÃO PRINCIPAL: DEMONSTRAÇÃO REAL DA RÁDIO WEB DA LOJA             */}
+      {/* ===================================================================== */}
+      <section id="radioweb" className="py-16 sm:py-24 bg-[#111318] border-y border-zinc-800 relative">
+        {/* Glow ambient background */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[500px] bg-gradient-to-r from-orange-500/10 via-red-500/10 to-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
+            <span className="text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 inline-flex items-center gap-2 shadow-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              Demonstração Interativa em Tempo Real
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+              Experimente a Rádio Web da sua Loja em Ação
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-300 max-w-2xl mx-auto leading-relaxed">
+              Ligue a rádio abaixo para ouvir a música ambiente da loja. Clique em <strong>"Disparar Oferta"</strong> para ver e ouvir a mágica do <strong>Auto-Ducking</strong>: a música abaixa suavemente sozinha e o locutor anuncia a promoção com clareza cristalina!
+            </p>
+          </div>
 
           {/* ================================================================= */}
-          {/* INTERACTIVE LIVE TRANSFORMATION DEMO CARD                         */}
+          {/* THE REAL BROADCAST CONSOLE SIMULATOR                              */}
           {/* ================================================================= */}
-          <div className="mt-14 max-w-5xl mx-auto bg-[#181b24] rounded-3xl border border-zinc-700/80 shadow-2xl p-5 sm:p-8 relative overflow-hidden">
-            <div className="flex flex-col md:flex-row items-stretch gap-6">
-              {/* Left Column: Raw Supermarket Text Input */}
-              <div className="flex-1 bg-[#12141c] rounded-2xl p-5 border border-zinc-700/70 flex flex-col justify-between">
+          <div className="max-w-5xl mx-auto bg-[#181b24] rounded-3xl border border-zinc-700/80 shadow-2xl overflow-hidden">
+            {/* Top Console Bar */}
+            <div className="p-5 sm:p-7 border-b border-zinc-700/70 bg-[#161822] flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${
+                    isRadioOnAir
+                      ? 'bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 text-white shadow-xl shadow-red-600/30'
+                      : 'bg-[#1f2330] border border-zinc-700 text-zinc-400'
+                  }`}
+                >
+                  <Radio className={`w-7 h-7 ${isRadioOnAir ? 'animate-pulse' : ''}`} />
+                </div>
+
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-orange-400">
-                      Entrada: Sua lista de ofertas
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border ${
+                        isRadioOnAir
+                          ? 'bg-red-500/20 text-red-400 border-red-500/40 shadow-xs'
+                          : 'bg-[#1f2330] text-zinc-300 border border-zinc-700'
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isRadioOnAir ? 'bg-red-500 animate-ping' : 'bg-zinc-500'
+                        }`}
+                      />
+                      {isRadioOnAir ? 'NO AR • TRANSMITINDO AO VIVO NA LOJA' : 'RÁDIO DESLIGADA (CLIQUE PARA OUVIR)'}
                     </span>
-                    <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded border border-zinc-700">
-                      WhatsApp ou Encarte
-                    </span>
-                  </div>
-                  <div className="bg-[#181b24] rounded-xl p-3.5 border border-zinc-700/70 font-mono text-xs text-zinc-300 leading-relaxed shadow-inner space-y-1">
-                    <p className="text-orange-400 font-bold">// Cole seus produtos assim:</p>
-                    <p>Arroz Primavera 5kg — R$ 24,90</p>
-                    <p>Leite Integral Italac 1L — R$ 4,49</p>
-                    <p>Alcatra Friboi com Maminha — R$ 36,90 kg</p>
-                    <p>Cerveja Heineken Lata 350ml — R$ 4,89</p>
-                  </div>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-zinc-800 text-xs text-zinc-400 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-orange-400 shrink-0" />
-                  <span>A IA identifica produtos, marcas, embalagens e preços automaticamente.</span>
-                </div>
-              </div>
-
-              {/* Center arrow indicator */}
-              <div className="hidden md:flex flex-col items-center justify-center text-orange-400">
-                <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center shadow-lg">
-                  <ArrowRight className="w-6 h-6" />
-                </div>
-              </div>
-
-              {/* Right Column: Audio Commercial Result */}
-              <div className="flex-1 bg-gradient-to-br from-[#1e222e] to-[#161822] text-white rounded-2xl p-5 border border-orange-500/30 flex flex-col justify-between shadow-xl">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-orange-300">
-                      Resultado: Locução Comercial Finalizada
-                    </span>
-                    <span className="text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Pronto para Tocar
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                      🏪 Rádio Supermercado Modelo
                     </span>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-zinc-200 italic leading-relaxed bg-[#12141c]/80 p-3.5 rounded-xl border border-zinc-700/60 mb-4">
-                    “Atenção clientes do supermercado! Ofertas imperdíveis preparadas para você: Arroz Primavera pacote de cinco quilos por apenas vinte e quatro reais e noventa centavos! Alcatra Friboi no açougue, trinta e seis e noventa o quilo! E cerveja Heineken lata geladinha só quatro e oitenta e nove! Aproveite!”
+                  <p className="text-xs text-zinc-400">
+                    {isRadioOnAir
+                      ? 'Música ambiente ativa nas caixas de som com intercalação automática de ofertas'
+                      : 'Clique no botão laranja para ligar a transmissão e testar na prática'}
                   </p>
                 </div>
+              </div>
 
-                {/* Built-in Live Player for Demo */}
-                <div className="bg-[#141620] rounded-xl p-3 border border-zinc-700/80 flex items-center justify-between gap-3 shadow-sm">
-                  <button
-                    onClick={() => handleTogglePlay('hero-demo', '/api/audio/aud-hero-demo.mp3')}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 flex items-center justify-center shrink-0 transition shadow-md cursor-pointer"
-                    title={playingAudioId === 'hero-demo' ? 'Pausar' : 'Ouvir demonstração'}
-                  >
-                    {playingAudioId === 'hero-demo' ? (
+              {/* Main Actions */}
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={toggleRadioOnAir}
+                  className={`px-5 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl transition cursor-pointer shrink-0 ${
+                    isRadioOnAir
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600'
+                      : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-orange-500/30 hover:scale-[1.02]'
+                  }`}
+                >
+                  {isRadioOnAir ? (
+                    <>
                       <Pause className="w-4 h-4 fill-current" />
-                    ) : (
-                      <Play className="w-4 h-4 ml-0.5 fill-current" />
-                    )}
-                  </button>
+                      <span>PAUSAR RÁDIO</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>LIGAR RÁDIO DA LOJA AO VIVO</span>
+                    </>
+                  )}
+                </button>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-white truncate">
-                      Demonstração da Locução em Loja
+                <button
+                  type="button"
+                  onClick={() => triggerRadioSpot()}
+                  disabled={isSpotSpeaking}
+                  className="px-4 py-3 rounded-2xl bg-[#242938] hover:bg-[#2d3447] disabled:opacity-50 text-orange-300 hover:text-white border border-orange-500/40 text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-md shrink-0"
+                  title="Disparar a locução imediatamente e ouvir a música abaixar de volume"
+                >
+                  <Zap className="w-4 h-4 text-orange-400" />
+                  <span>Disparar Oferta Agora</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTriggerChime}
+                  className="px-3.5 py-3 rounded-2xl bg-[#1f2330] hover:bg-[#282f42] text-amber-300 border border-zinc-700/80 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                  title="Tocar gongo clássico de chamada de loja (Ding-Dong)"
+                >
+                  <Bell className="w-4 h-4 text-amber-400" />
+                  <span className="hidden sm:inline">Ding-Dong</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dual Decks Grid */}
+            <div className="p-4 sm:p-7 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 bg-[#181b24]">
+              {/* DECK 1: MÚSICA AMBIENTE */}
+              <div className="lg:col-span-5 rounded-2xl bg-[#1e222e] border border-zinc-700/80 p-5 flex flex-col justify-between space-y-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                      <Music className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block">
+                        Deck 1 • Música da Loja
+                      </span>
+                      <span className="text-xs text-emerald-400 font-bold">
+                        {isDucking
+                          ? '🔉 Auto-Ducking Ativo (Volume: 12%)'
+                          : isRadioOnAir
+                          ? '🎵 Tocando Som Ambiente (Volume: 70%)'
+                          : 'Pronto para tocar'}
+                      </span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-                      <span>Voz: Daniel (Varejo)</span>
-                      <span>•</span>
-                      <span>Trilha Varejo Alegre</span>
+                  </div>
+
+                  {/* Equalizer VU Bar */}
+                  {isRadioOnAir && (
+                    <div className="flex items-end gap-1 h-6 shrink-0">
+                      <span className={`w-1 bg-emerald-400 rounded-full animate-bounce ${isDucking ? 'h-2' : 'h-5'}`} />
+                      <span className={`w-1 bg-emerald-400 rounded-full animate-pulse ${isDucking ? 'h-2' : 'h-6'}`} />
+                      <span className={`w-1 bg-emerald-400 rounded-full animate-bounce ${isDucking ? 'h-1.5' : 'h-4'}`} />
+                      <span className={`w-1 bg-emerald-400 rounded-full animate-pulse ${isDucking ? 'h-2' : 'h-5'}`} />
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141620] border border-zinc-700/70 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">Manhã de Compras & Ofertas</p>
+                      <p className="text-xs text-zinc-400">Pop Varejo Hit Alegre • 124 BPM</p>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      Instrumental
+                    </span>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-xs text-zinc-400">
+                    <span>Nivelador Inteligente:</span>
+                    <span className="text-emerald-400 font-bold">Ativo (+8.0 dB)</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#141620] rounded-xl border border-zinc-700/70 flex items-center justify-between text-xs">
+                  <span className="text-zinc-400">Volume Ambiente:</span>
+                  <span className="font-mono font-bold text-emerald-400">
+                    {isDucking ? '12% (Reduzido p/ fala)' : `${Math.round(musicVolume * 100)}% (Normal)`}
+                  </span>
+                </div>
+              </div>
+
+              {/* DECK 2: LOCUTOR DE OFERTAS & AUTO-DUCKING */}
+              <div className="lg:col-span-7 rounded-2xl bg-[#1e222e] border border-orange-500/40 p-5 flex flex-col justify-between space-y-4 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isSpotSpeaking
+                          ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/30 animate-pulse'
+                          : 'bg-orange-500/15 border border-orange-500/30 text-orange-400'
+                      }`}
+                    >
+                      <Volume2 className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-orange-300/80 block">
+                        Deck 2 • Locutor de Ofertas & Comunicados
+                      </span>
+                      <span className="text-xs font-bold text-white">
+                        {isSpotSpeaking
+                          ? '📢 LOCUÇÃO NO AR AGORA (MÚSICA REDUZIDA)!'
+                          : isRadioOnAir
+                          ? `⏱️ Próxima oferta entra em ${countdown} segundos`
+                          : 'Aguardando início da rádio'}
+                      </span>
                     </div>
                   </div>
 
                   <button
-                    onClick={() =>
-                      handleDownloadDemo(
-                        '/api/audio/aud-hero-demo.mp3',
-                        'hero-demo',
-                        'locucao-supermercado-demonstracao'
-                      )
-                    }
-                    disabled={downloadingAudioId === 'hero-demo'}
-                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-lg border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
+                    type="button"
+                    onClick={() => triggerRadioSpot()}
+                    disabled={isSpotSpeaking}
+                    className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-zinc-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
                   >
-                    {downloadingAudioId === 'hero-demo' ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
-                        <span>Baixando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5 text-orange-400" />
-                        <span>Baixar MP3</span>
-                      </>
-                    )}
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Tocar Oferta Agora</span>
                   </button>
                 </div>
+
+                {/* Offer Monitor Box */}
+                <div
+                  className={`p-4 rounded-xl border transition-all shadow-sm ${
+                    isSpotSpeaking
+                      ? 'bg-orange-500/15 border-orange-500/50 shadow-inner'
+                      : 'bg-[#141620] border border-zinc-700/70'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500 text-zinc-950">
+                          {isSpotSpeaking ? 'FALANDO AGORA' : 'PRÓXIMA NA GRADE'}
+                        </span>
+                        <span className="text-[11px] text-zinc-400">{currentOffer.sector}</span>
+                      </div>
+                      <h4 className="text-sm sm:text-base font-bold text-white truncate">
+                        {currentOffer.title}
+                      </h4>
+                      <p className="text-xs text-orange-200/80">
+                        Locutor(a): <strong>{currentOffer.voiceName}</strong>
+                      </p>
+                    </div>
+
+                    {isSpotSpeaking && (
+                      <div className="flex items-end gap-1 h-7 shrink-0">
+                        <span className="w-1.5 bg-orange-400 rounded-full animate-bounce h-6" />
+                        <span className="w-1.5 bg-amber-400 rounded-full animate-pulse h-4" />
+                        <span className="w-1.5 bg-red-400 rounded-full animate-bounce h-7" />
+                        <span className="w-1.5 bg-orange-400 rounded-full animate-pulse h-5" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress bar while speaking */}
+                  {isSpotSpeaking && (
+                    <div className="mt-3 space-y-1">
+                      <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-200"
+                          style={{
+                            width: `${
+                              spotDuration > 0 ? Math.min(100, (spotCurrentTime / spotDuration) * 100) : 50
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-orange-300 font-mono">
+                        <span>{Math.floor(spotCurrentTime)}s</span>
+                        <span>{Math.floor(spotDuration)}s</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Offer Selector Buttons */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold uppercase text-zinc-400">
+                    Escolha uma oferta para testar o som:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {radioDemoOffers.map((offer, idx) => (
+                      <button
+                        key={offer.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveSpotIndex(idx);
+                          triggerRadioSpot(idx);
+                        }}
+                        className={`p-2 rounded-xl text-left border text-xs font-semibold transition cursor-pointer flex flex-col justify-between ${
+                          activeSpotIndex === idx
+                            ? 'bg-orange-500/20 text-orange-300 border-orange-500/50'
+                            : 'bg-[#141620] hover:bg-zinc-800 text-zinc-300 border-zinc-700/80'
+                        }`}
+                      >
+                        <span className="font-bold text-[11px] truncate">{offer.badge}</span>
+                        <span className="text-[10px] text-zinc-400">{offer.durationSeconds}s</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* Bottom Educational Live Explanation Bar */}
+            <div className="p-4 sm:p-5 bg-[#141620] border-t border-zinc-700/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-300">
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <span>
+                  <strong>Como funciona:</strong> A música nunca corta bruscamente. O sistema reduz o volume sozinho (Auto-Ducking) para que todos os clientes escutem a oferta com nitidez total.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenRegister}
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-xl text-xs whitespace-nowrap cursor-pointer shrink-0 shadow-md"
+              >
+                Ativar Rádio no Meu Supermercado
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* ===================================================================== */}
-      {/* 3. RECURSOS EXCLUSIVOS PARA SUPERMERCADOS                             */}
+      {/* 4. RECURSOS EXCLUSIVOS PARA SUPERMERCADOS                             */}
       {/* ===================================================================== */}
-      <section id="recursos" className="py-20 bg-[#12141c] border-y border-zinc-800/80">
+      <section id="recursos" className="py-20 bg-[#12141c] border-b border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full">
@@ -534,7 +970,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       </section>
 
       {/* ===================================================================== */}
-      {/* 4. VITRINE DE AMOSTRAS DE VOZ                                         */}
+      {/* 5. VITRINE DE AMOSTRAS DE VOZ                                         */}
       {/* ===================================================================== */}
       <section id="amostras" className="py-20 bg-[#0e1118]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -615,96 +1051,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
       </section>
 
       {/* ===================================================================== */}
-      {/* 5. SEÇÃO RÁDIO WEB DA LOJA                                            */}
-      {/* ===================================================================== */}
-      <section id="radioweb" className="py-20 bg-[#12141c] border-y border-zinc-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#181b24] to-[#141620] rounded-3xl border border-orange-500/30 p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-5">
-                <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 inline-flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  Rádio Web de Supermercado
-                </span>
-
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
-                  Sua loja com música comercial profissional 24h e ofertas no momento exato
-                </h2>
-
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  Esqueça rádios FM convencionais com anúncios de concorrentes ou playlists de streaming que cortam músicas. Nossa Rádio Web foi desenvolvida exclusivamente para caixas de som de supermercados.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="bg-[#12141c] p-3.5 rounded-xl border border-zinc-700/70 text-xs">
-                    <span className="font-bold text-white block mb-1">🔉 Auto-Ducking Automático</span>
-                    <span className="text-zinc-400">A música abaixa o volume sozinha quando a voz da oferta entra.</span>
-                  </div>
-                  <div className="bg-[#12141c] p-3.5 rounded-xl border border-zinc-700/70 text-xs">
-                    <span className="font-bold text-white block mb-1">📅 Grade por Dia da Semana</span>
-                    <span className="text-zinc-400">Ofertas de quarta não tocam na sexta. Programação automática.</span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={onOpenRegister}
-                    className="px-6 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-xl text-sm shadow-lg shadow-orange-500/20 transition cursor-pointer"
-                  >
-                    Ativar Rádio Web na Minha Loja
-                  </button>
-                </div>
-              </div>
-
-              {/* Graphic console mock */}
-              <div className="lg:col-span-5 bg-[#12141c] rounded-2xl p-5 border border-zinc-700/80 space-y-4 shadow-inner">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-zinc-400 flex items-center gap-1.5">
-                    <Radio className="w-4 h-4 text-orange-400" />
-                    Monitor da Rádio
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-500 text-white animate-pulse">
-                    NO AR
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Deck 1 Mock */}
-                  <div className="p-3 bg-[#181b24] rounded-xl border border-zinc-700/70 space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase text-emerald-400 flex items-center gap-1">
-                      <Music className="w-3 h-3" />
-                      Deck 1 • Música da Loja
-                    </div>
-                    <div className="text-xs font-bold text-white">Manhã de Compras & Ofertas</div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 w-3/4 rounded-full" />
-                    </div>
-                  </div>
-
-                  {/* Deck 2 Mock */}
-                  <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/40 space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase text-orange-400 flex items-center gap-1">
-                      <Volume2 className="w-3 h-3" />
-                      Deck 2 • Locução Falando Agora
-                    </div>
-                    <div className="text-xs font-bold text-orange-200">Quarta da Carne — Alcatra Friboi</div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-orange-500 w-1/2 rounded-full animate-pulse" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================== */}
       {/* 6. COMPARATIVO (LOCUTOR TRADICIONAL VS SUPERLOCUÇÃO)                  */}
       {/* ===================================================================== */}
-      <section id="comparativo" className="py-20 bg-[#0e1118]">
+      <section id="comparativo" className="py-20 bg-[#12141c] border-y border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full">
@@ -763,7 +1112,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 7. PLANOS & PREÇOS                                                    */}
       {/* ===================================================================== */}
-      <section id="planos" className="py-20 bg-[#12141c] border-y border-zinc-800/80">
+      <section id="planos" className="py-20 bg-[#0e1118]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full">
@@ -918,7 +1267,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 8. DEPOIMENTOS                                                        */}
       {/* ===================================================================== */}
-      <section className="py-20 bg-[#0e1118]">
+      <section className="py-20 bg-[#12141c] border-y border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full">
@@ -996,7 +1345,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 9. FAQ DE PERGUNTAS FREQUENTES                                        */}
       {/* ===================================================================== */}
-      <section id="duvidas" className="py-20 bg-[#12141c] border-t border-zinc-800/80">
+      <section id="duvidas" className="py-20 bg-[#0e1118]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full">
