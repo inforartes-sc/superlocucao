@@ -32,6 +32,7 @@ import {
   SkipForward,
   RotateCcw,
   VolumeX,
+  ArrowUp,
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
@@ -50,7 +51,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [downloadingAudioId, setDownloadingAudioId] = useState<string | null>(null);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // =========================================================================
   // REAL INTERACTIVE LIVE RADIO WEB DEMO ENGINE
@@ -373,9 +383,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
       />
 
       {/* ===================================================================== */}
-      {/* 1. TOP COMMERCIAL STICKY HEADER                                       */}
+      {/* 1. TOP COMMERCIAL FIXED HEADER                                        */}
       {/* ===================================================================== */}
-      <header className="sticky top-0 z-50 bg-[#12141c]/95 backdrop-blur-md border-b border-zinc-800/80 shadow-lg">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#12141c]/95 backdrop-blur-md border-b border-zinc-800/80 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-4">
           {/* Brand Identity */}
           <div
@@ -404,10 +414,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-zinc-300">
             <button
               onClick={() => scrollToSection('radioweb')}
-              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-1.5 text-orange-400 bg-orange-500/10 border border-orange-500/25 px-2.5 py-1 rounded-full"
+              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-1.5 text-orange-400 bg-orange-500/10 border border-orange-500/25 px-3 py-1.5 rounded-full"
             >
               <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>Ouvir Rádio da Loja (Ao Vivo)</span>
+              <span>Ouvir a Rádio</span>
             </button>
             <button
               onClick={() => scrollToSection('recursos')}
@@ -433,12 +443,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
             >
               Planos & Preços
             </button>
-            <button
-              onClick={() => scrollToSection('duvidas')}
-              className="hover:text-orange-400 transition cursor-pointer"
-            >
-              Dúvidas
-            </button>
           </nav>
 
           {/* Right Action Buttons */}
@@ -461,6 +465,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
         </div>
       </header>
+
+      {/* Fixed Header Spacer */}
+      <div className="h-16 sm:h-18 shrink-0 pointer-events-none" aria-hidden="true" />
 
       {/* ===================================================================== */}
       {/* 2. HERO SECTION                                                       */}
@@ -1433,6 +1440,19 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Floating Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-40 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+          title="Voltar ao início da página"
+        >
+          <ArrowUp className="w-4 h-4 text-zinc-950 stroke-[3]" />
+          <span className="hidden sm:inline">Voltar ao Topo</span>
+        </button>
+      )}
     </div>
   );
 };
