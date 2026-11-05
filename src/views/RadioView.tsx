@@ -2553,7 +2553,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           <Radio className="w-4 h-4 shrink-0" />
                           <span>Gerar Locução & Divulgar na Rádio Web</span>
                           <span className="px-2.5 py-0.5 rounded-full bg-black/20 text-[11px] font-black text-zinc-950 shrink-0 whitespace-nowrap border border-black/10">
-                            10 créditos
+                            5 créditos
                           </span>
                         </>
                       )}

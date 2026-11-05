@@ -157,6 +157,7 @@ export const api = {
     publishToRadio?: boolean;
     radioPriority?: 'alta' | 'normal';
     storeName?: string;
+    productCount?: number;
   }) =>
     request<{ audio: AudioGenerationItem; radioQueueItem?: RadioQueueItem | null; creditsBalance: number }>('/audio/generate', {
       method: 'POST',

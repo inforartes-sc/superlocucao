@@ -11,16 +11,6 @@
       "createdAt": "2026-02-15T10:00:00Z"
     },
     {
-      "id": "user-atacado",
-      "name": "Juliana Castro",
-      "email": "juliana@atacadaocentral.com.br",
-      "companyName": "Atacadão Central",
-      "role": "manager",
-      "plan": "redes_atacarejo",
-      "creditsBalance": 980,
-      "createdAt": "2026-03-01T14:30:00Z"
-    },
-    {
       "id": "user-admin",
       "name": "Administrador Locução Super",
       "email": "admin@locucaosuper.com.br",
@@ -47,28 +37,6 @@
     }
   ],
   "projects": [
-    {
-      "id": "proj-1793499445427",
-      "userId": "user-alvorada",
-      "niche": "supermercado",
-      "title": "Nova Campanha de Ofertas",
-      "storeName": "Supermercado Alvorada",
-      "storeCity": "São Paulo - SP",
-      "objective": "Aumentar giro de estoque e atrair clientes",
-      "campaignType": "quarta_carne",
-      "style": "energetica_supermercado",
-      "desiredDuration": "30s",
-      "tone": "persuasivo",
-      "presentationFormat": "abertura_sequencia_encerramento",
-      "products": [],
-      "scripts": [],
-      "currentScriptIndex": 0,
-      "audios": [],
-      "status": "draft",
-      "createdAt": "2026-11-01T02:17:25.427Z",
-      "updatedAt": "2026-11-01T02:17:33.176Z",
-      "soundtrackId": "varejo_alegre"
-    },
     {
       "id": "proj-radio-live",
       "userId": "user-alvorada",
@@ -4366,8 +4334,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T02:37:51.057Z",
-        "playCount": 6,
-        "lastPlayedAt": "2026-11-01T03:16:11.294Z",
+        "playCount": 8,
+        "lastPlayedAt": "2026-11-05T02:42:03.009Z",
         "daysOfWeek": [
           0,
           1,
@@ -4392,8 +4360,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T01:34:53.701Z",
-        "playCount": 8,
-        "lastPlayedAt": "2026-11-01T02:57:36.213Z",
+        "playCount": 9,
+        "lastPlayedAt": "2026-11-02T22:52:18.974Z",
         "daysOfWeek": [
           1
         ]
@@ -4434,8 +4402,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-01T00:51:48.562Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-01T02:58:40.575Z",
+        "playCount": 10,
+        "lastPlayedAt": "2026-11-05T02:43:07.414Z",
         "daysOfWeek": [
           2,
           3,
@@ -4459,8 +4427,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-01T00:39:17.360Z",
-        "playCount": 10,
-        "lastPlayedAt": "2026-11-01T03:00:37.308Z",
+        "playCount": 12,
+        "lastPlayedAt": "2026-11-05T02:45:43.718Z",
         "daysOfWeek": [
           1,
           2,
@@ -4485,8 +4453,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T00:37:25.217Z",
-        "playCount": 13,
-        "lastPlayedAt": "2026-11-01T03:19:01.180Z"
+        "playCount": 15,
+        "lastPlayedAt": "2026-11-05T02:44:09.141Z"
       },
       {
         "id": "rq-aud-1792518599872-mebxa",
@@ -4503,8 +4471,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T21:45:21.343Z",
-        "playCount": 13,
-        "lastPlayedAt": "2026-11-01T03:17:58.677Z"
+        "playCount": 15,
+        "lastPlayedAt": "2026-11-05T02:49:19.003Z"
       },
       {
         "id": "rq-aud-1793491838815-d08hu",
@@ -4521,8 +4489,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-01T00:10:42.192Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-01T03:05:01.855Z"
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-05T02:47:26.093Z"
       },
       {
         "id": "rq-aud-1793480306003-kl9xd",
@@ -4539,8 +4507,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T22:54:52.607Z",
-        "playCount": 10,
-        "lastPlayedAt": "2026-11-01T03:06:00.949Z"
+        "playCount": 12,
+        "lastPlayedAt": "2026-11-05T02:50:16.922Z"
       },
       {
         "id": "rq-aud-1793473315493-tmv1o",
@@ -4557,8 +4525,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T19:02:00.115Z",
-        "playCount": 15,
-        "lastPlayedAt": "2026-11-01T02:11:47.583Z"
+        "playCount": 17,
+        "lastPlayedAt": "2026-11-05T02:52:00.368Z"
       },
       {
         "id": "rq-aud-1793473235407-kipp5",
@@ -4575,8 +4543,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-31T19:00:38.478Z",
-        "playCount": 12,
-        "lastPlayedAt": "2026-11-01T02:12:55.668Z"
+        "playCount": 14,
+        "lastPlayedAt": "2026-11-05T02:53:08.405Z"
       },
       {
         "id": "rq-aud-1792869768719-kptxc",
@@ -4593,8 +4561,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-24T19:23:02.044Z",
-        "playCount": 13,
-        "lastPlayedAt": "2026-11-01T02:14:33.008Z"
+        "playCount": 15,
+        "lastPlayedAt": "2026-11-05T02:54:45.696Z"
       },
       {
         "id": "rq-aud-1792637927448-h6z9r",
@@ -4611,8 +4579,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:58:58.330Z",
-        "playCount": 12,
-        "lastPlayedAt": "2026-11-01T02:15:59.199Z"
+        "playCount": 13,
+        "lastPlayedAt": "2026-11-02T23:02:22.354Z"
       },
       {
         "id": "rq-aud-1792636832577-m13g8",
@@ -4629,8 +4597,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:40:43.771Z",
-        "playCount": 11,
-        "lastPlayedAt": "2026-11-01T02:17:26.879Z"
+        "playCount": 12,
+        "lastPlayedAt": "2026-11-02T23:03:50.086Z"
       },
       {
         "id": "rq-aud-1792635376736-m7qc4",
@@ -4647,8 +4615,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:16:23.984Z",
-        "playCount": 10,
-        "lastPlayedAt": "2026-11-01T02:18:36.244Z"
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-02T23:04:59.560Z"
       },
       {
         "id": "rq-aud-1792638704207-jwng0",
@@ -4665,8 +4633,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T03:11:54.383Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-01T01:15:34.116Z"
+        "playCount": 10,
+        "lastPlayedAt": "2026-11-02T23:06:16.220Z"
       },
       {
         "id": "rq-aud-1792636191592-6tliy",
@@ -4683,8 +4651,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:30:03.741Z",
-        "playCount": 6,
-        "lastPlayedAt": "2026-11-01T01:16:55.599Z"
+        "playCount": 7,
+        "lastPlayedAt": "2026-11-02T23:07:37.969Z"
       },
       {
         "id": "rq-aud-1792513735653-hvnsd",
@@ -4701,8 +4669,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-20T16:29:06.513Z",
-        "playCount": 5,
-        "lastPlayedAt": "2026-11-01T01:18:31.758Z"
+        "playCount": 6,
+        "lastPlayedAt": "2026-11-02T23:09:14.401Z"
       },
       {
         "id": "rq-aud-1792509267084-xnur5",
@@ -4719,8 +4687,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-20T15:14:33.832Z",
-        "playCount": 5,
-        "lastPlayedAt": "2026-11-01T01:20:47.233Z"
+        "playCount": 6,
+        "lastPlayedAt": "2026-11-02T23:10:38.928Z"
       },
       {
         "id": "rq-aud-1792509146952-pqwyf",

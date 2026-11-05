@@ -11,6 +11,19 @@ import { fetchRealBrazilianTTS } from './tts.ts';
 import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 
+/**
+ * Regra oficial de consumo de créditos para locução de ofertas:
+ * - De 1 a 5 produtos: consumo fixo de 5 créditos
+ * - A partir do 5º produto: 1 crédito adicional por produto a mais
+ */
+export function calculateCreditCost(productCount: number = 1): number {
+  const count = Math.max(1, Math.floor(productCount || 1));
+  if (count <= 5) {
+    return 5;
+  }
+  return 5 + (count - 5);
+}
+
 export const apiRouter = Router();
 
 // Middleware to get user from X-User-Id header or default to demo user
@@ -55,7 +68,7 @@ apiRouter.post('/auth/login', (req: Request, res: Response) => {
   let user = db.getUserByEmail(cleanEmail);
   if (!user) {
     // Se o usuário não existir, cria a conta automaticamente com os créditos de boas-vindas
-    const bonus = db.getAdminSettings()?.initialCredits ?? 500;
+    const bonus = db.getAdminSettings()?.initialCredits ?? 50;
     user = db.createUser({
       id: `user-${Date.now()}`,
       name: cleanEmail.split('@')[0],
@@ -82,7 +95,7 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
     return res.json({ user: existing, token: existing.id });
   }
 
-  const initialBonus = db.getAdminSettings()?.initialCredits ?? 500;
+  const initialBonus = db.getAdminSettings()?.initialCredits ?? 50;
   const user = db.createUser({
     id: `user-${Date.now()}`,
     name: String(name).trim(),
@@ -353,12 +366,21 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'O roteiro não pode estar vazio' });
   }
 
-  // Check credits
-  const settings = db.getAdminSettings();
-  const creditCost = settings?.creditsPerGeneration ?? 10;
+  // Regra de consumo de créditos: de 1 a 5 produtos = 5 créditos. A partir do 5º produto = +1 crédito por produto adicional
+  let productCount = 1;
+  if (req.body.productCount) {
+    productCount = Number(req.body.productCount);
+  } else if (projectId) {
+    const proj = db.getProject(projectId);
+    if (proj?.products?.length) {
+      productCount = proj.products.length;
+    }
+  }
+  const creditCost = calculateCreditCost(productCount);
+
   if (user.creditsBalance < creditCost) {
     return res.status(402).json({
-      error: 'Créditos insuficientes',
+      error: `Créditos insuficientes para gerar a locução (${productCount} produto${productCount > 1 ? 's' : ''} = ${creditCost} créditos). Saldo atual: ${user.creditsBalance}.`,
       required: creditCost,
       current: user.creditsBalance,
     });
@@ -456,16 +478,22 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Nenhum produto fornecido para lote' });
   }
 
-  const settings = db.getAdminSettings();
-  const costPerAudio = settings?.creditsPerGeneration ?? 10;
-  const totalCost = products.length * costPerAudio;
+  // Regra de consumo de créditos: de 1 a 5 produtos = 5 créditos. A partir do 5º produto = +1 crédito por produto adicional
+  const totalCost = calculateCreditCost(products.length);
   if (user.creditsBalance < totalCost) {
     return res.status(402).json({
-      error: `Créditos insuficientes para gerar lote (${products.length} produtos x ${costPerAudio} = ${totalCost} créditos). Saldo atual: ${user.creditsBalance}`,
+      error: `Créditos insuficientes para gerar lote (${products.length} produto${products.length > 1 ? 's' : ''} = ${totalCost} créditos). Saldo atual: ${user.creditsBalance}`,
       required: totalCost,
       current: user.creditsBalance,
     });
   }
+
+  // Debita o custo do lote de acordo com a regra de 1 a 5 produtos = 5 créditos, +1 por produto adicional
+  db.updateUserCredits(
+    userId,
+    -totalCost,
+    `Geração de Lote (${products.length} produtos)`
+  );
 
   const generatedAudios: AudioGenerationItem[] = [];
   const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === soundtrackId);
@@ -484,13 +512,6 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
         soundtrackId,
         soundtrackVolume: soundtrackVolume ?? 0.20,
       });
-
-      db.updateUserCredits(
-        userId,
-        -costPerAudio,
-        `Geração Lote: ${prod.name}`,
-        ttsResult.audioId
-      );
 
       const voices = db.getVoices();
       const voiceObj = voices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId) || voices[0];
@@ -928,8 +949,8 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
   // - Avisos & Informativos (comunicado) e Vinhetas da Loja (vinheta) são 100% gratuitos (NÃO consomem créditos)
   // - Apenas a aba "Criar Locução" (ofertas relâmpago e comerciais) consome créditos do usuário
   const isFreeRadioItem = type === 'comunicado' || type === 'vinheta';
-  const settings = db.getAdminSettings();
-  const creditCost = isFreeRadioItem ? 0 : (settings?.creditsPerGeneration ?? 10);
+  const productCount = req.body.productCount ? Number(req.body.productCount) : 1;
+  const creditCost = isFreeRadioItem ? 0 : calculateCreditCost(productCount);
 
   if (creditCost > 0 && user.creditsBalance < creditCost) {
     return res.status(402).json({
@@ -1090,8 +1111,8 @@ apiRouter.get('/settings', (_req: Request, res: Response) => {
   const settings = db.getAdminSettings();
   res.json({
     systemAnnouncement: settings?.systemAnnouncement || '',
-    creditsPerGeneration: settings?.creditsPerGeneration ?? 10,
-    initialCredits: settings?.initialCredits ?? 500,
+    creditsPerGeneration: settings?.creditsPerGeneration ?? 5,
+    initialCredits: settings?.initialCredits ?? 50,
     defaultVoiceId: settings?.defaultVoiceId || 'daniel-varejo',
   });
 });
@@ -1243,7 +1264,7 @@ apiRouter.post('/admin/users', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Já existe um cliente cadastrado com este e-mail.' });
   }
 
-  const initialCredits = Number(creditsBalance) || 500;
+  const initialCredits = Number(creditsBalance) || 50;
   const newUser = db.createUser({
     id: `user-${Date.now()}`,
     name: name.trim(),

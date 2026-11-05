@@ -15,6 +15,7 @@ import {
 import { api } from '../services/api.ts';
 import { AudioPlayer } from '../components/AudioPlayer.tsx';
 import { expandUnitsAndMeasuresToWords } from '../utils/textNormalizer.ts';
+import { calculateCreditCost } from '../utils/credits.ts';
 import { useRadio } from '../context/RadioContext.tsx';
 import { useFavoriteVoices } from '../services/voiceFavorites.ts';
 
@@ -418,6 +419,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
         publishToRadio,
         radioPriority: playImmediatelyOnRadio ? 'alta' : 'normal',
         storeName: project.storeName,
+        productCount: project.products.length,
       });
 
       setAudioProgressStatus('Áudio finalizado!');
@@ -1912,12 +1914,15 @@ export const StudioView: React.FC<StudioViewProps> = ({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-3 h-3 text-amber-500" /> Custo: 10 créditos
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1 font-semibold text-slate-600">
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
+                      Custo: {calculateCreditCost(project.products.length)} créditos
                     </span>
                     <span>•</span>
-                    <span>Com trilha sonora inclusa</span>
+                    <span className="text-slate-400">1 a 5 produtos = 5 créditos (+1 por produto extra)</span>
+                    <span>•</span>
+                    <span>Com trilha inclusa</span>
                   </div>
                 </div>
               </div>

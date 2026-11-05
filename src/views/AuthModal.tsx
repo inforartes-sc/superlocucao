@@ -118,7 +118,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-zinc-400">
-              {mode === 'login' ? 'Acesse seu painel comercial' : 'Crie sua conta e ganhe 500 créditos'}
+              {mode === 'login' ? 'Acesse seu painel comercial' : 'Crie sua conta e ganhe 50 créditos'}
             </p>
           </div>
         </div>
@@ -245,7 +245,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {mode === 'register' && (
             <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-xs text-orange-200 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-orange-400 shrink-0" />
-              <span>Você receberá <strong>500 créditos grátis</strong> para criar seus primeiros anúncios de áudio imediatamente.</span>
+              <span>Você receberá <strong>50 créditos grátis</strong> para criar seus primeiros anúncios de áudio imediatamente.</span>
             </div>
           )}
 

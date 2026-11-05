@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, CheckCircle2, ArrowDownLeft, ArrowUpRight, PlusCircle, ShieldCheck } from 'lucide-react';
 import { UserProfile, CreditTransaction } from '../types/index.ts';
 import { api } from '../services/api.ts';
@@ -45,7 +45,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
           Planos e Saldo de Créditos
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Cada locução gerada consome 10 créditos. Faça recargas ou alterne seu plano mensal.
+          De 1 a 5 produtos o consumo é de 5 créditos (a partir do 5º produto, +1 crédito por produto adicional). Faça recargas ou alterne seu plano mensal.
         </p>
       </div>
 

@@ -660,7 +660,7 @@ class Database {
           plan TEXT DEFAULT 'pro_varejo',
           status TEXT DEFAULT 'ativo',
           notes TEXT,
-          credits_balance INTEGER DEFAULT 500,
+          credits_balance INTEGER DEFAULT 50,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           last_login TIMESTAMPTZ DEFAULT NOW()
         );
@@ -720,8 +720,8 @@ class Database {
         CREATE TABLE IF NOT EXISTS admin_settings (
           id INTEGER PRIMARY KEY DEFAULT 1,
           default_voice_id TEXT DEFAULT 'daniel-varejo',
-          credits_per_generation INTEGER DEFAULT 10,
-          initial_credits INTEGER DEFAULT 500,
+          credits_per_generation INTEGER DEFAULT 5,
+          initial_credits INTEGER DEFAULT 50,
           eleven_labs_model TEXT DEFAULT 'eleven_multilingual_v2',
           gemini_model TEXT DEFAULT 'gemini-3.8-flash',
           system_announcement TEXT,
@@ -788,7 +788,7 @@ class Database {
           plan: r.plan || 'pro_varejo',
           status: r.status || 'ativo',
           notes: r.notes || undefined,
-          creditsBalance: r.credits_balance ?? 500,
+          creditsBalance: r.credits_balance ?? 50,
           createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
           lastLogin: r.last_login ? new Date(r.last_login).toISOString() : undefined,
         }));
@@ -859,8 +859,8 @@ class Database {
         const a = adminRes.rows[0];
         this.data.adminSettings = {
           defaultVoiceId: a.default_voice_id || 'daniel-varejo',
-          creditsPerGeneration: a.credits_per_generation ?? 10,
-          initialCredits: a.initial_credits ?? 500,
+          creditsPerGeneration: a.credits_per_generation ?? 5,
+          initialCredits: a.initial_credits ?? 50,
           elevenLabsModel: a.eleven_labs_model || 'eleven_multilingual_v2',
           systemAnnouncement: a.system_announcement,
         };
@@ -1112,8 +1112,8 @@ class Database {
       radioConfig: buildInitialRadioConfig(DEFAULT_PROJECTS),
       adminSettings: {
         defaultVoiceId: 'daniel-varejo',
-        creditsPerGeneration: 10,
-        initialCredits: 500,
+        creditsPerGeneration: 5,
+        initialCredits: 50,
         elevenLabsModel: 'eleven_multilingual_v2',
         systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!'
       }

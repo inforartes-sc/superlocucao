@@ -358,7 +358,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: 'Preciso pagar para testar?',
-      a: 'Não! Ao criar sua conta você recebe 500 créditos gratuitos imediatamente de boas-vindas para criar roteiros, gerar anúncios com voz profissional e testar na prática a qualidade dentro da sua loja.',
+      a: 'Não! Ao criar sua conta você recebe 50 créditos gratuitos imediatamente de boas-vindas para criar roteiros, gerar anúncios com voz profissional e testar na prática a qualidade dentro da sua loja.',
     },
   ];
 
@@ -522,7 +522,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div className="pt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-8 text-xs font-bold text-zinc-400">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>500 Créditos de Boas-Vindas</span>
+                <span>50 Créditos de Boas-Vindas</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1151,7 +1151,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <ul className="space-y-2.5 text-xs text-zinc-300 pt-4 border-t border-zinc-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <strong>500 créditos</strong> de boas-vindas
+                    <strong>50 créditos</strong> de boas-vindas
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1446,11 +1446,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 z-40 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
           title="Voltar ao início da página"
+          aria-label="Voltar ao topo"
         >
-          <ArrowUp className="w-4 h-4 text-zinc-950 stroke-[3]" />
-          <span className="hidden sm:inline">Voltar ao Topo</span>
+          <ArrowUp className="w-5 h-5 text-zinc-950 stroke-[3]" />
         </button>
       )}
     </div>
