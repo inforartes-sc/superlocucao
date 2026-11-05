@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800/90 shadow-lg">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161820]/95 backdrop-blur-xl border-b border-zinc-700/80 shadow-lg">
         {/* Main Top Navigation Bar */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
           {/* Left: Brand Identity */}
@@ -98,7 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Center: Clean Single-Line Navigation Pills (Desktop Only) */}
-          <nav className="hidden md:flex items-center gap-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800/90 shrink-0">
+          <nav className="hidden md:flex items-center gap-1 bg-[#1a1d27]/90 p-1 rounded-2xl border border-zinc-700/80 shrink-0">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
@@ -339,7 +339,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* ===================================================================== */}
       {/* MOBILE FIXED BOTTOM APP BAR (MODERN NATIVE APP NAVIGATION)            */}
       {/* ===================================================================== */}
-      <nav aria-label="Navegação Mobile" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800/90 shadow-[0_-8px_30px_rgba(0,0,0,0.6)] px-2 py-1.5 flex items-center justify-around">
+      <nav aria-label="Navegação Mobile" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161820]/95 backdrop-blur-xl border-t border-zinc-700/80 shadow-[0_-8px_30px_rgba(0,0,0,0.6)] px-2 py-1.5 flex items-center justify-around">
         <button
           onClick={() => onNavigate('dashboard')}
           className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition ${

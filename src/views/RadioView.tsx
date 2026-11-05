@@ -1613,7 +1613,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* ===================================================================== */}
       {/* TOP BROADCAST CONSOLE HEADER (ON AIR / DUAL-DECK MONITOR)             */}
       {/* ===================================================================== */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-zinc-800/90 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-[#181b24] border border-zinc-700/80 shadow-2xl">
         {/* Ambient Glow when ON AIR */}
         {isOnAir && (
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-orange-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -1623,7 +1623,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
         )}
 
         {/* Top Bar: Station Identity + Master ON AIR Control */}
-        <div className="p-5 sm:p-8 border-b border-zinc-800/80 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+        <div className="p-5 sm:p-8 border-b border-zinc-700/70 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3.5 sm:gap-5 w-full lg:w-auto">
             {/* Top row on mobile: Icon + Live status badges */}
             <div className="flex items-center gap-3">
@@ -1631,7 +1631,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isOnAir
                     ? 'bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 text-white shadow-xl shadow-red-600/30'
-                    : 'bg-zinc-900 border border-zinc-800 text-zinc-400'
+                    : 'bg-[#1f2330] border border-zinc-700 text-zinc-400'
                 }`}
               >
                 <Radio className={`w-6 h-6 sm:w-8 sm:h-8 ${isOnAir ? 'animate-pulse' : ''}`} />
@@ -1674,7 +1674,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border ${
                     isOnAir
                       ? 'bg-red-500/20 text-red-400 border-red-500/40 shadow-sm shadow-red-500/20'
-                      : 'bg-zinc-800/80 text-zinc-400 border-zinc-700'
+                      : 'bg-[#1f2330] text-zinc-300 border border-zinc-700'
                   }`}
                 >
                   <span
@@ -1685,18 +1685,18 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   {isOnAir ? 'NO AR • TRANSMITINDO AO VIVO' : 'ESTÚDIO EM ESPERA (OFF AIR)'}
                 </span>
 
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30">
                   🏪 {config.storeName}
                 </span>
 
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-900 text-zinc-400 border border-zinc-800">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#141620] text-zinc-300 border border-zinc-700/80">
                   {activeOffersCount} ofertas ativas • {activeMusicCount} trilhas musicais
                 </span>
               </div>
 
               {/* Mobile count badge */}
               <div className="sm:hidden">
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-900/90 text-zinc-300 border border-zinc-800">
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#141620] text-zinc-300 border border-zinc-700/80">
                   {activeOffersCount} ofertas ativas • {activeMusicCount} trilhas musicais
                 </span>
               </div>
@@ -1756,7 +1756,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
             <button
               onClick={() => setIsStoreMonitorMode(!isStoreMonitorMode)}
-              className="px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto"
+              className="px-3.5 py-2.5 rounded-xl bg-[#1f2330] hover:bg-[#272c3d] text-zinc-200 border border-zinc-700/80 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto shadow-sm"
               title="Modo Som de Loja simplifica a tela para deixar aberta no computador da loja"
             >
               {isStoreMonitorMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -1766,7 +1766,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             <button
               onClick={() => playSpotNow()}
               disabled={activeOffersCount === 0}
-              className="px-4 py-2.5 sm:py-3 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 disabled:opacity-40 text-orange-300 border border-orange-500/30 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto"
+              className="px-4 py-2.5 sm:py-3 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 disabled:opacity-40 text-orange-300 border border-orange-500/40 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto shadow-sm"
             >
               <Zap className="w-4 h-4 text-orange-400" />
               Disparar Oferta Agora
@@ -1800,14 +1800,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
         {/* ================================================================= */}
         <div className="p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           {/* DECK 1: AMBIENT MUSIC DECK */}
-          <div className="lg:col-span-5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 p-5 flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-5 rounded-2xl bg-[#1e222e] border border-zinc-700/80 shadow-lg p-5 flex flex-col justify-between space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
                   <Music className="w-4 h-4" />
                 </span>
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block">
                     Deck 1 • Música Ambiente da Loja
                   </span>
                   <span className="text-xs text-emerald-400 font-semibold">
@@ -1825,14 +1825,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               <button
                 onClick={skipMusicTrack}
                 disabled={!isOnAir || config.mode === 'somente_ofertas'}
-                className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#272d3d] hover:bg-[#31384c] border border-zinc-700/80 disabled:opacity-40 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
               >
                 <SkipForward className="w-3.5 h-3.5" />
                 Próxima Música
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-2.5">
+            <div className="p-4 rounded-xl bg-[#141620] border border-zinc-700/70 space-y-2.5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white truncate">
@@ -1871,7 +1871,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             </div>
 
             {/* Intelligent Music Leveler Control & Dynamic Gain Indicator */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/25 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span
                   className={`w-2.5 h-2.5 rounded-full ${
@@ -1906,7 +1906,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
                     isMusicLevelerEnabled
                       ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      : 'bg-[#272d3d] border-zinc-700 text-zinc-300 hover:text-white'
                   }`}
                 >
                   {isMusicLevelerEnabled ? 'Desativar Nivelador' : 'Ativar Nivelador'}
@@ -1916,7 +1916,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Music & Ducking Volume Sliders */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="bg-zinc-950/60 border border-zinc-800/70 rounded-xl p-3">
+              <div className="bg-[#141620] border border-zinc-700/70 rounded-xl p-3 shadow-sm">
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-zinc-400 font-medium">Volume da Música</span>
                   <span className="text-emerald-400 font-bold">{Math.round(config.musicVolume * 100)}%</span>
@@ -1932,7 +1932,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 />
               </div>
 
-              <div className="bg-zinc-950/60 border border-zinc-800/70 rounded-xl p-3">
+              <div className="bg-[#141620] border border-zinc-700/70 rounded-xl p-3 shadow-sm">
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-zinc-400 font-medium" title="Volume da música enquanto o locutor anuncia a oferta">
                     Volume no Auto-Ducking
@@ -1953,7 +1953,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           </div>
 
           {/* DECK 2: VOICEOVER OFFER SPOT DECK */}
-          <div className="lg:col-span-7 rounded-2xl bg-gradient-to-br from-orange-950/30 via-zinc-900/80 to-zinc-900/90 border border-orange-500/30 p-5 flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-7 rounded-2xl bg-[#1e222e] border border-orange-500/40 shadow-lg p-5 flex flex-col justify-between space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span
@@ -2004,10 +2004,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Active or Next Offer Monitor Box */}
             <div
-              className={`p-4 rounded-xl border transition-all ${
+              className={`p-4 rounded-xl border transition-all shadow-sm ${
                 currentSpot
                   ? 'bg-orange-500/10 border-orange-500/50 shadow-inner'
-                  : 'bg-zinc-950/80 border-zinc-800/80'
+                  : 'bg-[#141620] border border-zinc-700/70'
               }`}
             >
               {currentSpot ? (
@@ -2064,7 +2064,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-2.5">
+                  <div className="flex items-center gap-3 shrink-0 bg-[#1e222e] border border-zinc-700/80 rounded-2xl px-4 py-2.5 shadow-sm">
                     <Clock className="w-5 h-5 text-orange-400" />
                     <div>
                       <div className="text-[10px] font-bold uppercase text-zinc-400">Disparo Automático</div>
@@ -2077,14 +2077,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Scheduling Interval & Voice Volume Controls */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-xl p-3">
+              <div className="bg-[#141620] border border-zinc-700/70 rounded-xl p-3 shadow-sm">
                 <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">
                   Modo de Programação
                 </label>
                 <select
                   value={config.mode}
                   onChange={e => updateConfig({ mode: e.target.value as any })}
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white"
+                  className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white cursor-pointer"
                 >
                   <option value="intervalo_tempo">Música + Oferta por Tempo</option>
                   <option value="intercalado_musicas">Música + Oferta a cada X Músicas</option>
@@ -2092,7 +2092,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 </select>
               </div>
 
-              <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-xl p-3">
+              <div className="bg-[#141620] border border-zinc-700/70 rounded-xl p-3 shadow-sm">
                 <label className="block text-[11px] font-bold uppercase text-zinc-400 mb-1">
                   Intervalo entre Ofertas
                 </label>
@@ -2104,7 +2104,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       spotsIntervalSeconds: Number(e.target.value),
                     })
                   }
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white"
+                  className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white cursor-pointer"
                 >
                   <option value={20}>A cada 20 segundos (Intenso)</option>
                   <option value={30}>A cada 30 segundos</option>
@@ -2116,7 +2116,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 </select>
               </div>
 
-              <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-xl p-3">
+              <div className="bg-[#141620] border border-zinc-700/70 rounded-xl p-3 shadow-sm">
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-zinc-400 font-medium">Volume do Locutor</span>
                   <span className="text-orange-400 font-bold">
@@ -2141,7 +2141,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             </div>
 
             {/* Intelligent Voice Leveler Control & Broadcast Indicator */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-orange-950/40 border border-orange-500/25 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-orange-950/40 border border-orange-500/30 text-xs">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span
                   className={`w-2.5 h-2.5 rounded-full ${
@@ -2176,7 +2176,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   className={`px-3 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
                     isVocalLevelerEnabled
                       ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      : 'bg-[#272d3d] border-zinc-700 text-zinc-300 hover:text-white'
                   }`}
                 >
                   {isVocalLevelerEnabled ? 'Desativar Nivelador' : 'Ativar Nivelador'}
@@ -2193,13 +2193,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* ================================================================= */}
           {/* NAVIGATION TABS FOR RADIO MANAGEMENT                              */}
           {/* ================================================================= */}
-          <div className="sticky top-14 sm:top-16 z-30 bg-zinc-950/95 backdrop-blur-md pt-2 pb-3 border-b border-zinc-800 flex items-center overflow-x-auto gap-2 scrollbar-none">
+          <div className="sticky top-14 sm:top-16 z-30 bg-[#111318]/95 backdrop-blur-md pt-2 pb-3 border-b border-zinc-700/80 flex items-center overflow-x-auto gap-2 scrollbar-none">
             <button
               onClick={() => setActiveTab('flash_studio')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'flash_studio'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -2209,10 +2209,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             <button
               onClick={() => setActiveTab('announcements')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'announcements'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <BellRing className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-amber-400" />
@@ -2229,10 +2229,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             <button
               onClick={() => setActiveTab('vinhetas')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'vinhetas'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-purple-400" />
@@ -2249,10 +2249,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             <button
               onClick={() => setActiveTab('queue')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'queue'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <Megaphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -2261,10 +2261,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             <button
               onClick={() => setActiveTab('library_import')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'library_import'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -2274,10 +2274,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             <button
               onClick={() => setActiveTab('music')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 ${
+              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
                 activeTab === 'music'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <ListMusic className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -2292,7 +2292,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {activeTab === 'flash_studio' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left 7 Cols: Quick Offer & Announcement Creator */}
-              <div className="lg:col-span-7 rounded-2xl bg-zinc-900/70 border border-zinc-800 p-4 sm:p-6 space-y-4 sm:space-y-5">
+              <div className="lg:col-span-7 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-orange-400">
@@ -2321,7 +2321,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       <button
                         key={tpl.id}
                         onClick={() => handleApplyTemplate(tpl)}
-                        className="text-left p-2.5 rounded-xl bg-zinc-950/80 hover:bg-zinc-800/80 border border-zinc-800 hover:border-orange-500/40 transition group cursor-pointer"
+                        className="text-left p-2.5 rounded-xl bg-[#141620] hover:bg-zinc-800/80 border border-zinc-800 hover:border-orange-500/40 transition group cursor-pointer"
                       >
                         <div className="text-xs font-bold text-white group-hover:text-orange-400 truncate">
                           {tpl.label}
@@ -2333,7 +2333,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 </div>
 
                 {/* Optional AI Quick Product-to-Script Generator */}
-                <div className="p-4 rounded-xl bg-zinc-950/90 border border-zinc-800/90 space-y-2.5">
+                <div className="p-4 rounded-xl bg-[#141620] border border-zinc-700/80 space-y-2.5">
                   <label className="block text-xs font-bold text-orange-300 flex items-center gap-1.5">
                     <Wand2 className="w-3.5 h-3.5 text-orange-400" />
                     Ou digite produtos e preços rápidos para a IA montar a chamada:
@@ -2344,7 +2344,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       value={flashQuickProducts}
                       onChange={e => setFlashQuickProducts(e.target.value)}
                       placeholder="Ex: Arroz 5kg 21,90, Frango Inteiro 9,99 kg, Leite 1L 3,89..."
-                      className="flex-1 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-zinc-500"
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white placeholder-zinc-500"
                     />
                     <button
                       onClick={handleGenerateAiQuickScript}
@@ -2373,7 +2373,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     <select
                       value={flashType}
                       onChange={e => setFlashType(e.target.value as any)}
-                      className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white"
+                      className="w-full px-3 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white"
                     >
                       <option value="relampago">⚡ Oferta Relâmpago</option>
                       <option value="oferta">🛒 Oferta do Dia / Setor</option>
@@ -2390,7 +2390,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       type="text"
                       value={flashTitle}
                       onChange={e => setFlashTitle(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white"
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white"
                     />
                   </div>
                 </div>
@@ -2410,7 +2410,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     value={flashScript}
                     onChange={e => setFlashScript(e.target.value)}
                     placeholder="Digite o texto da oferta ou aviso para os clientes na loja..."
-                    className="w-full p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white leading-relaxed focus:border-orange-500 focus:outline-none"
+                    className="w-full p-3.5 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white leading-relaxed focus:border-orange-500 focus:outline-none"
                   />
                 </div>
 
@@ -2457,7 +2457,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     <select
                       value={selectedVoiceId}
                       onChange={e => setSelectedVoiceId(e.target.value)}
-                      className="flex-1 min-w-0 w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:border-orange-500 focus:outline-none truncate"
+                      className="flex-1 min-w-0 w-full px-3.5 py-2.5 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:border-orange-500 focus:outline-none truncate"
                     >
                       {(() => {
                         const displayVoices = radioVoiceFilter === 'favoritas'
@@ -2503,7 +2503,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   <select
                     value={selectedSoundtrackId}
                     onChange={e => setSelectedSoundtrackId(e.target.value as SoundtrackId)}
-                    className="w-full min-w-0 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:border-orange-500 focus:outline-none truncate"
+                    className="w-full min-w-0 px-3.5 py-2.5 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:border-orange-500 focus:outline-none truncate"
                   >
                     {soundtracks.map(st => (
                       <option key={st.id} value={st.id}>
@@ -2514,7 +2514,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 </div>
 
                 {/* Immediate Broadcast Options */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-800/80">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-700/70">
                   <div className="flex flex-wrap items-center gap-4">
                     <label className="flex items-center gap-2 text-xs font-bold text-orange-300 cursor-pointer">
                       <input
@@ -2561,7 +2561,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                     <label
                       title="Divulgar automaticamente novas locuções do Estúdio direto na grade da Rádio"
-                      className="flex items-center gap-2 text-xs text-zinc-300 bg-zinc-950/80 hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 rounded-2xl cursor-pointer shrink-0 whitespace-nowrap transition"
+                      className="flex items-center gap-2 text-xs text-zinc-300 bg-[#141620] hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 rounded-2xl cursor-pointer shrink-0 whitespace-nowrap transition"
                     >
                       <input
                         type="checkbox"
@@ -2589,7 +2589,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               </div>
 
               {/* Right 5 Cols: Active Rotation Preview & Quick Trigger */}
-              <div className="lg:col-span-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 p-4 sm:p-6 flex flex-col justify-between space-y-4 h-full">
+              <div className="lg:col-span-5 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 flex flex-col justify-between space-y-4 h-full">
                 <div className="flex-1 flex flex-col min-h-0 space-y-3">
                   <div className="flex items-center justify-between shrink-0">
                     <div>
@@ -2621,7 +2621,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                               : isPreviewingThis
                               ? 'bg-sky-500/10 border-sky-500/40'
                               : item.active
-                              ? 'bg-zinc-950/80 border-zinc-800/90 hover:border-zinc-700'
+                              ? 'bg-[#141620] border-zinc-700/80 hover:border-zinc-700'
                               : 'bg-zinc-950/40 border-zinc-900 opacity-50'
                           }`}
                         >
@@ -2672,7 +2672,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                               className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition cursor-pointer ${
                                 isPreviewingThis
                                   ? 'bg-sky-500 text-zinc-950 border-sky-400'
-                                  : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700'
+                                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-sky-300 border-zinc-700'
                               }`}
                               title="Ouvir apenas na prévia (não sai no ao vivo da rádio)"
                             >
@@ -2741,7 +2741,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               {/* 1. TOP INTERACTIVE DECK: SOUNDBOARD DE EFEITOS & MICROFONE AO VIVO */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Left (7 cols): Soundboard / Vinhetas Instantâneas com Auto-Ducking */}
-                <div className="lg:col-span-7 rounded-2xl bg-zinc-900/80 border border-zinc-800 p-4 sm:p-5 space-y-3">
+                <div className="lg:col-span-7 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-orange-500/15 text-orange-400 flex items-center justify-center border border-orange-500/30">
@@ -2769,7 +2769,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 transition cursor-pointer ${
                         soundboardActiveEffect === 'chime'
                           ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/30 scale-95'
-                          : 'bg-zinc-950/80 hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-amber-500/40'
+                          : 'bg-[#141620] hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-amber-500/40'
                       }`}
                       title="Disparar gongo clássico de supermercado / aeroporto (Ding-Dong)"
                     >
@@ -2785,7 +2785,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 transition cursor-pointer ${
                         soundboardActiveEffect === 'siren'
                           ? 'bg-red-500 text-white border-red-400 shadow-md shadow-red-500/30 scale-95'
-                          : 'bg-zinc-950/80 hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-red-500/40'
+                          : 'bg-[#141620] hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-red-500/40'
                       }`}
                       title="Disparar sirene de oferta relâmpago"
                     >
@@ -2801,7 +2801,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 transition cursor-pointer ${
                         soundboardActiveEffect === 'attention'
                           ? 'bg-sky-500 text-zinc-950 border-sky-400 shadow-md shadow-sky-500/30 scale-95'
-                          : 'bg-zinc-950/80 hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-sky-500/40'
+                          : 'bg-[#141620] hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-sky-500/40'
                       }`}
                       title="Alerta triplo de atenção"
                     >
@@ -2817,7 +2817,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 transition cursor-pointer ${
                         soundboardActiveEffect === 'cash'
                           ? 'bg-emerald-500 text-zinc-950 border-emerald-400 shadow-md shadow-emerald-500/30 scale-95'
-                          : 'bg-zinc-950/80 hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-emerald-500/40'
+                          : 'bg-[#141620] hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-emerald-500/40'
                       }`}
                       title="Som de caixa registradora / cha-ching"
                     >
@@ -2829,7 +2829,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 </div>
 
                 {/* Right (5 cols): Microfone Ao Vivo no Som da Loja (Live Mic Paging) */}
-                <div className="lg:col-span-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 p-4 sm:p-5 flex flex-col justify-between space-y-3">
+                <div className="lg:col-span-5 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-5 flex flex-col justify-between space-y-3">
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2860,7 +2860,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   </div>
 
                   {/* VU Meter Bar */}
-                  <div className="space-y-1.5 bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-800/80">
+                  <div className="space-y-1.5 bg-[#141620] p-2.5 rounded-xl border border-zinc-700/70">
                     <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
                       <span>Nível de Voz (VU):</span>
                       <span className={isMicActive ? 'text-emerald-400 font-bold' : 'text-zinc-600'}>
@@ -2900,7 +2900,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               </div>
 
               {/* 2. CATÁLOGO DE AVISOS RÁPIDOS & INFORMATIVOS */}
-              <div className="rounded-2xl bg-zinc-900/70 border border-zinc-800 p-4 sm:p-6 space-y-4">
+              <div className="rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-black text-white flex items-center gap-2">
@@ -2916,7 +2916,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   </div>
 
                   {/* Voz Selecionada Indicator */}
-                  <div className="flex items-center gap-2 bg-zinc-950/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-300">
+                  <div className="flex items-center gap-2 bg-[#141620] border border-zinc-700/80 rounded-xl px-3 py-1.5 text-xs text-zinc-300">
                     <span className="text-zinc-500 font-medium">Voz Ativa:</span>
                     <select
                       value={selectedVoiceId}
@@ -2981,7 +2981,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                         announcementCategoryFilter === cat.id
                           ? 'bg-orange-500 text-zinc-950 border-orange-400 shadow-sm shadow-orange-500/20'
-                          : 'bg-zinc-950/80 text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
+                          : 'bg-[#141620] text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
                       }`}
                     >
                       <span>{cat.icon}</span>
@@ -3016,11 +3016,11 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     return (
                       <div
                         key={ann.id}
-                        className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700/80 transition flex flex-col justify-between space-y-3"
+                        className="p-4 rounded-xl bg-[#141620] border border-zinc-700/80 hover:border-zinc-700/80 transition flex flex-col justify-between space-y-3"
                       >
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#141620] border border-zinc-700/80 text-zinc-400 flex items-center gap-1">
                               <span>{ann.icon}</span>
                               {ann.categoryLabel}
                             </span>
@@ -3038,7 +3038,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                         {/* Opção explícita no Card: Adicionar ou não na grade da rádio */}
                         <div className="pt-2 border-t border-zinc-900/80 flex flex-col gap-2.5">
-                          <div className="p-2 rounded-lg bg-zinc-900/70 border border-zinc-800/80 flex items-center justify-between gap-2">
+                          <div className="p-2 rounded-lg bg-[#181b24] border border-zinc-700/80/80 flex items-center justify-between gap-2">
                             <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-zinc-200 hover:text-white">
                               <input
                                 type="checkbox"
@@ -3070,7 +3070,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                             <button
                               type="button"
                               onClick={() => handleOpenCustomizeModal(ann)}
-                              className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                              className="px-2.5 py-1.5 rounded-lg bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                               title="Editar placa, modelo ou texto antes de falar"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-orange-400" />
@@ -3093,7 +3093,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                   type="button"
                                   onClick={() => handleAddAnnouncementToQueue(ann)}
                                   disabled={isGeneratingAnnouncement}
-                                  className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold transition cursor-pointer"
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80 text-xs font-bold transition cursor-pointer"
                                   title="Adicionar à grade de programação automática da rádio para tocar em rotação contínua"
                                 >
                                   + Na Grade
@@ -3215,8 +3215,8 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-zinc-800/80 text-xs">
-                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-zinc-700/70 text-xs">
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="text-lg">🏪</span>
                       <div className="min-w-0">
@@ -3234,7 +3234,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       <span>Sincronizar</span>
                     </button>
                   </div>
-                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80 flex items-center gap-2.5">
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center gap-2.5">
                     <span className="text-lg">🎙️</span>
                     <div className="min-w-0">
                       <span className="text-[10px] uppercase font-bold text-zinc-500 block">Voz Selecionada</span>
@@ -3243,7 +3243,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       </strong>
                     </div>
                   </div>
-                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80 flex items-center gap-2.5">
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center gap-2.5">
                     <span className="text-lg">🎵</span>
                     <div className="min-w-0">
                       <span className="text-[10px] uppercase font-bold text-zinc-500 block">Vinhetas na Grade</span>
@@ -3297,7 +3297,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     className={`w-full px-1.5 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border whitespace-nowrap ${
                       vinhetaCategoryFilter === cat.id
                         ? 'bg-purple-600 text-white border-purple-500 shadow-sm shadow-purple-600/30'
-                        : 'bg-zinc-950/80 text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
+                        : 'bg-[#141620] text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
                     <span className="shrink-0 text-xs">{cat.icon}</span>
@@ -3332,7 +3332,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   return (
                     <div
                       key={vinheta.id}
-                      className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 hover:border-purple-500/40 transition flex flex-col justify-between space-y-3"
+                      className="p-4 rounded-xl bg-[#141620] border border-zinc-700/80 hover:border-purple-500/40 transition flex flex-col justify-between space-y-3"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -3357,7 +3357,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           {localizedTitle}
                         </h4>
 
-                        <div className="p-3 rounded-lg bg-zinc-900/90 border border-zinc-800/80 text-xs text-zinc-300 italic leading-relaxed">
+                        <div className="p-3 rounded-lg bg-[#141620] border border-zinc-700/80 text-xs text-zinc-300 italic leading-relaxed">
                           "{localizedScript}"
                         </div>
                       </div>
@@ -3367,7 +3367,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                         <button
                           type="button"
                           onClick={() => handleOpenCustomizeVinhetaModal(vinheta)}
-                          className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-[#1c202d] hover:bg-[#252a3b] text-zinc-400 hover:text-white border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                         >
                           <Edit3 className="w-3.5 h-3.5 text-orange-400" />
                           <span>Personalizar</span>
@@ -3389,7 +3389,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                               isCheckedForQueue || itemInQueue
                                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                                : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-800'
+                                : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-400 hover:text-white border-zinc-800'
                             }`}
                             title={
                               isCheckedForQueue || itemInQueue
@@ -3424,7 +3424,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* TAB 2: GRADE COMPLETA DE OFERTAS NO AR                            */}
           {/* ================================================================= */}
           {activeTab === 'queue' && (
-            <div className="rounded-2xl bg-zinc-900/70 border border-zinc-800 p-4 sm:p-6 space-y-4">
+            <div className="rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 space-y-4">
               <input
                 ref={uploadSpotInputRef}
                 type="file"
@@ -3498,7 +3498,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 return (
                   <>
                     {/* BARRA DE NAVEGAÇÃO DOS DIAS DA SEMANA */}
-                    <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-3.5 space-y-3">
+                    <div className="bg-[#141620] border border-zinc-700/80 rounded-2xl p-3.5 space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-400 flex items-center justify-center shrink-0">
@@ -3539,7 +3539,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                             gradeDayFilter === 'all'
                               ? 'bg-orange-500 text-zinc-950 shadow-md shadow-orange-500/20 font-black'
-                              : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                              : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
                           }`}
                         >
                           <Calendar className="w-3.5 h-3.5" />
@@ -3558,7 +3558,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                             gradeDayFilter === 'today'
                               ? 'bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20 font-black'
-                              : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                              : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
                           }`}
                         >
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -3587,8 +3587,8 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                 isSelected
                                   ? 'bg-orange-500 text-zinc-950 shadow-md shadow-orange-500/20 font-black'
                                   : isToday
-                                  ? 'bg-zinc-900 hover:bg-zinc-800 text-white border border-emerald-500/50 ring-1 ring-emerald-500/30'
-                                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                                  ? 'bg-[#1c202d] hover:bg-[#252a3b] text-white border border-emerald-500/50 ring-1 ring-emerald-500/30'
+                                  : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-400 hover:text-zinc-200 border border-zinc-800'
                               }`}
                               title={`Ver grade de ${day.fullName} (${count} locuções programadas)`}
                             >
@@ -3663,13 +3663,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                   : isActivelyPreviewing
                                   ? 'bg-sky-500/10 border-sky-500/40 shadow-lg shadow-sky-950/30'
                                   : item.active
-                                  ? 'bg-zinc-950/80 border-zinc-800'
+                                  ? 'bg-[#141620] border-zinc-800'
                                   : 'bg-zinc-950/40 border-zinc-900 opacity-60'
                               }`}
                             >
                               <div className="flex items-start sm:items-center gap-3">
                                 {/* Stepper de Posição na Grade (Mudar Ordem ▲ / ▼) */}
-                                <div className="flex flex-col items-center justify-center gap-0.5 shrink-0 bg-zinc-900 border border-zinc-800 rounded-xl p-1 shadow-sm">
+                                <div className="flex flex-col items-center justify-center gap-0.5 shrink-0 bg-[#141620] border border-zinc-700/80 rounded-xl p-1 shadow-sm">
                                   <button
                                     type="button"
                                     disabled={globalIdx <= 0}
@@ -3761,7 +3761,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                                     {/* À DIREITA NA LINHA 1 (ONDE ESTAVA A MARCAÇÃO EM VERDE): Seletor de Programação Semanal por Dias */}
                                     <div
-                                      className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs shadow-sm hover:border-zinc-700 transition shrink-0 self-start lg:self-auto"
+                                      className="flex items-center gap-1.5 bg-[#141620] border border-zinc-700/80 rounded-xl px-2.5 py-1 text-xs shadow-sm hover:border-zinc-700 transition shrink-0 self-start lg:self-auto"
                                       title="Defina quais dias da semana esta locução deve tocar na rádio"
                                     >
                                       <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
@@ -3844,7 +3844,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                     <div className="flex flex-wrap items-center gap-1.5 shrink-0 xl:ml-auto">
                                       {/* Seletor de Intervalo Opcional de Execução */}
                                       <div
-                                        className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs shadow-sm hover:border-zinc-700 transition"
+                                        className="flex items-center gap-1.5 bg-[#141620] border border-zinc-700/80 rounded-xl px-2.5 py-1 text-xs shadow-sm hover:border-zinc-700 transition"
                                         title="De quanto em quanto tempo esta locução deve tocar automaticamente na rádio"
                                       >
                                         <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />
@@ -3936,7 +3936,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                       <a
                                         href={`${item.audioUrl}?download=1`}
                                         download
-                                        className="p-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition"
+                                        className="p-1.5 rounded-xl bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80 transition"
                                         title="Baixar MP3"
                                       >
                                         <Download className="w-3.5 h-3.5" />
@@ -3956,7 +3956,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                               {/* Barra de Progresso Interativa da Prévia (Aparece quando o usuário clica em Ouvir Prévia) */}
                               {isPreviewingThis && (
-                                <div className="pt-2 border-t border-zinc-800/80 flex items-center gap-3">
+                                <div className="pt-2 border-t border-zinc-700/70 flex items-center gap-3">
                                   <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1 shrink-0">
                                     <Headphones className="w-3.5 h-3.5" />
                                     Pré-escuta (Fora do Ar):
@@ -3996,7 +3996,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* TAB 3: IMPORTAR LOCUÇÕES PRONTAS DO ESTÚDIO / BIBLIOTECA          */}
           {/* ================================================================= */}
           {activeTab === 'library_import' && (
-            <div className="rounded-2xl bg-zinc-900/70 border border-zinc-800 p-6 space-y-4">
+            <div className="rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-6 space-y-4">
               <div>
                 <h2 className="text-xl font-black text-white">
                   Importar Locuções das Campanhas do Supermercado para a Rádio Web
@@ -4013,7 +4013,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   return (
                     <div
                       key={audio.id}
-                      className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-3"
+                      className="p-4 rounded-2xl bg-[#141620] border border-zinc-700/80 flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0 space-y-1">
                         <span className="text-[10px] font-bold uppercase text-orange-400 block">
@@ -4076,7 +4076,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
                             inQueue
                               ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                              : 'bg-zinc-900 hover:bg-zinc-800 text-white border-zinc-700'
+                              : 'bg-[#1c202d] hover:bg-[#252a3b] text-white border-zinc-700'
                           }`}
                         >
                           {inQueue ? '✓ Na Grade' : '+ Adicionar à Grade'}
@@ -4094,7 +4094,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* ================================================================= */}
           {activeTab === 'music' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7 rounded-2xl bg-zinc-900/70 border border-zinc-800 p-4 sm:p-6 space-y-4">
+              <div className="lg:col-span-7 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 space-y-4">
                 <input
                   ref={uploadMusicFileInputRef}
                   type="file"
@@ -4177,7 +4177,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                         selectedPlaylistFilter === 'todas'
                           ? 'bg-orange-500 text-zinc-950 border-orange-400 shadow-sm shadow-orange-500/20'
-                          : 'bg-zinc-950/80 text-zinc-400 hover:text-white border-zinc-800'
+                          : 'bg-[#141620] text-zinc-400 hover:text-white border-zinc-800'
                       }`}
                     >
                       <span>🎵</span>
@@ -4205,7 +4205,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                             isSelected
                               ? 'bg-orange-500 text-zinc-950 border-orange-400 shadow-sm shadow-orange-500/20'
-                              : 'bg-zinc-950/80 text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
+                              : 'bg-[#141620] text-zinc-400 hover:text-white border-zinc-800 hover:border-zinc-700'
                           }`}
                         >
                           <span>{pl.icon || '🎵'}</span>
@@ -4248,7 +4248,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   ).length;
 
                   return (
-                    <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#141620] border border-zinc-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{currentPl.icon || '🎵'}</span>
                         <div>
@@ -4315,7 +4315,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                     if (displayedTracks.length === 0) {
                       return (
-                        <div className="text-center py-10 bg-zinc-950/40 rounded-2xl border border-zinc-800/80 p-6 space-y-3">
+                        <div className="text-center py-10 bg-zinc-950/40 rounded-2xl border border-zinc-700/70 p-6 space-y-3">
                           <p className="text-sm font-bold text-zinc-400">
                             Nenhuma música encontrada nesta playlist.
                           </p>
@@ -4356,7 +4356,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                               : isActivelyPreviewing
                               ? 'bg-sky-500/10 border-sky-500/30 shadow-sm shadow-sky-500/10'
                               : track.active
-                              ? 'bg-zinc-950/80 border-zinc-800/90 hover:border-zinc-700/80'
+                              ? 'bg-[#141620] border-zinc-700/80 hover:border-zinc-700/80'
                               : 'bg-zinc-950/40 border-zinc-900 opacity-60'
                           }`}
                         >
@@ -4446,7 +4446,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                                 className={`px-2.5 py-1 rounded-lg font-bold text-xs flex items-center gap-1 border transition cursor-pointer ${
                                   isActivelyPreviewing
                                     ? 'bg-sky-500 hover:bg-sky-400 text-zinc-950 border-sky-400 shadow-sm shadow-sky-500/20'
-                                    : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700'
+                                    : 'bg-[#1c202d] hover:bg-[#252a3b] text-sky-300 border-zinc-700'
                                 }`}
                                 title="Ouvir apenas para você (fora do ar)"
                               >
@@ -4500,7 +4500,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
                           {/* Interactive Preview Progress Bar */}
                           {isActivelyPreviewing && (
-                            <div className="pt-2 border-t border-zinc-800/80 flex items-center gap-3">
+                            <div className="pt-2 border-t border-zinc-700/70 flex items-center gap-3">
                               <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1 shrink-0">
                                 <Headphones className="w-3.5 h-3.5" />
                                 Pré-escuta (Fora do Ar):
@@ -4531,7 +4531,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               </div>
 
               {/* Broadcast History Log */}
-              <div className="lg:col-span-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 p-6 space-y-4">
+              <div className="lg:col-span-5 rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-orange-400" />
                   <div>
@@ -4549,7 +4549,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                     broadcastLogs.map(log => (
                       <div
                         key={log.id}
-                        className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex items-start gap-2.5 text-xs"
+                        className="p-2.5 rounded-xl bg-[#141620] border border-zinc-700/80/80 flex items-start gap-2.5 text-xs"
                       >
                         <span className="font-mono text-zinc-500 shrink-0">{log.time}</span>
                         <div className="min-w-0">
@@ -4578,7 +4578,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Adicionar Áudio do Computador */}
       {pendingUploadFile && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center border border-orange-500/30">
@@ -4603,7 +4603,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Audio Preview Player */}
             {uploadModalAudioUrl && (
-              <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-3.5 space-y-2">
+              <div className="bg-[#141620] border border-zinc-700/80 rounded-2xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-zinc-300 truncate max-w-[280px]">
                     {pendingUploadFile.name}
@@ -4626,7 +4626,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 value={uploadModalTitle}
                 onChange={e => setUploadModalTitle(e.target.value)}
                 placeholder="Ex: Oferta Relâmpago Gravada, Vinheta da Loja..."
-                className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500"
+                className="w-full px-3.5 py-2.5 bg-[#141620] border border-zinc-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500"
               />
             </div>
 
@@ -4639,7 +4639,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={uploadModalType}
                   onChange={e => setUploadModalType(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-orange-500"
                 >
                   <option value="oferta">🛒 Oferta de Produto</option>
                   <option value="comunicado">📢 Comunicado / Aviso</option>
@@ -4655,7 +4655,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={uploadModalPriority}
                   onChange={e => setUploadModalPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-orange-500"
                 >
                   <option value="normal">Normal (Rotação Padrão)</option>
                   <option value="alta">★ Prioridade Alta (Mais Frequente)</option>
@@ -4702,7 +4702,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Carregar MP3 do Computador para a Playlist */}
       {pendingUploadMusicFile && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
@@ -4727,7 +4727,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Audio Preview Player */}
             {uploadMusicAudioUrl && (
-              <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-3.5 space-y-2">
+              <div className="bg-[#141620] border border-zinc-700/80 rounded-2xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-zinc-300 truncate max-w-[280px]">
                     {pendingUploadMusicFile.name}
@@ -4749,7 +4749,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   type="text"
                   value={uploadMusicTitle}
                   onChange={e => setUploadMusicTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-emerald-500"
                   placeholder="Ex: Pop Comercial da Tarde"
                 />
               </div>
@@ -4762,7 +4762,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   type="text"
                   value={uploadMusicArtist}
                   onChange={e => setUploadMusicArtist(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-emerald-500"
                   placeholder="Ex: Trilha Oficial da Loja"
                 />
               </div>
@@ -4781,7 +4781,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                       setUploadMusicPlaylistId(e.target.value);
                     }
                   }}
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   {(config.playlists || []).map(p => (
                     <option key={p.id} value={p.id}>
@@ -4851,7 +4851,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <form
             onSubmit={handleCreateNewPlaylist}
-            className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
           >
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
@@ -4883,7 +4883,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   value={newPlaylistName}
                   onChange={e => setNewPlaylistName(e.target.value)}
                   placeholder="Ex: Domingão da Família / Festival da Carne"
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-orange-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-orange-500"
                   autoFocus
                 />
               </div>
@@ -4897,7 +4897,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   value={newPlaylistDesc}
                   onChange={e => setNewPlaylistDesc(e.target.value)}
                   placeholder="Ex: Trilhas animadas para o pico de vendas"
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-orange-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -4958,7 +4958,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Confirmação de Exclusão de Locução da Grade */}
       {queueItemToDelete && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -5005,7 +5005,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Exclusão de Música Personalizada */}
       {musicTrackToDelete && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -5052,7 +5052,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Personalizar & Transmitir Aviso Rápido */}
       {customizingAnnouncement && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{customizingAnnouncement.icon}</span>
@@ -5072,7 +5072,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
 
             {/* Quick Auto-Fill Chips according to category */}
             {customizingAnnouncement.category === 'estacionamento' && (
-              <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+              <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-700/70">
                 <span className="text-[11px] font-bold text-orange-400 block">
                   Atalhos Rápidos de Estacionamento (Clique para inserir no texto):
                 </span>
@@ -5100,7 +5100,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             )}
 
             {customizingAnnouncement.category === 'fechamento' && (
-              <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+              <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-700/70">
                 <span className="text-[11px] font-bold text-orange-400 block">
                   Tempo Restante (Clique para alterar o texto):
                 </span>
@@ -5130,7 +5130,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 type="text"
                 value={customModalTitle}
                 onChange={e => setCustomModalTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-orange-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-orange-500"
               />
             </div>
 
@@ -5146,7 +5146,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 rows={4}
                 value={customModalScript}
                 onChange={e => setCustomModalScript(e.target.value)}
-                className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white leading-relaxed focus:outline-none focus:border-orange-500"
+                className="w-full p-3 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white leading-relaxed focus:outline-none focus:border-orange-500"
               />
             </div>
 
@@ -5157,7 +5157,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={selectedVoiceId}
                   onChange={e => setSelectedVoiceId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white"
+                  className="w-full px-3 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-xs text-white"
                 >
                   {voices.map(v => (
                     <option key={v.id} value={v.id}>
@@ -5172,7 +5172,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={customModalPriority}
                   onChange={e => setCustomModalPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white"
+                  className="w-full px-3 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-xs text-white"
                 >
                   <option value="alta">★ Alta (Toca Primeiro)</option>
                   <option value="normal">Normal (Na Rotação)</option>
@@ -5181,7 +5181,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             </div>
 
             {/* Opção explícita no Modal: Adicionar ou não na grade da rádio */}
-            <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-3">
+            <div className="p-3 rounded-xl bg-[#141620] border border-zinc-700/80 flex items-center justify-between gap-3">
               <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs text-zinc-200 hover:text-white">
                 <input
                   type="checkbox"
@@ -5273,7 +5273,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* Modal: Personalizar & Transmitir Vinheta da Loja */}
       {customizingVinheta && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-[#181b24] border border-zinc-700/80 rounded-3xl shadow-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{customizingVinheta.icon}</span>
@@ -5292,7 +5292,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             </div>
 
             {/* Quick Replacement chips for store name or slogan */}
-            <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+            <div className="space-y-1.5 bg-zinc-950 p-3 rounded-xl border border-zinc-700/70">
               <span className="text-[11px] font-bold text-purple-400 block">
                 Atalhos Rápidos (Clique para inserir no texto da vinheta):
               </span>
@@ -5323,7 +5323,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 type="text"
                 value={customVinhetaTitle}
                 onChange={e => setCustomVinhetaTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-purple-500"
               />
             </div>
 
@@ -5336,7 +5336,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 value={customVinhetaScript}
                 onChange={e => setCustomVinhetaScript(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 resize-none leading-relaxed"
+                className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 resize-none leading-relaxed"
                 placeholder="Digite o texto que a inteligência artificial vai falar..."
               />
             </div>
@@ -5348,7 +5348,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={customVinhetaSoundtrack}
                   onChange={e => setCustomVinhetaSoundtrack(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
                 >
                   <option value="varejo_alegre">Varejo Alegre (Pop)</option>
                   <option value="institucional_gourmet">Institucional Gourmet</option>
@@ -5361,7 +5361,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                 <select
                   value={customVinhetaPriority}
                   onChange={e => setCustomVinhetaPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-[#141620] border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
                 >
                   <option value="alta">★ Alta Prioridade</option>
                   <option value="normal">Normal</option>
@@ -5370,7 +5370,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
             </div>
 
             {/* Checkbox para adicionar à grade ou tocar apenas avulso */}
-            <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <div className="p-3 rounded-xl bg-[#141620] border border-zinc-700/80">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"

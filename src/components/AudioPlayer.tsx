@@ -193,7 +193,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio, compact = false
   });
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 hover:border-orange-500/40 rounded-2xl p-4 transition-all shadow-lg space-y-3">
+    <div className="bg-[#181b24] border border-zinc-700/80 hover:border-orange-500/50 rounded-2xl p-4 transition-all shadow-lg space-y-3">
       <audio ref={audioRef} src={audio.audioUrl} preload="metadata" />
 
       {/* Top Row: Title & Badges */}
@@ -257,7 +257,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio, compact = false
         {/* Waveform progress bar */}
         <div
           onClick={handleSeek}
-          className="flex-1 h-10 bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-2.5 flex items-center gap-1 cursor-pointer relative overflow-hidden min-w-0"
+          className="flex-1 h-10 bg-[#141620] border border-zinc-700/80 rounded-xl px-2.5 flex items-center gap-1 cursor-pointer relative overflow-hidden min-w-0"
         >
           {bars.map((height, idx) => {
             const barPercent = (idx / bars.length) * 100;
@@ -305,7 +305,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audio, compact = false
       </div>
 
       {/* Bottom Row: Clean Action Bar (Rádio Web & Download MP3) */}
-      <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2">
+      <div className="pt-2 border-t border-zinc-700/70 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           {radioCtx && (
             <>

@@ -176,7 +176,7 @@ export function App() {
       <div
         className={`min-h-screen flex flex-col transition-colors ${
           activeView === 'radio'
-            ? 'bg-zinc-950 text-zinc-100 selection:bg-orange-500 selection:text-white'
+            ? 'bg-[#111318] text-zinc-100 selection:bg-orange-500 selection:text-white'
             : 'bg-[#F5F7FB] text-[#142B4A] selection:bg-blue-600 selection:text-white'
         }`}
       >
