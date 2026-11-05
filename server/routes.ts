@@ -26,10 +26,13 @@ function getUserId(req: Request): string {
 // AUTH & USER
 // -------------------------------------------------------------
 apiRouter.get('/auth/me', (req: Request, res: Response) => {
-  const userId = getUserId(req);
-  const user = db.getUser(userId);
+  const headerId = req.headers['x-user-id'] as string;
+  if (!headerId) {
+    return res.json({ user: null });
+  }
+  const user = db.getUser(headerId);
   if (!user) {
-    return res.status(404).json({ error: 'Usuário não encontrado' });
+    return res.json({ user: null });
   }
   res.json({ user });
 });
@@ -44,46 +47,47 @@ apiRouter.post('/auth/demo', (req: Request, res: Response) => {
 });
 
 apiRouter.post('/auth/login', (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, password } = req.body;
   if (!email) {
-    return res.status(400).json({ error: 'Informe o e-mail' });
+    return res.status(400).json({ error: 'Informe o e-mail para acessar' });
   }
-  const existing = db.getUserByEmail(email);
-  if (existing) {
-    return res.json({ user: existing, token: existing.id });
+  const cleanEmail = String(email).trim().toLowerCase();
+  let user = db.getUserByEmail(cleanEmail);
+  if (!user) {
+    // Se o usuário não existir, cria a conta automaticamente com os créditos de boas-vindas
+    const bonus = db.getAdminSettings()?.initialCredits ?? 500;
+    user = db.createUser({
+      id: `user-${Date.now()}`,
+      name: cleanEmail.split('@')[0],
+      email: cleanEmail,
+      companyName: 'Supermercado',
+      role: 'supermarket_owner',
+      plan: 'pro_varejo',
+      creditsBalance: bonus,
+      createdAt: new Date().toISOString(),
+    });
+    db.updateUserCredits(user.id, bonus, 'Bônus de Boas-Vindas');
   }
-
-  // Auto create or log demo
-  const newUser = db.createUser({
-    id: `user-${Date.now()}`,
-    name: email.split('@')[0],
-    email,
-    role: 'supermarket_owner',
-    plan: 'pro_varejo',
-    creditsBalance: db.getAdminSettings()?.initialCredits ?? 500,
-    createdAt: new Date().toISOString(),
-  });
-  const bonus = db.getAdminSettings()?.initialCredits ?? 500;
-  db.updateUserCredits(newUser.id, bonus, 'Bônus de Boas-Vindas');
-  res.json({ user: newUser, token: newUser.id });
+  res.json({ user, token: user.id });
 });
 
 apiRouter.post('/auth/register', (req: Request, res: Response) => {
-  const { name, email, companyName } = req.body;
+  const { name, email, companyName, password } = req.body;
   if (!email || !name) {
     return res.status(400).json({ error: 'Nome e e-mail são obrigatórios' });
   }
-  const existing = db.getUserByEmail(email);
+  const cleanEmail = String(email).trim().toLowerCase();
+  const existing = db.getUserByEmail(cleanEmail);
   if (existing) {
-    return res.status(400).json({ error: 'E-mail já cadastrado. Faça login.' });
+    return res.json({ user: existing, token: existing.id });
   }
 
   const initialBonus = db.getAdminSettings()?.initialCredits ?? 500;
   const user = db.createUser({
     id: `user-${Date.now()}`,
-    name,
-    email,
-    companyName: companyName || 'Supermercado',
+    name: String(name).trim(),
+    email: cleanEmail,
+    companyName: (companyName ? String(companyName).trim() : 'Supermercado'),
     role: 'supermarket_owner',
     plan: 'pro_varejo',
     creditsBalance: initialBonus,

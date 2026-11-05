@@ -7,10 +7,11 @@ import { RadioView } from './views/RadioView';
 import { LibraryView } from './views/LibraryView';
 import { CreditsView } from './views/CreditsView';
 import { AdminView } from './views/AdminView';
+import { AuthModal } from './views/AuthModal';
 import { User, Project } from './types';
-import { api, getActiveUserId, setActiveUserId } from './services/api';
+import { api, getActiveUserId, setActiveUserId, clearActiveUserId } from './services/api';
 import { RadioBroadcastProvider } from './context/RadioContext';
-import { ShieldCheck, ArrowLeft, Volume2 } from 'lucide-react';
+import { ShieldCheck, ArrowLeft } from 'lucide-react';
 
 function checkIsAdminUrl(): boolean {
   const path = window.location.pathname.toLowerCase();
@@ -35,6 +36,10 @@ export function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Authentication Modal state
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
   useEffect(() => {
     const handleLocationChange = () => {
       setIsAdminRoute(checkIsAdminUrl());
@@ -49,15 +54,34 @@ export function App() {
 
   const loadData = useCallback(async () => {
     try {
-      // On the normal user panel, ensure we are not stuck on the old 'user-admin' demo profile
-      if (!checkIsAdminUrl() && getActiveUserId() === 'user-admin') {
-        setActiveUserId('user-alvorada');
+      const activeId = getActiveUserId();
+
+      // If no session exists in localStorage, user is a visitor (show commercial landing page)
+      if (!activeId) {
+        setUser(null);
+        setActiveView('landing');
+        setLoading(false);
+        return;
       }
+
+      // If session exists, fetch logged-in user profile and their projects
       const [meRes, projRes] = await Promise.all([api.getMe(), api.getProjects()]);
-      setUser(meRes.user);
-      setProjects(projRes.projects);
+
+      if (meRes && meRes.user) {
+        setUser(meRes.user);
+        setProjects(projRes.projects || []);
+        // When logged in, navigate straight to panel (never show commercial landing page)
+        setActiveView(prev => (prev === 'landing' ? 'dashboard' : prev));
+      } else {
+        clearActiveUserId();
+        setUser(null);
+        setActiveView('landing');
+      }
     } catch (err) {
-      console.error('Failed to load initial session:', err);
+      console.warn('Sessão expirada ou visitante não autenticado:', err);
+      clearActiveUserId();
+      setUser(null);
+      setActiveView('landing');
     } finally {
       setLoading(false);
     }
@@ -66,6 +90,32 @@ export function App() {
   useEffect(() => {
     loadData();
   }, [loadData, isAdminRoute]);
+
+  const handleAuthSuccess = (loggedUser: User) => {
+    setActiveUserId(loggedUser.id);
+    setUser(loggedUser);
+    setIsAuthModalOpen(false);
+    setActiveView('dashboard');
+    loadData();
+  };
+
+  const handleLogout = () => {
+    clearActiveUserId();
+    setUser(null);
+    setSelectedProject(null);
+    setProjects([]);
+    setActiveView('landing');
+  };
+
+  const handleOpenLogin = () => {
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleOpenRegister = () => {
+    setAuthModalMode('register');
+    setIsAuthModalOpen(true);
+  };
 
   const handleNewCampaign = () => {
     const newDraft: Project = {
@@ -166,7 +216,31 @@ export function App() {
   }
 
   // =========================================================================
-  // SUPERMARKET CLIENT APPLICATION
+  // 1. VISITOR / LOGGED-OUT USER: COMMERCIAL LANDING PAGE
+  //    (The commercial page is completely isolated from the user panel)
+  // =========================================================================
+  if (!user || activeView === 'landing') {
+    return (
+      <>
+        <LandingView
+          onStartCreating={handleOpenRegister}
+          onOpenLogin={handleOpenLogin}
+          onOpenRegister={handleOpenRegister}
+        />
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialMode={authModalMode}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      </>
+    );
+  }
+
+  // =========================================================================
+  // 2. LOGGED-IN SUPERMARKET CLIENT PANEL
+  //    (User is inside their workspace; commercial page is NOT visible)
   // =========================================================================
   return (
     <RadioBroadcastProvider
@@ -195,6 +269,7 @@ export function App() {
             setActiveView(view);
           }}
           onNewCampaign={handleNewCampaign}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 pb-24 md:pb-6">
@@ -207,13 +282,6 @@ export function App() {
             </div>
           ) : (
             <>
-              {activeView === 'landing' && (
-                <LandingView
-                  onStartCreating={handleNewCampaign}
-                  onNavigate={view => setActiveView(view as ActiveView)}
-                />
-              )}
-
               {activeView === 'dashboard' && (
                 <DashboardView
                   user={user}
@@ -258,7 +326,15 @@ export function App() {
           )}
         </main>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </RadioBroadcastProvider>
   );
 }
+
 export default App;

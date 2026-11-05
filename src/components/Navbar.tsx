@@ -27,6 +27,7 @@ interface NavbarProps {
   activeView: ActiveView;
   onNavigate: (view: ActiveView) => void;
   onNewCampaign: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeView,
   onNavigate,
   onNewCampaign,
+  onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
           {/* Left: Brand Identity */}
           <div
-            onClick={() => onNavigate('landing')}
+            onClick={() => onNavigate('dashboard')}
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group shrink-0"
           >
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-orange-500 via-red-500 to-amber-500 flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition shrink-0">
@@ -228,13 +230,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                     <button
                       onClick={() => {
-                        onNavigate('landing');
                         setMenuOpen(false);
+                        if (onLogout) {
+                          onLogout();
+                        }
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center gap-2 cursor-pointer mt-0.5"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer mt-1 font-semibold transition"
                     >
                       <LogOut className="w-3.5 h-3.5 shrink-0" />
-                      Ver Página Inicial
+                      Sair do Painel
                     </button>
                   </div>
                 )}

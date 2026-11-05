@@ -17,19 +17,23 @@ import {
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
 
-export function getActiveUserId(): string {
-  return localStorage.getItem(STORAGE_USER_KEY) || 'user-alvorada';
+export function getActiveUserId(): string | null {
+  return localStorage.getItem(STORAGE_USER_KEY);
 }
 
 export function setActiveUserId(id: string) {
   localStorage.setItem(STORAGE_USER_KEY, id);
 }
 
+export function clearActiveUserId() {
+  localStorage.removeItem(STORAGE_USER_KEY);
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const userId = getActiveUserId();
+  const userId = getActiveUserId() || '';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-user-id': userId,
+    ...(userId ? { 'x-user-id': userId } : {}),
     ...(options.headers as Record<string, string>),
   };
 
@@ -65,15 +69,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ demoId }),
     }),
-  login: (email: string) =>
+  login: (email: string, password?: string) =>
     request<{ user: User; token: string }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, password }),
     }),
-  register: (name: string, email: string, companyName: string) =>
+  register: (name: string, email: string, companyName: string, password?: string) =>
     request<{ user: User; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, companyName }),
+      body: JSON.stringify({ name, email, companyName, password }),
     }),
 
   // Projects
