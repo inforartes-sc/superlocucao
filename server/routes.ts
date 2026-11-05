@@ -533,7 +533,7 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
         audioUrl: ttsResult.audioUrl,
         downloadUrl: ttsResult.downloadUrl,
         status: 'ready',
-        creditsUsed: costPerAudio,
+        creditsUsed: Math.max(1, Math.round(totalCost / products.length)),
         createdAt: new Date().toISOString(),
         fileSizeBytes: ttsResult.fileSizeBytes,
       };

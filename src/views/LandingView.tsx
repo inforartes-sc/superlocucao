@@ -56,6 +56,72 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [showScrollTop, setShowScrollTop] = useState(false);
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
+    {
+      id: 'degustacao',
+      name: 'Degustação',
+      tag: 'Teste Inicial',
+      subtitle: 'Perfeito para você experimentar a qualidade na prática na sua loja.',
+      price: 0,
+      billingPeriod: 'grátis',
+      creditsAmount: 50,
+      features: [
+        '50 créditos de boas-vindas',
+        'Acesso a todas as 5 vozes de varejo',
+        'Downloads imediatos em MP3',
+        'Acesso à Rádio Web no navegador',
+      ],
+      ctaText: 'Começar Grátis',
+      badge: '',
+      highlighted: false,
+    },
+    {
+      id: 'pro_varejo',
+      name: 'Pro Varejo',
+      tag: 'Supermercados',
+      subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
+      price: 89,
+      billingPeriod: '/mês',
+      creditsAmount: 1500,
+      features: [
+        '1.500 créditos mensais renovados',
+        'Geração em lote com download em arquivo ZIP',
+        'Rádio Web contínua com Auto-Ducking',
+        '15 vinhetas personalizadas com o nome da loja',
+        'Suporte prioritário via WhatsApp',
+      ],
+      ctaText: 'Assinar Pro Varejo',
+      badge: 'Mais Escolhido',
+      highlighted: true,
+    },
+    {
+      id: 'redes_atacarejo',
+      name: 'Redes & Atacarejo',
+      tag: 'Redes & Filiais',
+      subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
+      price: 199,
+      billingPeriod: '/mês',
+      creditsAmount: 5000,
+      features: [
+        '5.000 créditos mensais',
+        'Múltiplas lojas e filiais gerenciadas',
+        'Clonagem de voz personalizada da marca',
+        'Gerente de conta e suporte dedicado',
+      ],
+      ctaText: 'Falar com Consultor',
+      badge: '',
+      highlighted: false,
+    },
+  ]);
+
+  useEffect(() => {
+    api.getPublicSettings().then((res) => {
+      if (res && res.commercialPlans && res.commercialPlans.length > 0) {
+        setCommercialPlans(res.commercialPlans);
+      }
+    }).catch(console.warn);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);

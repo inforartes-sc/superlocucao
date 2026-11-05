@@ -1697,8 +1697,8 @@ class Database {
       radioStats: {
         queueCount: radioConfig.queue.length,
         stationName: radioConfig.stationName,
-        isBroadcasting: radioConfig.isBroadcasting,
-        defaultIntervalSec: radioConfig.defaultIntervalSec,
+        isBroadcasting: radioConfig.isOnAir,
+        defaultIntervalSec: radioConfig.spotsIntervalSeconds,
         musicTracksCount: radioConfig.musicTracks?.length || 0,
       },
       postgresConnected: Boolean(this.pool),
