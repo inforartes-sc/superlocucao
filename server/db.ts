@@ -5,7 +5,8 @@ const { Pool } = pg;
 import {
   Project, UserProfile, CreditTransaction, VoicePreset, AudioGenerationItem,
   RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist,
-  RechargePackage, CommercialPlan
+  RechargePackage, CommercialPlan,
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction
 } from '../src/types/index.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
@@ -416,6 +417,146 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
   },
 ];
 
+export const DEFAULT_PAYMENT_GATEWAY: PaymentGatewayConfig = {
+  provider: 'mercadopago',
+  mode: 'sandbox',
+  isActive: true,
+  mercadoPagoPublicKey: 'TEST-98234710-1293-8472-b8c1-847291048291',
+  mercadoPagoAccessToken: 'TEST-8291048291029384-041812-7291048291829182-1928374',
+  asaasApiKey: '',
+  stripePublicKey: '',
+  stripeSecretKey: '',
+  pixKey: 'contato@superlocucao.inforartes.com.br',
+  pixKeyType: 'email',
+  webhookSecret: 'whsec_superlocucao_prod_2026',
+};
+
+export const DEFAULT_SUBSCRIPTIONS: SubscriptionItem[] = [
+  {
+    id: 'sub-alvorada-01',
+    userId: 'user-alvorada',
+    userName: 'Carlos Mendes',
+    companyName: 'Supermercado Alvorada',
+    email: 'carlos@superalvorada.com.br',
+    planId: 'pro_varejo',
+    planName: 'Pro Varejo',
+    amount: 89,
+    billingPeriod: 'mensal',
+    status: 'active',
+    paymentMethod: 'pix',
+    gateway: 'Mercado Pago',
+    currentPeriodStart: '2026-11-01T00:00:00Z',
+    currentPeriodEnd: '2026-12-01T00:00:00Z',
+    creditsPerCycle: 1500,
+    autoRenew: true,
+    createdAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: 'sub-bompreco-02',
+    userId: 'user-bompreco',
+    userName: 'Mariana Silva',
+    companyName: 'Supermercado Bom Preço',
+    email: 'mariana@bompreco.com.br',
+    planId: 'pro_varejo',
+    planName: 'Pro Varejo',
+    amount: 89,
+    billingPeriod: 'mensal',
+    status: 'active',
+    paymentMethod: 'credit_card',
+    gateway: 'Mercado Pago',
+    currentPeriodStart: '2026-10-25T00:00:00Z',
+    currentPeriodEnd: '2026-11-25T00:00:00Z',
+    creditsPerCycle: 1500,
+    autoRenew: true,
+    createdAt: '2026-09-25T14:30:00Z',
+  },
+  {
+    id: 'sub-atacadao-03',
+    userId: 'user-atacadao',
+    userName: 'Roberto Castro',
+    companyName: 'Rede Atacadão do Vale (3 Filiais)',
+    email: 'financeiro@atacadaodovale.com.br',
+    planId: 'redes_atacarejo',
+    planName: 'Redes & Atacarejo',
+    amount: 199,
+    billingPeriod: 'mensal',
+    status: 'active',
+    paymentMethod: 'pix',
+    gateway: 'Asaas Recorrência',
+    currentPeriodStart: '2026-11-03T00:00:00Z',
+    currentPeriodEnd: '2026-12-03T00:00:00Z',
+    creditsPerCycle: 5000,
+    autoRenew: true,
+    createdAt: '2026-11-03T09:15:00Z',
+  },
+];
+
+export const DEFAULT_PAYMENT_TRANSACTIONS: PaymentTransaction[] = [
+  {
+    id: 'pay-tx-1001',
+    userId: 'user-alvorada',
+    userName: 'Carlos Mendes',
+    companyName: 'Supermercado Alvorada',
+    type: 'subscription',
+    description: 'Renovação Mensal - Plano Pro Varejo',
+    amount: 89,
+    creditsAdded: 1500,
+    status: 'approved',
+    paymentMethod: 'pix',
+    gateway: 'Mercado Pago',
+    externalId: 'MP-98472918',
+    paidAt: '2026-11-01T10:02:15Z',
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'pay-tx-1002',
+    userId: 'user-bompreco',
+    userName: 'Mariana Silva',
+    companyName: 'Supermercado Bom Preço',
+    type: 'recharge',
+    description: 'Recarga Imediata: Pacote Pro Varejo (1.000 Créditos)',
+    amount: 69,
+    creditsAdded: 1000,
+    status: 'approved',
+    paymentMethod: 'credit_card',
+    gateway: 'Mercado Pago',
+    externalId: 'MP-98473022',
+    paidAt: '2026-11-02T16:45:00Z',
+    createdAt: '2026-11-02T16:44:30Z',
+  },
+  {
+    id: 'pay-tx-1003',
+    userId: 'user-atacadao',
+    userName: 'Roberto Castro',
+    companyName: 'Rede Atacadão do Vale',
+    type: 'subscription',
+    description: 'Assinatura Inicial - Redes & Atacarejo',
+    amount: 199,
+    creditsAdded: 5000,
+    status: 'approved',
+    paymentMethod: 'pix',
+    gateway: 'Asaas',
+    externalId: 'ASAAS-781920',
+    paidAt: '2026-11-03T09:18:22Z',
+    createdAt: '2026-11-03T09:15:00Z',
+  },
+  {
+    id: 'pay-tx-1004',
+    userId: 'user-alvorada',
+    userName: 'Carlos Mendes',
+    companyName: 'Supermercado Alvorada',
+    type: 'recharge',
+    description: 'Recarga Imediata: Pacote Básico (300 Créditos)',
+    amount: 29,
+    creditsAdded: 300,
+    status: 'pending',
+    paymentMethod: 'pix',
+    gateway: 'Mercado Pago (PIX QR Code)',
+    externalId: 'MP-98510294',
+    createdAt: '2026-11-04T18:30:00Z',
+  },
+];
+
 interface DbData {
   users: UserProfile[];
   projects: Project[];
@@ -430,6 +571,9 @@ interface DbData {
     systemAnnouncement?: string;
     rechargePackages?: RechargePackage[];
     commercialPlans?: CommercialPlan[];
+    paymentGateway?: PaymentGatewayConfig;
+    subscriptions?: SubscriptionItem[];
+    payments?: PaymentTransaction[];
   };
 }
 
@@ -728,6 +872,9 @@ class Database {
         systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!',
         rechargePackages: DEFAULT_RECHARGE_PACKAGES,
         commercialPlans: DEFAULT_COMMERCIAL_PLANS,
+        paymentGateway: DEFAULT_PAYMENT_GATEWAY,
+        subscriptions: DEFAULT_SUBSCRIPTIONS,
+        payments: DEFAULT_PAYMENT_TRANSACTIONS,
       };
       this.save();
     } else {
@@ -738,6 +885,18 @@ class Database {
       }
       if (!this.data.adminSettings.commercialPlans || this.data.adminSettings.commercialPlans.length === 0) {
         this.data.adminSettings.commercialPlans = DEFAULT_COMMERCIAL_PLANS;
+        changed = true;
+      }
+      if (!this.data.adminSettings.paymentGateway) {
+        this.data.adminSettings.paymentGateway = DEFAULT_PAYMENT_GATEWAY;
+        changed = true;
+      }
+      if (!this.data.adminSettings.subscriptions || this.data.adminSettings.subscriptions.length === 0) {
+        this.data.adminSettings.subscriptions = DEFAULT_SUBSCRIPTIONS;
+        changed = true;
+      }
+      if (!this.data.adminSettings.payments || this.data.adminSettings.payments.length === 0) {
+        this.data.adminSettings.payments = DEFAULT_PAYMENT_TRANSACTIONS;
         changed = true;
       }
       if (changed) this.save();
@@ -1561,6 +1720,70 @@ class Database {
     this.save();
     this.pgSaveAdminSettings(this.data.adminSettings);
     return this.data.adminSettings;
+  }
+
+  // Subscriptions & Payments
+  getSubscriptions(): SubscriptionItem[] {
+    return this.data.adminSettings.subscriptions || DEFAULT_SUBSCRIPTIONS;
+  }
+
+  updateSubscriptionStatus(id: string, status: 'active' | 'past_due' | 'canceled' | 'trial'): SubscriptionItem | null {
+    const list = this.data.adminSettings.subscriptions || DEFAULT_SUBSCRIPTIONS;
+    const item = list.find(s => s.id === id);
+    if (!item) return null;
+    item.status = status;
+    this.data.adminSettings.subscriptions = list;
+    this.save();
+    return item;
+  }
+
+  getPaymentTransactions(): PaymentTransaction[] {
+    return this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+  }
+
+  confirmPaymentTransaction(id: string): PaymentTransaction | null {
+    const list = this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+    const tx = list.find(t => t.id === id);
+    if (!tx) return null;
+
+    if (tx.status !== 'approved') {
+      tx.status = 'approved';
+      tx.paidAt = new Date().toISOString();
+      if (tx.creditsAdded && tx.creditsAdded > 0) {
+        this.updateUserCredits(
+          tx.userId,
+          tx.creditsAdded,
+          `Pagamento Confirmado: ${tx.description} (R$ ${tx.amount})`
+        );
+      }
+      this.data.adminSettings.payments = list;
+      this.save();
+    }
+    return tx;
+  }
+
+  refundPaymentTransaction(id: string): PaymentTransaction | null {
+    const list = this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+    const tx = list.find(t => t.id === id);
+    if (!tx) return null;
+
+    tx.status = 'refunded';
+    this.data.adminSettings.payments = list;
+    this.save();
+    return tx;
+  }
+
+  getGatewayConfig(): PaymentGatewayConfig {
+    return this.data.adminSettings.paymentGateway || DEFAULT_PAYMENT_GATEWAY;
+  }
+
+  updateGatewayConfig(config: Partial<PaymentGatewayConfig>): PaymentGatewayConfig {
+    this.data.adminSettings.paymentGateway = {
+      ...(this.data.adminSettings.paymentGateway || DEFAULT_PAYMENT_GATEWAY),
+      ...config,
+    };
+    this.save();
+    return this.data.adminSettings.paymentGateway;
   }
 }
 

@@ -6,10 +6,14 @@ import {
   MapPin, Calendar, Clock, Lock, Unlock, ArrowUpRight, ArrowDownRight,
   TrendingUp, Award, UserCheck, UserX, BarChart3, ChevronRight, X,
   Play, Pause, LogIn, ExternalLink, Activity, Database, Cpu, HelpCircle,
-  AlertTriangle, FileText, Download, Sliders, Layers, CreditCard
+  AlertTriangle, FileText, Download, Sliders, Layers, CreditCard,
+  Wallet, QrCode, DollarSign, CheckSquare, Copy, Link, Send
 } from 'lucide-react';
 import { api } from '../services/api.ts';
-import { AdminMetrics, User, RechargePackage, CommercialPlan } from '../types/index.ts';
+import {
+  AdminMetrics, User, RechargePackage, CommercialPlan,
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction
+} from '../types/index.ts';
 
 interface ClientItem {
   id: string;
@@ -44,7 +48,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [pinError, setPinError] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'plans' | 'audios' | 'integrations' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'plans' | 'audios' | 'subscriptions' | 'gateway' | 'integrations' | 'settings'>('overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +185,33 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [savingPlans, setSavingPlans] = useState(false);
   const [plansSavedSuccess, setPlansSavedSuccess] = useState(false);
 
+  // Subscriptions & Payments State
+  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
+  const [subscriptionsStats, setSubscriptionsStats] = useState<any>({ total: 0, active: 0, mrr: 0, pastDue: 0 });
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [paymentsStats, setPaymentsStats] = useState<any>({ totalTransactions: 0, approvedCount: 0, pendingCount: 0, totalRevenue: 0 });
+  const [financeSubTab, setFinanceSubTab] = useState<'subscriptions' | 'payments'>('subscriptions');
+  const [searchTermPayments, setSearchTermPayments] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'approved' | 'pending' | 'refunded'>('all');
+
+  // Payment Gateway Config State
+  const [gatewayConfig, setGatewayConfig] = useState<PaymentGatewayConfig>({
+    provider: 'mercadopago',
+    mode: 'sandbox',
+    isActive: true,
+    mercadoPagoPublicKey: '',
+    mercadoPagoAccessToken: '',
+    asaasApiKey: '',
+    stripePublicKey: '',
+    stripeSecretKey: '',
+    pixKey: 'contato@superlocucao.inforartes.com.br',
+    pixKeyType: 'email',
+    webhookSecret: 'whsec_superlocucao_prod_2026',
+  });
+  const [savingGateway, setSavingGateway] = useState(false);
+  const [gatewayNotice, setGatewayNotice] = useState<string | null>(null);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+
   // ElevenLabs
   const [showApiKey, setShowApiKey] = useState(false);
   const [isEditingKey, setIsEditingKey] = useState(false);
@@ -222,6 +253,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       if (usersRes && usersRes.users) {
         setClients(usersRes.users);
       }
+
+      // Load Subscriptions, Payments and Gateway
+      api.getAdminSubscriptions().then(res => {
+        if (res && res.subscriptions) {
+          setSubscriptions(res.subscriptions);
+          setSubscriptionsStats(res.stats || {});
+        }
+      }).catch(console.warn);
+
+      api.getAdminPayments().then(res => {
+        if (res && res.payments) {
+          setPayments(res.payments);
+          setPaymentsStats(res.stats || {});
+        }
+      }).catch(console.warn);
+
+      api.getAdminGateway().then(res => {
+        if (res && res.gateway) {
+          setGatewayConfig(res.gateway);
+        }
+      }).catch(console.warn);
     } catch (e) {
       console.warn('Falha ao carregar dados do admin:', e);
     } finally {
@@ -489,6 +541,64 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     } finally {
       setSavingPlans(false);
     }
+  };
+
+  // Handlers for Subscriptions, Payments & Gateway
+  const handleToggleSubStatus = async (sub: SubscriptionItem) => {
+    const nextStatus = sub.status === 'active' ? 'canceled' : 'active';
+    try {
+      await api.updateSubscriptionStatus(sub.id, nextStatus);
+      await loadData();
+    } catch (e: any) {
+      alert(`Erro ao atualizar assinatura: ${e.message}`);
+    }
+  };
+
+  const handleConfirmPayment = async (paymentId: string) => {
+    if (confirm('Deseja confirmar este pagamento e liberar os créditos na conta do lojista agora?')) {
+      try {
+        const res = await api.confirmAdminPayment(paymentId);
+        alert(res.message);
+        await loadData();
+      } catch (e: any) {
+        alert(`Erro ao confirmar pagamento: ${e.message}`);
+      }
+    }
+  };
+
+  const handleRefundPayment = async (paymentId: string) => {
+    if (confirm('Deseja marcar este pagamento como estornado?')) {
+      try {
+        const res = await api.refundAdminPayment(paymentId);
+        alert(res.message);
+        await loadData();
+      } catch (e: any) {
+        alert(`Erro ao estornar pagamento: ${e.message}`);
+      }
+    }
+  };
+
+  const handleSaveGateway = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingGateway(true);
+    setGatewayNotice(null);
+    try {
+      const res = await api.saveAdminGateway(gatewayConfig);
+      setGatewayNotice(res.message || 'Configurações do Gateway salvas com sucesso!');
+      await loadData();
+      setTimeout(() => setGatewayNotice(null), 4000);
+    } catch (err: any) {
+      alert(`Erro ao salvar gateway: ${err.message}`);
+    } finally {
+      setSavingGateway(false);
+    }
+  };
+
+  const handleCopyWebhookUrl = () => {
+    const url = `${window.location.origin}/api/webhooks/payment`;
+    navigator.clipboard.writeText(url);
+    setCopiedWebhook(true);
+    setTimeout(() => setCopiedWebhook(false), 2500);
   };
 
   const handleSaveSettings = async () => {
@@ -801,77 +911,101 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         </div>
       </div>
 
-      {/* NAVIGATION TABS */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 overflow-x-auto">
+      {/* NAVIGATION TABS - 2 ROWS, NO SCROLLBAR */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pb-4 border-b border-zinc-800">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'overview'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <BarChart3 className="w-4 h-4" />
+          <BarChart3 className="w-4 h-4 shrink-0" />
           <span>Visão Geral Executiva</span>
         </button>
 
         <button
           onClick={() => setActiveTab('clients')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'clients'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <Building2 className="w-4 h-4" />
-          <span>Gestão de Supermercados ({clients.length})</span>
+          <Building2 className="w-4 h-4 shrink-0" />
+          <span>Supermercados ({clients.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('plans')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'plans'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <CreditCard className="w-4 h-4" />
+          <CreditCard className="w-4 h-4 shrink-0" />
           <span>Planos & Recargas</span>
         </button>
 
         <button
           onClick={() => setActiveTab('audios')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'audios'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <Volume2 className="w-4 h-4" />
-          <span>Auditoria de Áudios & Rádio</span>
+          <Volume2 className="w-4 h-4 shrink-0" />
+          <span>Auditoria & Rádio</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('subscriptions')}
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
+            activeTab === 'subscriptions'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
+          }`}
+        >
+          <Wallet className="w-4 h-4 shrink-0" />
+          <span>Assinaturas & Pagamentos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('gateway')}
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
+            activeTab === 'gateway'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
+          }`}
+        >
+          <QrCode className="w-4 h-4 shrink-0" />
+          <span>Gateway de Pagamento</span>
         </button>
 
         <button
           onClick={() => setActiveTab('integrations')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'integrations'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <Server className="w-4 h-4" />
-          <span>Motores de IA (Eleven & Gemini)</span>
+          <Server className="w-4 h-4 shrink-0" />
+          <span>Motores de IA</span>
         </button>
 
         <button
           onClick={() => setActiveTab('settings')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
             activeTab === 'settings'
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
-              : 'text-zinc-400 hover:text-white hover:bg-[#1a1e2b]'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
           }`}
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-4 h-4 shrink-0" />
           <span>Configurações & Regras</span>
         </button>
       </div>
@@ -1997,6 +2131,558 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
             </div>
           </div>
         </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: ASSINATURAS E PAGAMENTOS */}
+      {/* ===================================================================== */}
+      {activeTab === 'subscriptions' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Financeiro & Faturamento</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                Gestão de Assinaturas & Pagamentos
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                Acompanhe o faturamento, controle assinaturas recorrentes e aprove pagamentos PIX/Cartão manualmente se necessário.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFinanceSubTab('subscriptions')}
+                className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer ${
+                  financeSubTab === 'subscriptions'
+                    ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
+                    : 'bg-[#10121a] text-zinc-400 hover:text-white border border-zinc-700/80'
+                }`}
+              >
+                Assinaturas Ativas ({subscriptions.length})
+              </button>
+              <button
+                onClick={() => setFinanceSubTab('payments')}
+                className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer ${
+                  financeSubTab === 'payments'
+                    ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
+                    : 'bg-[#10121a] text-zinc-400 hover:text-white border border-zinc-700/80'
+                }`}
+              >
+                Transações & PIX ({payments.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Metrics Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="p-5 bg-[#161924] border border-zinc-700/80 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-zinc-400 text-xs font-bold">
+                <span>MRR (Receita Recorrente)</span>
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-white">
+                R$ {Number(subscriptionsStats.mrr || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                <span>●</span> {subscriptionsStats.active || 0} assinaturas ativas gerando receita
+              </div>
+            </div>
+
+            <div className="p-5 bg-[#161924] border border-zinc-700/80 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-zinc-400 text-xs font-bold">
+                <span>Total Faturado (Geral)</span>
+                <DollarSign className="w-4 h-4 text-orange-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-white">
+                R$ {Number(paymentsStats.totalRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="text-[11px] text-zinc-400">
+                {paymentsStats.approvedCount || 0} transações aprovadas
+              </div>
+            </div>
+
+            <div className="p-5 bg-[#161924] border border-zinc-700/80 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-zinc-400 text-xs font-bold">
+                <span>Pagamentos Pendentes</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-amber-400">
+                {paymentsStats.pendingCount || 0}
+              </div>
+              <div className="text-[11px] text-zinc-400">
+                Aguardando confirmação PIX ou compensação
+              </div>
+            </div>
+
+            <div className="p-5 bg-[#161924] border border-zinc-700/80 rounded-3xl space-y-2">
+              <div className="flex items-center justify-between text-zinc-400 text-xs font-bold">
+                <span>Gateway Ativo</span>
+                <QrCode className="w-4 h-4 text-blue-400" />
+              </div>
+              <div className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
+                {gatewayConfig.provider === 'mercadopago' ? 'Mercado Pago' : gatewayConfig.provider === 'asaas' ? 'Asaas' : gatewayConfig.provider === 'stripe' ? 'Stripe' : 'PIX Direto'}
+              </div>
+              <div className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${gatewayConfig.mode === 'production' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <span>Modo: {gatewayConfig.mode === 'production' ? 'Produção (Ao Vivo)' : 'Sandbox (Testes)'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub Tab: Subscriptions */}
+          {financeSubTab === 'subscriptions' && (
+            <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-black text-white">Contratos e Assinaturas de Lojistas</h3>
+                  <p className="text-xs text-zinc-400">Planos comerciais recorrentes ativos no sistema.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-[11px] font-black uppercase text-zinc-400 tracking-wider">
+                      <th className="py-3 px-4">Supermercado / Cliente</th>
+                      <th className="py-3 px-4">Plano Contratado</th>
+                      <th className="py-3 px-4">Valor Mensal</th>
+                      <th className="py-3 px-4">Próxima Cobrança</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60 text-xs">
+                    {subscriptions.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-zinc-400">
+                          Nenhuma assinatura registrada ainda.
+                        </td>
+                      </tr>
+                    ) : (
+                      subscriptions.map((sub) => (
+                        <tr key={sub.id} className="hover:bg-[#10121a]/60 transition">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-white">{sub.clientName}</div>
+                            <div className="text-zinc-400 text-[11px]">{sub.clientEmail}</div>
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-zinc-200">
+                            {sub.planName}
+                          </td>
+                          <td className="py-3.5 px-4 font-black text-emerald-400">
+                            R$ {Number(sub.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
+                          </td>
+                          <td className="py-3.5 px-4 text-zinc-300">
+                            {sub.nextBillingDate ? new Date(sub.nextBillingDate).toLocaleDateString('pt-BR') : '-'}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              sub.status === 'active'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                : sub.status === 'past_due'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                            }`}>
+                              {sub.status === 'active' ? 'Ativa' : sub.status === 'past_due' ? 'Vencida' : 'Cancelada'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => handleToggleSubStatus(sub)}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+                                sub.status === 'active'
+                                  ? 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 border border-emerald-500/30'
+                              }`}
+                            >
+                              {sub.status === 'active' ? 'Cancelar' : 'Reativar'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Sub Tab: Payments */}
+          {financeSubTab === 'payments' && (
+            <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-white">Transações de Pagamento & PIX</h3>
+                  <p className="text-xs text-zinc-400">Histórico de compras de recargas de créditos e pagamentos de planos.</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={paymentStatusFilter}
+                    onChange={(e: any) => setPaymentStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="all">Todos os Status</option>
+                    <option value="approved">Aprovados</option>
+                    <option value="pending">Pendentes</option>
+                    <option value="refunded">Estornados</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-[11px] font-black uppercase text-zinc-400 tracking-wider">
+                      <th className="py-3 px-4">Código</th>
+                      <th className="py-3 px-4">Cliente</th>
+                      <th className="py-3 px-4">Item Comprado</th>
+                      <th className="py-3 px-4">Método</th>
+                      <th className="py-3 px-4">Valor</th>
+                      <th className="py-3 px-4">Data</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Ação Super Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60 text-xs">
+                    {payments
+                      .filter(p => paymentStatusFilter === 'all' || p.status === paymentStatusFilter)
+                      .map((pay) => (
+                        <tr key={pay.id} className="hover:bg-[#10121a]/60 transition">
+                          <td className="py-3.5 px-4 font-mono text-zinc-400 text-[11px]">
+                            {pay.id.substring(0, 8)}...
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-white">{pay.clientName}</div>
+                            <div className="text-zinc-400 text-[11px]">{pay.clientEmail}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-bold text-zinc-200">{pay.itemName}</span>
+                            {pay.creditsAmount ? (
+                              <div className="text-amber-400 text-[11px]">+{pay.creditsAmount} créditos</div>
+                            ) : null}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-zinc-300 uppercase text-[11px]">
+                            {pay.method === 'pix' ? '⚡ PIX' : pay.method === 'credit_card' ? '💳 Cartão' : '📄 Boleto'}
+                          </td>
+                          <td className="py-3.5 px-4 font-black text-white">
+                            R$ {Number(pay.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3.5 px-4 text-zinc-400 text-[11px]">
+                            {pay.createdAt ? new Date(pay.createdAt).toLocaleDateString('pt-BR') : '-'}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              pay.status === 'approved'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                : pay.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                            }`}>
+                              {pay.status === 'approved' ? 'Aprovado' : pay.status === 'pending' ? 'Pendente' : 'Estornado'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            {pay.status === 'pending' && (
+                              <button
+                                onClick={() => handleConfirmPayment(pay.id)}
+                                title="Confirmar pagamento e creditar lojista"
+                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl font-black text-xs transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                                <span>Confirmar PIX</span>
+                              </button>
+                            )}
+                            {pay.status === 'approved' && (
+                              <button
+                                onClick={() => handleRefundPayment(pay.id)}
+                                title="Estornar transação"
+                                className="px-2.5 py-1 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-xs transition cursor-pointer"
+                              >
+                                Estornar
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: GATEWAY DE PAGAMENTO */}
+      {/* ===================================================================== */}
+      {activeTab === 'gateway' && (
+        <form onSubmit={handleSaveGateway} className="space-y-6 animate-in fade-in">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400">Checkout & Gateways</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                Integração do Gateway de Pagamento
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                Conecte seu Mercado Pago, Asaas, Stripe ou Chave PIX direta para processar vendas de planos e recargas.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingGateway}
+              className="px-6 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-orange-500/25 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              <span>{savingGateway ? 'Salvando Gateway...' : 'Salvar Configurações'}</span>
+            </button>
+          </div>
+
+          {gatewayNotice && (
+            <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{gatewayNotice}</span>
+            </div>
+          )}
+
+          {/* Gateway Selector Cards */}
+          <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
+            <h3 className="text-base font-black text-white">Escolha o Gateway Principal</h3>
+            <p className="text-xs text-zinc-400">Selecione qual provedor processará os pagamentos de recargas e planos.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              {[
+                { id: 'mercadopago', title: 'Mercado Pago', desc: 'PIX Instantâneo, Cartão de Crédito e Boleto (Ideal para Brasil)', badge: 'Recomendado' },
+                { id: 'asaas', title: 'Asaas', desc: 'Especialista em assinaturas recorrentes, PIX e emissão de NFe', badge: 'Recorrência' },
+                { id: 'stripe', title: 'Stripe', desc: 'Cartões internacionais, assinaturas globais e máxima estabilidade', badge: 'Global' },
+                { id: 'pix_manual', title: 'PIX Direto / Manual', desc: 'Receba na sua chave bancária com liberação manual de comprovante', badge: 'Zero Taxa' }
+              ].map((prov) => {
+                const isSelected = gatewayConfig.provider === prov.id;
+                return (
+                  <button
+                    key={prov.id}
+                    type="button"
+                    onClick={() => setGatewayConfig({ ...gatewayConfig, provider: prov.id as any })}
+                    className={`p-4 rounded-2xl text-left transition border cursor-pointer relative flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-orange-500/10 border-orange-500 text-white shadow-lg shadow-orange-500/10'
+                        : 'bg-[#10121a] border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          isSelected ? 'bg-orange-500 text-zinc-950' : 'bg-zinc-800 text-zinc-400'
+                        }`}>
+                          {prov.badge}
+                        </span>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-orange-400" />}
+                      </div>
+                      <div className="font-black text-sm text-white">{prov.title}</div>
+                      <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{prov.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Environment Mode: Sandbox vs Production */}
+          <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
+            <h3 className="text-base font-black text-white">Ambiente de Execução</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                onClick={() => setGatewayConfig({ ...gatewayConfig, mode: 'sandbox' })}
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                  gatewayConfig.mode === 'sandbox'
+                    ? 'bg-amber-500/10 border-amber-500 text-white'
+                    : 'bg-[#10121a] border-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-sm text-white">Modo Sandbox (Testes)</div>
+                  <div className="text-xs text-zinc-400 mt-0.5">Use credenciais de teste para simular pagamentos sem cobrança real.</div>
+                </div>
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                  gatewayConfig.mode === 'sandbox' ? 'border-amber-400 bg-amber-400' : 'border-zinc-700'
+                }`}>
+                  {gatewayConfig.mode === 'sandbox' && <span className="w-1.5 h-1.5 rounded-full bg-zinc-950" />}
+                </div>
+              </div>
+
+              <div
+                onClick={() => setGatewayConfig({ ...gatewayConfig, mode: 'production' })}
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                  gatewayConfig.mode === 'production'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-white'
+                    : 'bg-[#10121a] border-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-sm text-white">Modo Produção (Ao Vivo)</div>
+                  <div className="text-xs text-zinc-400 mt-0.5">Processamento real de transações financeiras e depósitos bancários.</div>
+                </div>
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                  gatewayConfig.mode === 'production' ? 'border-emerald-400 bg-emerald-400' : 'border-zinc-700'
+                }`}>
+                  {gatewayConfig.mode === 'production' && <span className="w-1.5 h-1.5 rounded-full bg-zinc-950" />}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Credential Inputs based on selected provider */}
+          <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-5">
+            <h3 className="text-base font-black text-white">Credenciais da API</h3>
+
+            {gatewayConfig.provider === 'mercadopago' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-300">Mercado Pago Public Key ({gatewayConfig.mode})</label>
+                  <input
+                    type="text"
+                    value={gatewayConfig.mercadoPagoPublicKey || ''}
+                    onChange={(e) => setGatewayConfig({ ...gatewayConfig, mercadoPagoPublicKey: e.target.value })}
+                    placeholder={gatewayConfig.mode === 'sandbox' ? 'TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' : 'APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}
+                    className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-300">Mercado Pago Access Token ({gatewayConfig.mode})</label>
+                  <input
+                    type="password"
+                    value={gatewayConfig.mercadoPagoAccessToken || ''}
+                    onChange={(e) => setGatewayConfig({ ...gatewayConfig, mercadoPagoAccessToken: e.target.value })}
+                    placeholder={gatewayConfig.mode === 'sandbox' ? 'TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' : 'APP_USR-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}
+                    className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {gatewayConfig.provider === 'asaas' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-300">Asaas API Key ({gatewayConfig.mode})</label>
+                  <input
+                    type="password"
+                    value={gatewayConfig.asaasApiKey || ''}
+                    onChange={(e) => setGatewayConfig({ ...gatewayConfig, asaasApiKey: e.target.value })}
+                    placeholder="$aact_YTU5YTE0M2M6N2Zl..."
+                    className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {gatewayConfig.provider === 'stripe' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-300">Stripe Publishable Key ({gatewayConfig.mode})</label>
+                  <input
+                    type="text"
+                    value={gatewayConfig.stripePublicKey || ''}
+                    onChange={(e) => setGatewayConfig({ ...gatewayConfig, stripePublicKey: e.target.value })}
+                    placeholder={gatewayConfig.mode === 'sandbox' ? 'pk_test_...' : 'pk_live_...'}
+                    className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-300">Stripe Secret Key ({gatewayConfig.mode})</label>
+                  <input
+                    type="password"
+                    value={gatewayConfig.stripeSecretKey || ''}
+                    onChange={(e) => setGatewayConfig({ ...gatewayConfig, stripeSecretKey: e.target.value })}
+                    placeholder={gatewayConfig.mode === 'sandbox' ? 'sk_test_...' : 'sk_live_...'}
+                    className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* PIX Direto / Backup Chave PIX */}
+            <div className="pt-4 border-t border-zinc-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-xs font-bold text-zinc-300">Chave PIX da Empresa (Para recebimentos diretos)</label>
+                <input
+                  type="text"
+                  value={gatewayConfig.pixKey || ''}
+                  onChange={(e) => setGatewayConfig({ ...gatewayConfig, pixKey: e.target.value })}
+                  placeholder="sua-chave-pix@email.com"
+                  className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-300">Tipo da Chave</label>
+                <select
+                  value={gatewayConfig.pixKeyType || 'email'}
+                  onChange={(e: any) => setGatewayConfig({ ...gatewayConfig, pixKeyType: e.target.value })}
+                  className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-orange-500"
+                >
+                  <option value="email">E-mail</option>
+                  <option value="cnpj">CNPJ / CPF</option>
+                  <option value="phone">Telefone Celular</option>
+                  <option value="random">Chave Aleatória (EVP)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Webhook Configuration Card */}
+          <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
+            <div className="flex items-center gap-2">
+              <Link className="w-5 h-5 text-orange-400" />
+              <h3 className="text-base font-black text-white">Notificação Automática via Webhook</h3>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Copie este endpoint e cole no painel do seu gateway (Mercado Pago / Asaas / Stripe). Quando o cliente pagar via PIX ou Cartão, o sistema receberá o aviso instantaneamente e liberará os créditos na conta do supermercado.
+            </p>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-300">URL do Webhook do SuperLocução</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/payment`}
+                    className="flex-1 px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-orange-400 font-mono text-xs select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyWebhookUrl}
+                    className="px-4 py-3 bg-[#10121a] hover:bg-zinc-800 border border-zinc-700/80 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+                  >
+                    {copiedWebhook ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedWebhook ? 'Copiado!' : 'Copiar URL'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-300">Chave Secreta do Webhook (Webhook Secret)</label>
+                <input
+                  type="text"
+                  value={gatewayConfig.webhookSecret || ''}
+                  onChange={(e) => setGatewayConfig({ ...gatewayConfig, webhookSecret: e.target.value })}
+                  placeholder="whsec_xxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full px-4 py-3 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+          </div>
+        </form>
       )}
 
       {/* ===================================================================== */}

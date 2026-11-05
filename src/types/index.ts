@@ -252,6 +252,57 @@ export interface CommercialPlan {
   highlighted?: boolean;
 }
 
+export interface PaymentGatewayConfig {
+  provider: 'mercadopago' | 'asaas' | 'stripe' | 'pix_direto';
+  mode: 'sandbox' | 'production';
+  isActive: boolean;
+  mercadoPagoPublicKey?: string;
+  mercadoPagoAccessToken?: string;
+  asaasApiKey?: string;
+  stripePublicKey?: string;
+  stripeSecretKey?: string;
+  pixKey?: string;
+  pixKeyType?: 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+  webhookSecret?: string;
+}
+
+export interface SubscriptionItem {
+  id: string;
+  userId: string;
+  userName: string;
+  companyName: string;
+  email: string;
+  planId: string;
+  planName: string;
+  amount: number;
+  billingPeriod: string;
+  status: 'active' | 'past_due' | 'canceled' | 'trial';
+  paymentMethod: 'pix' | 'credit_card' | 'boleto' | 'manual';
+  gateway: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  creditsPerCycle: number;
+  autoRenew: boolean;
+  createdAt: string;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  userId: string;
+  userName: string;
+  companyName: string;
+  type: 'subscription' | 'recharge';
+  description: string;
+  amount: number;
+  creditsAdded?: number;
+  status: 'approved' | 'pending' | 'refunded' | 'failed';
+  paymentMethod: 'pix' | 'credit_card' | 'boleto' | 'manual';
+  gateway: string;
+  externalId?: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
 export interface RadioQueueItem {
   id: string;
   audioId: string;

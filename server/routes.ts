@@ -1344,3 +1344,98 @@ apiRouter.post('/admin/users/:id/credits', (req: Request, res: Response) => {
     message: `${Math.abs(delta)} créditos ${delta > 0 ? 'adicionados' : 'debitados'} com sucesso!`
   });
 });
+
+// -------------------------------------------------------------
+// ADMIN: SUBSCRIPTIONS, PAYMENTS & GATEWAY
+// -------------------------------------------------------------
+apiRouter.get('/admin/subscriptions', (_req: Request, res: Response) => {
+  const subscriptions = db.getSubscriptions();
+  const activeSubs = subscriptions.filter(s => s.status === 'active');
+  const mrr = activeSubs.reduce((acc, s) => acc + s.amount, 0);
+
+  res.json({
+    subscriptions,
+    stats: {
+      total: subscriptions.length,
+      active: activeSubs.length,
+      pastDue: subscriptions.filter(s => s.status === 'past_due').length,
+      canceled: subscriptions.filter(s => s.status === 'canceled').length,
+      mrr,
+    }
+  });
+});
+
+apiRouter.post('/admin/subscriptions/:id/status', (req: Request, res: Response) => {
+  const subId = req.params.id;
+  const { status } = req.body;
+  const updated = db.updateSubscriptionStatus(subId, status);
+  if (!updated) {
+    return res.status(404).json({ error: 'Assinatura não encontrada.' });
+  }
+  res.json({ success: true, subscription: updated });
+});
+
+apiRouter.get('/admin/payments', (_req: Request, res: Response) => {
+  const payments = db.getPaymentTransactions();
+  const approved = payments.filter(p => p.status === 'approved');
+  const totalRevenue = approved.reduce((acc, p) => acc + p.amount, 0);
+  const pendingCount = payments.filter(p => p.status === 'pending').length;
+
+  res.json({
+    payments,
+    stats: {
+      totalTransactions: payments.length,
+      approvedCount: approved.length,
+      pendingCount,
+      totalRevenue,
+    }
+  });
+});
+
+apiRouter.post('/admin/payments/:id/confirm', (req: Request, res: Response) => {
+  const payId = req.params.id;
+  const updated = db.confirmPaymentTransaction(payId);
+  if (!updated) {
+    return res.status(404).json({ error: 'Transação não encontrada.' });
+  }
+  res.json({
+    success: true,
+    message: `Pagamento ${updated.id} confirmado com sucesso! Créditos liberados.`,
+    payment: updated
+  });
+});
+
+apiRouter.post('/admin/payments/:id/refund', (req: Request, res: Response) => {
+  const payId = req.params.id;
+  const updated = db.refundPaymentTransaction(payId);
+  if (!updated) {
+    return res.status(404).json({ error: 'Transação não encontrada.' });
+  }
+  res.json({
+    success: true,
+    message: `Transação ${updated.id} marcada como estornada.`,
+    payment: updated
+  });
+});
+
+apiRouter.get('/admin/gateway', (_req: Request, res: Response) => {
+  const gateway = db.getGatewayConfig();
+  res.json({ gateway });
+});
+
+apiRouter.post('/admin/gateway', (req: Request, res: Response) => {
+  const updated = db.updateGatewayConfig(req.body);
+  res.json({
+    success: true,
+    message: 'Configurações do Gateway de Pagamento salvas com sucesso!',
+    gateway: updated
+  });
+});
+
+// Webhook listener for payment providers (Mercado Pago, Asaas, Stripe)
+apiRouter.post('/webhooks/payment', (req: Request, res: Response) => {
+  console.log('[Payment Webhook] Evento recebido:', req.body);
+  // Auto-process payment event if valid
+  const { event, id, status, amount } = req.body || {};
+  res.status(200).json({ received: true, timestamp: new Date().toISOString() });
+});

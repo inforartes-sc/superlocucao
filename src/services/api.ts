@@ -15,6 +15,9 @@ import {
   RadioMusicTrack,
   RechargePackage,
   CommercialPlan,
+  PaymentGatewayConfig,
+  SubscriptionItem,
+  PaymentTransaction,
 } from '../types';
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
@@ -358,5 +361,31 @@ export const api = {
     request<{ success: boolean; creditsBalance: number; message: string }>(`/admin/users/${id}/credits`, {
       method: 'POST',
       body: JSON.stringify({ amount, reason }),
+    }),
+
+  // Admin - Subscriptions & Payments
+  getAdminSubscriptions: () =>
+    request<{ subscriptions: SubscriptionItem[]; stats: any }>('/admin/subscriptions'),
+  updateSubscriptionStatus: (id: string, status: string) =>
+    request<{ success: boolean; subscription: SubscriptionItem }>(`/admin/subscriptions/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }),
+  getAdminPayments: () =>
+    request<{ payments: PaymentTransaction[]; stats: any }>('/admin/payments'),
+  confirmAdminPayment: (id: string) =>
+    request<{ success: boolean; message: string; payment: PaymentTransaction }>(`/admin/payments/${id}/confirm`, {
+      method: 'POST',
+    }),
+  refundAdminPayment: (id: string) =>
+    request<{ success: boolean; message: string; payment: PaymentTransaction }>(`/admin/payments/${id}/refund`, {
+      method: 'POST',
+    }),
+  getAdminGateway: () =>
+    request<{ gateway: PaymentGatewayConfig }>('/admin/gateway'),
+  saveAdminGateway: (gateway: PaymentGatewayConfig) =>
+    request<{ success: boolean; message: string; gateway: PaymentGatewayConfig }>('/admin/gateway', {
+      method: 'POST',
+      body: JSON.stringify(gateway),
     }),
 };

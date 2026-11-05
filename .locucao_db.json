@@ -4243,7 +4243,93 @@
     "creditsPerGeneration": 5,
     "initialCredits": 50,
     "elevenLabsModel": "eleven_multilingual_v2",
-    "systemAnnouncement": "Aviso oficial de ofertas especiais."
+    "systemAnnouncement": "Aviso oficial de ofertas especiais.",
+    "rechargePackages": [
+      {
+        "id": "pacote-basico",
+        "name": "Pacote Básico",
+        "credits": 300,
+        "price": 29.9,
+        "description": "Aproximadamente 30 locuções comerciais",
+        "badge": "",
+        "highlighted": false
+      },
+      {
+        "id": "pacote-pro",
+        "name": "Pacote Pro Varejo",
+        "credits": 1000,
+        "price": 69.9,
+        "description": "Aproximadamente 100 locuções comerciais",
+        "badge": "Melhor Custo-Benefício",
+        "highlighted": true
+      },
+      {
+        "id": "pacote-atacado",
+        "name": "Pacote Atacarejo",
+        "credits": 3000,
+        "price": 147.9,
+        "description": "Aproximadamente 300 locuções comerciais",
+        "badge": "",
+        "highlighted": false
+      }
+    ],
+    "commercialPlans": [
+      {
+        "id": "degustacao",
+        "name": "Degustação",
+        "tag": "Teste Inicial",
+        "subtitle": "Perfeito para você experimentar a qualidade na prática na sua loja.",
+        "price": 0,
+        "billingPeriod": "grátis",
+        "creditsAmount": 50,
+        "features": [
+          "50 créditos de boas-vindas",
+          "Acesso a todas as 5 vozes de varejo",
+          "Downloads imediatos em MP3",
+          "Acesso à Rádio Web no navegador"
+        ],
+        "ctaText": "Começar Grátis",
+        "badge": "",
+        "highlighted": false
+      },
+      {
+        "id": "pro_varejo",
+        "name": "Pro Varejo",
+        "tag": "Supermercados",
+        "subtitle": "Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.",
+        "price": 89,
+        "billingPeriod": "/mês",
+        "creditsAmount": 1000,
+        "features": [
+          "1.500 créditos mensais renovados",
+          "Geração em lote com download em arquivo ZIP",
+          "Rádio Web contínua com Auto-Ducking",
+          "15 vinhetas personalizadas com o nome da loja",
+          "Suporte prioritário via WhatsApp"
+        ],
+        "ctaText": "Assinar Pro Varejo",
+        "badge": "Mais Escolhido",
+        "highlighted": true
+      },
+      {
+        "id": "redes_atacarejo",
+        "name": "Redes & Atacarejo",
+        "tag": "Redes & Filiais",
+        "subtitle": "Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.",
+        "price": 199,
+        "billingPeriod": "/mês",
+        "creditsAmount": 4000,
+        "features": [
+          "5.000 créditos mensais",
+          "Múltiplas lojas e filiais gerenciadas",
+          "Clonagem de voz personalizada da marca",
+          "Gerente de conta e suporte dedicado"
+        ],
+        "ctaText": "Falar com Consultor",
+        "badge": "",
+        "highlighted": false
+      }
+    ]
   },
   "radioConfig": {
     "stationName": "Rádio Supermercado Alvorada",
@@ -4296,8 +4382,8 @@
         "daysOfWeek": [
           4
         ],
-        "playCount": 1,
-        "lastPlayedAt": "2026-11-05T04:03:26.010Z"
+        "playCount": 3,
+        "lastPlayedAt": "2026-11-05T04:26:55.596Z"
       },
       {
         "id": "rq-aud-1793500708054-gus0g",
@@ -4599,8 +4685,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:40:43.771Z",
-        "playCount": 12,
-        "lastPlayedAt": "2026-11-02T23:03:50.086Z"
+        "playCount": 13,
+        "lastPlayedAt": "2026-11-05T04:17:54.819Z"
       },
       {
         "id": "rq-aud-1792635376736-m7qc4",
@@ -4617,8 +4703,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T02:16:23.984Z",
-        "playCount": 11,
-        "lastPlayedAt": "2026-11-02T23:04:59.560Z"
+        "playCount": 12,
+        "lastPlayedAt": "2026-11-05T04:19:04.462Z"
       },
       {
         "id": "rq-aud-1792638704207-jwng0",
@@ -4635,8 +4721,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-10-22T03:11:54.383Z",
-        "playCount": 10,
-        "lastPlayedAt": "2026-11-02T23:06:16.220Z"
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-05T04:20:21.114Z"
       },
       {
         "id": "rq-aud-1792636191592-6tliy",
