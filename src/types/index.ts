@@ -194,9 +194,20 @@ export interface CreditTransaction {
 
 export interface AdminMetrics {
   totalUsers: number;
+  activeUsers?: number;
+  blockedUsers?: number;
   totalProjects: number;
   totalAudiosGenerated: number;
   totalCreditsUsed: number;
+  totalCreditsBalance?: number;
+  radioStats?: {
+    queueCount: number;
+    stationName: string;
+    isBroadcasting: boolean;
+    defaultIntervalSec: number;
+    musicTracksCount?: number;
+  };
+  postgresConnected?: boolean;
   elevenLabsConfigured: boolean;
   elevenLabsApiKeyMasked?: string;
   elevenLabsApiKey?: string;
@@ -212,6 +223,7 @@ export interface AdminMetrics {
   geminiApiKey?: string;
   geminiModel?: string;
   recentTransactions: CreditTransaction[];
+  recentAudios?: any[];
   users?: UserProfile[];
   settings?: any;
 }

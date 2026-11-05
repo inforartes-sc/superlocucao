@@ -1381,17 +1381,40 @@ class Database {
 
   // Admin
   getAdminMetrics(): any {
-    const allAudios = this.data.projects.flatMap(p => p.audios);
+    const allAudios = this.data.projects.flatMap(p =>
+      p.audios.map(a => ({
+        ...a,
+        projectId: p.id,
+        projectTitle: p.title,
+        storeName: p.storeName || 'Supermercado',
+      }))
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const totalCreditsBalance = this.data.users.reduce((acc, u) => acc + (u.creditsBalance || 0), 0);
+    const radioConfig = this.getRadioConfig();
+
     return {
       totalUsers: this.data.users.length,
+      activeUsers: this.data.users.filter(u => u.status === 'ativo').length,
+      blockedUsers: this.data.users.filter(u => u.status === 'bloqueado').length,
       totalProjects: this.data.projects.length,
       totalAudiosGenerated: allAudios.length,
+      totalCreditsBalance,
       totalCreditsUsed: this.data.creditTransactions
         .filter(t => t.type === 'debit')
         .reduce((acc, t) => acc + t.amount, 0),
+      radioStats: {
+        queueCount: radioConfig.queue.length,
+        stationName: radioConfig.stationName,
+        isBroadcasting: radioConfig.isBroadcasting,
+        defaultIntervalSec: radioConfig.defaultIntervalSec,
+        musicTracksCount: radioConfig.musicTracks?.length || 0,
+      },
+      postgresConnected: Boolean(this.pool),
       elevenLabsConfigured: Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_API_KEY !== 'YOUR_ELEVENLABS_API_KEY'),
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10 && process.env.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY'),
-      recentTransactions: this.data.creditTransactions.slice(0, 10),
+      recentAudios: allAudios.slice(0, 25),
+      recentTransactions: this.data.creditTransactions.slice(0, 25),
       users: this.data.users,
       settings: this.data.adminSettings
     };

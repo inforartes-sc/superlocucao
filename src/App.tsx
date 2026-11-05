@@ -175,41 +175,56 @@ export function App() {
   // =========================================================================
   if (isAdminRoute) {
     return (
-      <div className="min-h-screen bg-[#F5F7FB] text-[#142B4A] flex flex-col">
-        <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-950 border-b border-zinc-800 shadow-lg">
+      <div className="min-h-screen bg-[#0e1118] text-zinc-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#12141c]/95 backdrop-blur-md border-b border-zinc-800 shadow-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-zinc-950 shadow-md">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 flex items-center justify-center text-zinc-950 shadow-lg shadow-orange-500/25 shrink-0">
+                <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div className="leading-tight">
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-base sm:text-lg text-white">
-                    Super<span className="text-amber-400">Locução</span>
+                    Super<span className="text-orange-500">Locução</span>
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Painel Super Admin
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                    Console Super Admin
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400 hidden sm:block">
-                  Gestão Central de Clientes, Créditos e Chaves de IA (ElevenLabs & Gemini)
+                  Gestão Central de Supermercados, Créditos, Rádio Web & Motores de IA
                 </p>
               </div>
             </div>
 
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 text-xs font-bold transition"
+            <button
+              type="button"
+              onClick={() => {
+                window.history.pushState({}, '', '/');
+                setIsAdminRoute(false);
+              }}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1c202d] hover:bg-[#252b3d] text-zinc-200 hover:text-white border border-zinc-700/80 text-xs font-bold transition shadow-sm cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4 text-amber-400" />
-              <span>Ir para o Painel do Cliente</span>
-            </a>
+              <ArrowLeft className="w-4 h-4 text-orange-400" />
+              <span>Voltar ao Painel da Loja</span>
+            </button>
           </div>
         </header>
         <div className="h-16 shrink-0 pointer-events-none" aria-hidden="true" />
 
-        <main className="flex-1 pb-24 md:pb-6">
-          <AdminView />
+        <main className="flex-1 pb-16">
+          <AdminView
+            onNavigate={(view) => {
+              window.history.pushState({}, '', '/');
+              setIsAdminRoute(false);
+              setActiveView(view as any);
+            }}
+            onImpersonateUser={(targetUser) => {
+              handleAuthSuccess(targetUser);
+              window.history.pushState({}, '', '/');
+              setIsAdminRoute(false);
+            }}
+          />
         </main>
       </div>
     );

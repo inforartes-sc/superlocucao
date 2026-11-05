@@ -18,3 +18,4 @@ export function calculateCreditCost(productCount: number = 1): number {
   }
   return 5 + (count - 5);
 }
+
