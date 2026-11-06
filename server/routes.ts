@@ -1495,14 +1495,14 @@ apiRouter.post('/admin/database/sync-audios', async (_req: Request, res: Respons
     });
   }
   try {
-    const resSync = await db.syncAllLocalAudiosToPg();
+    const resSync = await db.syncFullLocalDatabaseToPg();
     res.json({
       success: true,
-      message: `${resSync.uploaded} novas locuções reais sincronizadas com o banco de dados da VPS com sucesso! (${resSync.total} verificadas)`,
+      message: `${resSync.projects} projetos e ${resSync.audiosUploaded} locuções reais sincronizados com o banco de dados da VPS com sucesso! (${resSync.audiosTotal} áudios verificados)`,
       ...resSync
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Falha ao sincronizar locuções com o banco de dados' });
+    res.status(500).json({ error: err.message || 'Falha ao sincronizar banco de dados' });
   }
 });
 

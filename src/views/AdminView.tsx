@@ -1962,7 +1962,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Garante que todas as vozes humanas, demonstrações e locuções fiquem gravadas diretamente no banco de dados da VPS, sem ruídos ou chiados.
+                  Envia todos os usuários, projetos, planos, pacotes de recarga e todas as 174 locuções reais e trilhas diretamente para o banco de dados PostgreSQL da VPS.
                 </p>
               </div>
 
@@ -1972,7 +1972,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-zinc-950 font-black text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-2 shrink-0"
               >
                 <RefreshCw className={`w-4 h-4 ${syncingAudios ? 'animate-spin' : ''}`} />
-                <span>{syncingAudios ? 'Enviando Áudios...' : 'Sincronizar Locuções com o Banco'}</span>
+                <span>{syncingAudios ? 'Sincronizando Banco...' : 'Sincronizar Todo o Banco & Áudios com a VPS'}</span>
               </button>
             </div>
 

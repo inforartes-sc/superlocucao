@@ -1087,23 +1087,17 @@ class Database {
         CREATE INDEX IF NOT EXISTS idx_audio_binaries_id ON audio_binaries(id);
       `);
 
-      const { rows } = await this.pool.query('SELECT count(*)::int AS cnt FROM profiles');
-      const count = rows[0]?.cnt || 0;
+      console.log('[PostgreSQL] Sincronizando todos os dados locais com o PostgreSQL da VPS...');
+      for (const u of this.data.users) await this.pgSaveUser(u);
+      for (const p of this.data.projects) await this.pgSaveProject(p);
+      for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
+      for (const v of this.data.voices) await this.pgSaveVoice(v);
+      if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
+      if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
 
-      if (count === 0) {
-        console.log('[PostgreSQL] Base vazia. Semeando dados iniciais no PostgreSQL...');
-        for (const u of this.data.users) await this.pgSaveUser(u);
-        for (const p of this.data.projects) await this.pgSaveProject(p);
-        for (const v of this.data.voices) await this.pgSaveVoice(v);
-        for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
-        if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
-        if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
-        console.log('[PostgreSQL] Dados iniciais salvos com sucesso no PostgreSQL!');
-      } else {
-        console.log('[PostgreSQL] Carregando dados do PostgreSQL para o cache em memória...');
-        await this.pgLoadAll();
-        console.log(`[PostgreSQL] Sincronização concluída: ${this.data.users.length} usuários, ${this.data.projects.length} projetos.`);
-      }
+      console.log('[PostgreSQL] Carregando dados do PostgreSQL para o cache em memória...');
+      await this.pgLoadAll();
+      console.log(`[PostgreSQL] Sincronização concluída: ${this.data.users.length} usuários, ${this.data.projects.length} projetos.`);
 
       // Sincronizar todas as locuções reais (seed e locais) diretamente para o banco de dados da VPS
       await this.syncAllLocalAudiosToPg();
@@ -1567,8 +1561,8 @@ class Database {
             const buffer = fs.readFileSync(filePath);
             const mimeType = file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg';
 
-            const check = await this.pool.query('SELECT id FROM audio_binaries WHERE id = $1', [id]);
-            if (check.rows.length === 0) {
+            const check = await this.pool.query('SELECT id, file_size FROM audio_binaries WHERE id = $1', [id]);
+            if (check.rows.length === 0 || (check.rows[0].file_size < 1000 && buffer.length > 1000)) {
               const ok = await this.pgSaveAudioBinary(id, file, mimeType, buffer);
               if (ok) uploaded++;
             }
@@ -1586,6 +1580,38 @@ class Database {
       console.log(`[PostgreSQL] Sincronização automática: ${uploaded} locuções reais enviadas para o banco de dados da VPS.`);
     }
     return { total, uploaded, errors };
+  }
+
+  public async syncFullLocalDatabaseToPg(): Promise<{
+    users: number;
+    projects: number;
+    transactions: number;
+    audiosTotal: number;
+    audiosUploaded: number;
+  }> {
+    if (!this.pool) {
+      throw new Error('PostgreSQL não conectado. Configure a DATABASE_URL na VPS.');
+    }
+
+    console.log('[PostgreSQL] Iniciando sincronização completa do banco local para a VPS...');
+    for (const u of this.data.users) await this.pgSaveUser(u);
+    for (const p of this.data.projects) await this.pgSaveProject(p);
+    for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
+    for (const v of this.data.voices) await this.pgSaveVoice(v);
+    if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
+    if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
+
+    const audiosSync = await this.syncAllLocalAudiosToPg();
+    await this.pgLoadAll();
+
+    console.log('[PostgreSQL] Sincronização completa concluída com sucesso!');
+    return {
+      users: this.data.users.length,
+      projects: this.data.projects.length,
+      transactions: this.data.creditTransactions.length,
+      audiosTotal: audiosSync.total,
+      audiosUploaded: audiosSync.uploaded,
+    };
   }
 
   private load(): DbData {
