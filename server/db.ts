@@ -283,6 +283,15 @@ export const audioBinaryStore = new Map<string, StoredAudioBinary>();
 export function saveAudioBinary(id: string, buffer: Buffer, mimeType: string, filename: string): StoredAudioBinary {
   const item: StoredAudioBinary = { id, buffer, mimeType, filename };
   audioBinaryStore.set(id, item);
+
+  // Directly save to PostgreSQL database (PRIMARY PERSISTENCE ON VPS)
+  if (typeof db !== 'undefined' && db && db.getPool()) {
+    db.pgSaveAudioBinary(id, filename, mimeType, buffer).catch((err: any) =>
+      console.warn(`[PostgreSQL] Falha ao salvar áudio ${id} no banco de dados:`, err)
+    );
+  }
+
+  // Optional local cache fallback (silently ignored in ephemeral/stateless environments)
   try {
     const ext = filename.endsWith('.mp3') ? '.mp3' : '.wav';
     fs.writeFileSync(path.join(AUDIO_STORAGE_DIR, `${id}${ext}`), buffer);
@@ -290,15 +299,8 @@ export function saveAudioBinary(id: string, buffer: Buffer, mimeType: string, fi
       path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`),
       JSON.stringify({ mimeType, filename })
     );
-  } catch (err) {
-    console.warn('Failed to persist audio binary to disk:', err);
-  }
-
-  // Also asynchronously save to PostgreSQL database if connected
-  if (typeof db !== 'undefined' && db && db.getPool()) {
-    db.pgSaveAudioBinary(id, filename, mimeType, buffer).catch((err: any) =>
-      console.warn(`[Database] Falha ao salvar áudio ${id} no PostgreSQL:`, err)
-    );
+  } catch {
+    // Silent ignore on read-only or stateless environments
   }
 
   return item;
@@ -309,10 +311,9 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
     return audioBinaryStore.get(id);
   }
   try {
-    // 1. Check in .locucao_audios/
+    // Check in server/seed_audios/ or .locucao_audios/
     const mp3Path = path.join(AUDIO_STORAGE_DIR, `${id}.mp3`);
     const wavPath = path.join(AUDIO_STORAGE_DIR, `${id}.wav`);
-    // 2. Check in server/seed_audios/
     const seedMp3 = path.join(process.cwd(), 'server', 'seed_audios', `${id}.mp3`);
     const seedWav = path.join(process.cwd(), 'server', 'seed_audios', `${id}.wav`);
 
@@ -340,37 +341,33 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
       audioBinaryStore.set(id, item);
       return item;
     }
-  } catch (err) {
-    console.warn('Error reading audio binary from disk:', err);
+  } catch {
+    // Ignore read errors
   }
   return undefined;
 }
 
 export async function getAudioBinaryAsync(id: string): Promise<StoredAudioBinary | undefined> {
-  const local = getAudioBinary(id);
-  if (local) return local;
+  // 1. Check fast in-memory store
+  if (audioBinaryStore.has(id)) {
+    return audioBinaryStore.get(id);
+  }
 
+  // 2. PRIMARY: Query PostgreSQL audio_binaries table directly from VPS
   if (typeof db !== 'undefined' && db && db.getPool()) {
     try {
       const fromPg = await db.pgGetAudioBinary(id);
       if (fromPg) {
         audioBinaryStore.set(id, fromPg);
-        try {
-          const ext = fromPg.filename.endsWith('.wav') ? '.wav' : '.mp3';
-          fs.writeFileSync(path.join(AUDIO_STORAGE_DIR, `${id}${ext}`), fromPg.buffer);
-          fs.writeFileSync(
-            path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`),
-            JSON.stringify({ mimeType: fromPg.mimeType, filename: fromPg.filename })
-          );
-        } catch { }
         return fromPg;
       }
     } catch (err) {
-      console.warn(`[Database] Erro ao buscar áudio ${id} no PostgreSQL:`, err);
+      console.warn(`[PostgreSQL] Erro ao buscar áudio ${id} do banco de dados:`, err);
     }
   }
 
-  return undefined;
+  // 3. Fallback: check seed_audios or local cache
+  return getAudioBinary(id);
 }
 
 export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
@@ -1043,8 +1040,19 @@ class Database {
           eleven_labs_model TEXT DEFAULT 'eleven_multilingual_v2',
           gemini_model TEXT DEFAULT 'gemini-3.8-flash',
           system_announcement TEXT,
+          recharge_packages JSONB,
+          commercial_plans JSONB,
+          payment_gateway JSONB,
+          subscriptions JSONB,
+          payments JSONB,
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS recharge_packages JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS commercial_plans JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payment_gateway JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS subscriptions JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
 
         CREATE TABLE IF NOT EXISTS radio_config (
           id INTEGER PRIMARY KEY DEFAULT 1,
@@ -1189,15 +1197,30 @@ class Database {
       const adminRes = await this.pool.query('SELECT * FROM admin_settings WHERE id = 1');
       if (adminRes.rows.length > 0) {
         const a = adminRes.rows[0];
+        const rechargePackages = a.recharge_packages ? (typeof a.recharge_packages === 'string' ? JSON.parse(a.recharge_packages) : a.recharge_packages) : DEFAULT_RECHARGE_PACKAGES;
+        const commercialPlans = a.commercial_plans ? (typeof a.commercial_plans === 'string' ? JSON.parse(a.commercial_plans) : a.commercial_plans) : DEFAULT_COMMERCIAL_PLANS;
+        const paymentGateway = a.payment_gateway ? (typeof a.payment_gateway === 'string' ? JSON.parse(a.payment_gateway) : a.payment_gateway) : DEFAULT_PAYMENT_GATEWAY;
+        const subscriptions = a.subscriptions ? (typeof a.subscriptions === 'string' ? JSON.parse(a.subscriptions) : a.subscriptions) : DEFAULT_SUBSCRIPTIONS;
+        const payments = a.payments ? (typeof a.payments === 'string' ? JSON.parse(a.payments) : a.payments) : DEFAULT_PAYMENT_TRANSACTIONS;
+
         this.data.adminSettings = {
           defaultVoiceId: a.default_voice_id || 'daniel-varejo',
           creditsPerGeneration: a.credits_per_generation ?? 5,
           initialCredits: a.initial_credits ?? 50,
           elevenLabsModel: a.eleven_labs_model || 'eleven_multilingual_v2',
           systemAnnouncement: a.system_announcement,
-          rechargePackages: a.recharge_packages ? (typeof a.recharge_packages === 'string' ? JSON.parse(a.recharge_packages) : a.recharge_packages) : DEFAULT_RECHARGE_PACKAGES,
-          commercialPlans: a.commercial_plans ? (typeof a.commercial_plans === 'string' ? JSON.parse(a.commercial_plans) : a.commercial_plans) : DEFAULT_COMMERCIAL_PLANS,
+          rechargePackages,
+          commercialPlans,
+          paymentGateway,
+          subscriptions,
+          payments,
         };
+
+        if (!a.recharge_packages || !a.commercial_plans || !a.payment_gateway || !a.subscriptions || !a.payments) {
+          await this.pgSaveAdminSettings(this.data.adminSettings);
+        }
+      } else {
+        await this.pgSaveAdminSettings(this.data.adminSettings);
       }
 
       const radioRes = await this.pool.query('SELECT * FROM radio_config WHERE id = 1');
@@ -1366,17 +1389,25 @@ class Database {
     }
   }
 
-  private async pgSaveAdminSettings(s: DbData['adminSettings']) {
+  public async pgSaveAdminSettings(s: DbData['adminSettings']) {
     if (!this.pool) return;
     try {
       await this.pool.query(`
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS recharge_packages JSONB;
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS commercial_plans JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payment_gateway JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS subscriptions JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
       `).catch(() => {});
 
       await this.pool.query(`
-        INSERT INTO admin_settings (id, default_voice_id, credits_per_generation, initial_credits, eleven_labs_model, system_announcement, recharge_packages, commercial_plans, updated_at)
-        VALUES (1, $1, $2, $3, $4, $5, $6, $7, NOW())
+        INSERT INTO admin_settings (
+          id, default_voice_id, credits_per_generation, initial_credits,
+          eleven_labs_model, system_announcement, recharge_packages, commercial_plans,
+          payment_gateway, subscriptions, payments, updated_at
+        ) VALUES (
+          1, $1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, NOW()
+        )
         ON CONFLICT (id) DO UPDATE SET
           default_voice_id = EXCLUDED.default_voice_id,
           credits_per_generation = EXCLUDED.credits_per_generation,
@@ -1385,6 +1416,9 @@ class Database {
           system_announcement = EXCLUDED.system_announcement,
           recharge_packages = EXCLUDED.recharge_packages,
           commercial_plans = EXCLUDED.commercial_plans,
+          payment_gateway = EXCLUDED.payment_gateway,
+          subscriptions = EXCLUDED.subscriptions,
+          payments = EXCLUDED.payments,
           updated_at = NOW()
       `, [
         s.defaultVoiceId,
@@ -1393,8 +1427,12 @@ class Database {
         s.elevenLabsModel,
         s.systemAnnouncement || null,
         JSON.stringify(s.rechargePackages || DEFAULT_RECHARGE_PACKAGES),
-        JSON.stringify(s.commercialPlans || DEFAULT_COMMERCIAL_PLANS)
+        JSON.stringify(s.commercialPlans || DEFAULT_COMMERCIAL_PLANS),
+        JSON.stringify(s.paymentGateway || DEFAULT_PAYMENT_GATEWAY),
+        JSON.stringify(s.subscriptions || DEFAULT_SUBSCRIPTIONS),
+        JSON.stringify(s.payments || DEFAULT_PAYMENT_TRANSACTIONS)
       ]);
+      console.log('[PostgreSQL] Configurações de admin, planos e recargas salvas no banco com sucesso!');
     } catch (err) {
       console.error('[PostgreSQL] Erro ao salvar admin settings:', err);
     }
@@ -1571,7 +1609,12 @@ class Database {
         creditsPerGeneration: 5,
         initialCredits: 50,
         elevenLabsModel: 'eleven_multilingual_v2',
-        systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!'
+        systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!',
+        rechargePackages: DEFAULT_RECHARGE_PACKAGES,
+        commercialPlans: DEFAULT_COMMERCIAL_PLANS,
+        paymentGateway: DEFAULT_PAYMENT_GATEWAY,
+        subscriptions: DEFAULT_SUBSCRIPTIONS,
+        payments: DEFAULT_PAYMENT_TRANSACTIONS,
       }
     };
   }
@@ -1579,8 +1622,8 @@ class Database {
   private save() {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
-    } catch (e) {
-      console.error('Failed to write db file:', e);
+    } catch {
+      // Ignora silenciosamente em contêineres e ambientes stateless (Coolify / Docker)
     }
   }
 
@@ -1899,6 +1942,7 @@ class Database {
     item.status = status;
     this.data.adminSettings.subscriptions = list;
     this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
     return item;
   }
 
@@ -1923,6 +1967,7 @@ class Database {
       }
       this.data.adminSettings.payments = list;
       this.save();
+      this.pgSaveAdminSettings(this.data.adminSettings);
     }
     return tx;
   }
@@ -1935,6 +1980,7 @@ class Database {
     tx.status = 'refunded';
     this.data.adminSettings.payments = list;
     this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
     return tx;
   }
 
@@ -1948,6 +1994,7 @@ class Database {
       ...config,
     };
     this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
     return this.data.adminSettings.paymentGateway;
   }
 }

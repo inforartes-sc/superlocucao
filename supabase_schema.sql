@@ -105,17 +105,28 @@ CREATE TABLE IF NOT EXISTS public.voices (
 CREATE TABLE IF NOT EXISTS public.admin_settings (
     id INTEGER PRIMARY KEY DEFAULT 1,
     default_voice_id TEXT NOT NULL DEFAULT 'daniel-varejo',
-    credits_per_generation INTEGER NOT NULL DEFAULT 10,
-    initial_credits INTEGER NOT NULL DEFAULT 500,
+    credits_per_generation INTEGER NOT NULL DEFAULT 5,
+    initial_credits INTEGER NOT NULL DEFAULT 50,
     eleven_labs_model TEXT NOT NULL DEFAULT 'eleven_multilingual_v2',
     gemini_model TEXT NOT NULL DEFAULT 'gemini-3.8-flash',
     system_announcement TEXT,
+    recharge_packages JSONB,
+    commercial_plans JSONB,
+    payment_gateway JSONB,
+    subscriptions JSONB,
+    payments JSONB,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS recharge_packages JSONB;
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS commercial_plans JSONB;
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS payment_gateway JSONB;
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS subscriptions JSONB;
+ALTER TABLE public.admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
+
 -- Inserir configuração padrão inicial
 INSERT INTO public.admin_settings (id, default_voice_id, credits_per_generation, initial_credits, eleven_labs_model)
-VALUES (1, 'daniel-varejo', 10, 500, 'eleven_multilingual_v2')
+VALUES (1, 'daniel-varejo', 5, 50, 'eleven_multilingual_v2')
 ON CONFLICT (id) DO NOTHING;
 
 -- -------------------------------------------------------------

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
-import { db, audioBinaryStore, getAudioBinary, saveAudioBinary, getAudioBinaryAsync } from './db.ts';
+import { db, audioBinaryStore, getAudioBinary, saveAudioBinary, getAudioBinaryAsync, DEFAULT_RECHARGE_PACKAGES, DEFAULT_COMMERCIAL_PLANS } from './db.ts';
 import { parseProductsWithGemini, generateSupermarketScript, refineSupermarketScript, formatSpokenPriceBR, saveGeminiApiKeyToEnv, fetchGeminiAccountInfo } from './gemini.ts';
 import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio } from './elevenlabs.ts';
 import { convertWavToMp3 } from './mp3_converter.ts';
@@ -699,7 +699,7 @@ apiRouter.post('/audio/download-zip', async (req: Request, res: Response) => {
 
     for (let i = 0; i < audioIds.length; i++) {
       const id = audioIds[i];
-      let stored = getAudioBinary(id);
+      let stored = await getAudioBinaryAsync(id);
       if (!stored) {
         const wavBuffer = generateStyleDemoWav('energetica_supermercado');
         const mp3Buffer = convertWavToMp3(wavBuffer);
@@ -1145,8 +1145,8 @@ apiRouter.get('/settings', (_req: Request, res: Response) => {
     creditsPerGeneration: settings?.creditsPerGeneration ?? 5,
     initialCredits: settings?.initialCredits ?? 50,
     defaultVoiceId: settings?.defaultVoiceId || 'daniel-varejo',
-    rechargePackages: settings?.rechargePackages || [],
-    commercialPlans: settings?.commercialPlans || [],
+    rechargePackages: (settings?.rechargePackages && settings.rechargePackages.length > 0) ? settings.rechargePackages : DEFAULT_RECHARGE_PACKAGES,
+    commercialPlans: (settings?.commercialPlans && settings.commercialPlans.length > 0) ? settings.commercialPlans : DEFAULT_COMMERCIAL_PLANS,
   });
 });
 
@@ -1255,8 +1255,9 @@ apiRouter.post('/admin/elevenlabs/sync', async (_req: Request, res: Response) =>
   }
 });
 
-apiRouter.post('/admin/settings', (req: Request, res: Response) => {
+apiRouter.post('/admin/settings', async (req: Request, res: Response) => {
   const updated = db.updateAdminSettings(req.body);
+  await db.pgSaveAdminSettings(db.getAdminSettings());
   res.json({ settings: updated });
 });
 
@@ -1394,13 +1395,14 @@ apiRouter.get('/admin/subscriptions', (_req: Request, res: Response) => {
   });
 });
 
-apiRouter.post('/admin/subscriptions/:id/status', (req: Request, res: Response) => {
+apiRouter.post('/admin/subscriptions/:id/status', async (req: Request, res: Response) => {
   const subId = req.params.id;
   const { status } = req.body;
   const updated = db.updateSubscriptionStatus(subId, status);
   if (!updated) {
     return res.status(404).json({ error: 'Assinatura não encontrada.' });
   }
+  await db.pgSaveAdminSettings(db.getAdminSettings());
   res.json({ success: true, subscription: updated });
 });
 
@@ -1421,12 +1423,13 @@ apiRouter.get('/admin/payments', (_req: Request, res: Response) => {
   });
 });
 
-apiRouter.post('/admin/payments/:id/confirm', (req: Request, res: Response) => {
+apiRouter.post('/admin/payments/:id/confirm', async (req: Request, res: Response) => {
   const payId = req.params.id;
   const updated = db.confirmPaymentTransaction(payId);
   if (!updated) {
     return res.status(404).json({ error: 'Transação não encontrada.' });
   }
+  await db.pgSaveAdminSettings(db.getAdminSettings());
   res.json({
     success: true,
     message: `Pagamento ${updated.id} confirmado com sucesso! Créditos liberados.`,
@@ -1434,12 +1437,13 @@ apiRouter.post('/admin/payments/:id/confirm', (req: Request, res: Response) => {
   });
 });
 
-apiRouter.post('/admin/payments/:id/refund', (req: Request, res: Response) => {
+apiRouter.post('/admin/payments/:id/refund', async (req: Request, res: Response) => {
   const payId = req.params.id;
   const updated = db.refundPaymentTransaction(payId);
   if (!updated) {
     return res.status(404).json({ error: 'Transação não encontrada.' });
   }
+  await db.pgSaveAdminSettings(db.getAdminSettings());
   res.json({
     success: true,
     message: `Transação ${updated.id} marcada como estornada.`,
@@ -1452,8 +1456,9 @@ apiRouter.get('/admin/gateway', (_req: Request, res: Response) => {
   res.json({ gateway });
 });
 
-apiRouter.post('/admin/gateway', (req: Request, res: Response) => {
+apiRouter.post('/admin/gateway', async (req: Request, res: Response) => {
   const updated = db.updateGatewayConfig(req.body);
+  await db.pgSaveAdminSettings(db.getAdminSettings());
   res.json({
     success: true,
     message: 'Configurações do Gateway de Pagamento salvas com sucesso!',
