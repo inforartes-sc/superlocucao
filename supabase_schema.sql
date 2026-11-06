@@ -134,12 +134,13 @@ ON CONFLICT (id) DO NOTHING;
 -- -------------------------------------------------------------
 INSERT INTO public.voices (id, name, gender, description, eleven_voice_id, gemini_voice_name, accent, style_tag, is_default)
 VALUES 
-    ('daniel-varejo', 'Daniel (Varejo Enérgico)', 'masculino', 'Voz comercial clássica de supermercado, vibrante e persuasiva. Ideal para ofertas relâmpago.', 'ErXwobaYiN019PkySvjV', 'Fenrir', 'Português Brasileiro (Neutro/Comercial)', 'Varejo & Supermercado', true),
-    ('carolina-acolhedora', 'Carolina (Vendedora Amigável)', 'feminino', 'Tom caloroso, convidativo e empático. Perfeito para padaria, hortifrúti e compras familiares.', '21m00Tcm4TlvDq8ikWAM', 'Kore', 'Português Brasileiro (Suave e Firme)', 'Familiar & Empática', false),
-    ('rodrigo-grave', 'Rodrigo (Voz de Impacto)', 'masculino', 'Grave marcante, autoridade e entusiasmo. Excelente para atacarejos, queima de estoque e Black Friday.', 'pNInz6obpgDQGcFmaJgB', 'Puck', 'Português Brasileiro (Locutor FM)', 'Impacto & Atacarejo', false),
-    ('mariana-jovem', 'Mariana (Descontraída & Dinâmica)', 'feminino', 'Jovem, moderna e cheia de ritmo. Excelente para conveniências, hortifrúti gourmet e bebidas.', 'EXAVITQu4vr4xnSDxMaL', 'Zephyr', 'Português Brasileiro (Contemporâneo)', 'Jovem & Dinâmica', false),
-    ('marcos-institucional', 'Marcos (Elegante & Institucional)', 'masculino', 'Locução sóbria e refinada para comunicados da loja, inaugurações, clube de vantagens e horários.', 'VR6AewLTigWG4xSOukaG', 'Charon', 'Português Brasileiro (Institucional)', 'Institucional & Clube', false)
-ON CONFLICT (id) DO NOTHING;
+    ('daniel-varejo', 'Daniel (Varejo Enérgico)', 'masculino', 'Voz comercial clássica de supermercado, vibrante e persuasiva. Ideal para ofertas relâmpago.', 'dXQsuVXyCGkF7meZLeFk', 'Fenrir', 'Português Brasileiro (Neutro/Comercial)', 'Varejo & Supermercado', true),
+    ('carolina-acolhedora', 'Carolina (Vendedora Amigável)', 'feminino', 'Tom caloroso, convidativo e empático. Perfeito para padaria, hortifrúti e compras familiares.', 'cabLxBh81HurPAAJfEHo', 'Kore', 'Português Brasileiro (Suave e Firme)', 'Familiar & Empática', false),
+    ('rodrigo-grave', 'Rodrigo (Voz de Impacto)', 'masculino', 'Grave marcante, autoridade e entusiasmo. Excelente para atacarejos, queima de estoque e Black Friday.', 'wHnxjlY53t8X9Oi14Awz', 'Puck', 'Português Brasileiro (Locutor FM)', 'Impacto & Atacarejo', false),
+    ('mariana-jovem', 'Mariana (Descontraída & Dinâmica)', 'feminino', 'Jovem, moderna e cheia de ritmo. Excelente para conveniências, hortifrúti gourmet e bebidas.', 'AKXBn24T1f9tvTDnWzWT', 'Zephyr', 'Português Brasileiro (Contemporâneo)', 'Jovem & Dinâmica', false),
+    ('marcos-institucional', 'Marcos (Elegante & Institucional)', 'masculino', 'Locução sóbria e refinada para comunicados da loja, inaugurações, clube de vantagens e horários.', 'a1ijbt2xmlhzaGXHewzV', 'Charon', 'Português Brasileiro (Institucional)', 'Institucional & Clube', false)
+ON CONFLICT (id) DO UPDATE SET
+    eleven_voice_id = EXCLUDED.eleven_voice_id;
 
 -- -------------------------------------------------------------
 -- 7. USUÁRIOS DEMO INICIAIS (SEED)

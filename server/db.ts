@@ -17,7 +17,7 @@ export const INITIAL_VOICES: VoicePreset[] = [
     name: 'Daniel (Varejo Enérgico)',
     gender: 'masculino',
     description: 'Voz comercial clássica de supermercado, vibrante e persuasiva. Ideal para ofertas relâmpago.',
-    elevenVoiceId: 'ErXwobaYiN019PkySvjV',
+    elevenVoiceId: 'dXQsuVXyCGkF7meZLeFk',
     geminiVoiceName: 'Fenrir',
     accent: 'Português Brasileiro (Neutro/Comercial)',
     styleTag: 'Varejo & Supermercado',
@@ -28,7 +28,7 @@ export const INITIAL_VOICES: VoicePreset[] = [
     name: 'Carolina (Vendedora Amigável)',
     gender: 'feminino',
     description: 'Tom caloroso, convidativo e empático. Perfeito para padaria, hortifrúti e compras familiares.',
-    elevenVoiceId: '21m00Tcm4TlvDq8ikWAM',
+    elevenVoiceId: 'cabLxBh81HurPAAJfEHo',
     geminiVoiceName: 'Kore',
     accent: 'Português Brasileiro (Suave e Firme)',
     styleTag: 'Familiar & Empática',
@@ -39,7 +39,7 @@ export const INITIAL_VOICES: VoicePreset[] = [
     name: 'Rodrigo (Voz de Impacto)',
     gender: 'masculino',
     description: 'Grave marcante, autoridade e entusiasmo. Excelente para atacarejos, queima de estoque e Black Friday.',
-    elevenVoiceId: 'pNInz6obpgDQGcFmaJgB',
+    elevenVoiceId: 'wHnxjlY53t8X9Oi14Awz',
     geminiVoiceName: 'Puck',
     accent: 'Português Brasileiro (Locutor FM)',
     styleTag: 'Impacto & Atacarejo',
@@ -50,7 +50,7 @@ export const INITIAL_VOICES: VoicePreset[] = [
     name: 'Mariana (Descontraída & Dinâmica)',
     gender: 'feminino',
     description: 'Jovem, moderna e cheia de ritmo. Excelente para conveniências, hortifrúti gourmet e bebidas.',
-    elevenVoiceId: 'EXAVITQu4vr4xnSDxMaL',
+    elevenVoiceId: 'AKXBn24T1f9tvTDnWzWT',
     geminiVoiceName: 'Zephyr',
     accent: 'Português Brasileiro (Contemporâneo)',
     styleTag: 'Jovem & Dinâmica',
@@ -61,7 +61,7 @@ export const INITIAL_VOICES: VoicePreset[] = [
     name: 'Marcos (Elegante & Institucional)',
     gender: 'masculino',
     description: 'Locução sóbria e refinada para comunicados da loja, inaugurações, clube de vantagens e horários.',
-    elevenVoiceId: 'VR6AewLTigWG4xSOukaG',
+    elevenVoiceId: 'a1ijbt2xmlhzaGXHewzV',
     geminiVoiceName: 'Charon',
     accent: 'Português Brasileiro (Institucional)',
     styleTag: 'Institucional & Clube',
@@ -1562,7 +1562,8 @@ class Database {
             const mimeType = file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg';
 
             const check = await this.pool.query('SELECT id, file_size FROM audio_binaries WHERE id = $1', [id]);
-            if (check.rows.length === 0 || (check.rows[0].file_size < 1000 && buffer.length > 1000)) {
+            const isPriorityDemo = id.startsWith('aud-demo-') || id.startsWith('voice_') || id.startsWith('style_');
+            if (check.rows.length === 0 || isPriorityDemo || check.rows[0].file_size !== buffer.length) {
               const ok = await this.pgSaveAudioBinary(id, file, mimeType, buffer);
               if (ok) uploaded++;
             }
