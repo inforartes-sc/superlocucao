@@ -7,18 +7,20 @@ import {
   TrendingUp, Award, UserCheck, UserX, BarChart3, ChevronRight, X,
   Play, Pause, LogIn, ExternalLink, Activity, Database, Cpu, HelpCircle,
   AlertTriangle, FileText, Download, Sliders, Layers, CreditCard,
-  Wallet, QrCode, DollarSign, CheckSquare, Copy, Link, Send
+  Wallet, QrCode, DollarSign, CheckSquare, Copy, Link, Send,
+  Music, Mic, Wifi, WifiOff, Store, LogOut, ArrowLeft
 } from 'lucide-react';
 import { api } from '../services/api.ts';
 import {
   AdminMetrics, User, RechargePackage, CommercialPlan,
-  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation
 } from '../types/index.ts';
 
 interface ClientItem {
   id: string;
   name: string;
   email: string;
+  password?: string;
   phone?: string;
   companyName?: string;
   city?: string;
@@ -45,6 +47,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     return sessionStorage.getItem('superlocucao_admin_auth') === 'true';
   });
   const [adminPinInput, setAdminPinInput] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState(false);
 
   // Tab State
@@ -77,6 +80,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [formPlan, setFormPlan] = useState<'gratuito' | 'pro_varejo' | 'redes_atacarejo'>('pro_varejo');
   const [formStatus, setFormStatus] = useState<'ativo' | 'bloqueado'>('ativo');
   const [formCredits, setFormCredits] = useState<number>(50);
+  const [formPassword, setFormPassword] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [submittingClient, setSubmittingClient] = useState(false);
 
@@ -99,7 +103,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       id: 'pacote-basico',
       name: 'Pacote Básico',
       credits: 300,
-      price: 29,
+      price: 29.9,
       description: 'Aproximadamente 30 locuções comerciais',
       badge: '',
       highlighted: false,
@@ -108,7 +112,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       id: 'pacote-pro',
       name: 'Pacote Pro Varejo',
       credits: 1000,
-      price: 69,
+      price: 69.9,
       description: 'Aproximadamente 100 locuções comerciais',
       badge: 'Melhor Custo-Benefício',
       highlighted: true,
@@ -117,7 +121,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       id: 'pacote-atacado',
       name: 'Pacote Atacarejo',
       credits: 3000,
-      price: 149,
+      price: 147.9,
       description: 'Aproximadamente 300 locuções comerciais',
       badge: '',
       highlighted: false,
@@ -237,6 +241,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [syncingAudios, setSyncingAudios] = useState(false);
   const [syncAudioNotice, setSyncAudioNotice] = useState<string | null>(null);
 
+  // Online Radio Stations Realtime State
+  const [onlineRadioStations, setOnlineRadioStations] = useState<OnlineRadioStation[]>([]);
+
+  const fetchOnlineRadios = async () => {
+    try {
+      const res = await api.getOnlineRadioStations();
+      setOnlineRadioStations(res.stations || []);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'audios') {
+      fetchOnlineRadios();
+      const interval = setInterval(fetchOnlineRadios, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
   const loadData = async () => {
     try {
       const [metricsRes, usersRes] = await Promise.all([
@@ -246,6 +270,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
 
       if (metricsRes) {
         setMetrics(metricsRes);
+        if (metricsRes.radioStats?.onlineStations) {
+          setOnlineRadioStations(metricsRes.radioStats.onlineStations);
+        }
         setSystemNotice(metricsRes.settings?.systemAnnouncement || '');
         setCostPerGeneration(metricsRes.settings?.creditsPerGeneration ?? 5);
         setNewClientBonus(metricsRes.settings?.initialCredits ?? 50);
@@ -303,9 +330,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
 
   const handleUnlockAdmin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanPin = adminPinInput.trim().toLowerCase();
-    // Default master PINs: superadmin, admin2026, 2026, admin
-    if (cleanPin === 'admin2026' || cleanPin === 'superadmin' || cleanPin === '2026' || cleanPin === 'admin' || cleanPin === '') {
+    const cleanPin = adminPinInput.trim();
+    if (!cleanPin) {
+      setPinError(true);
+      return;
+    }
+    // Senhas válidas para Super Admin: admin123, admin2026, 123456, superadmin
+    const validPins = ['admin123', 'admin2026', '123456', 'superadmin', 'admin'];
+    if (validPins.includes(cleanPin) || validPins.includes(cleanPin.toLowerCase())) {
       sessionStorage.setItem('superlocucao_admin_auth', 'true');
       setIsAuthenticated(true);
       setPinError(false);
@@ -330,6 +362,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     setFormPlan('pro_varejo');
     setFormStatus('ativo');
     setFormCredits(50);
+    setFormPassword('123456');
     setFormNotes('');
     setIsClientModalOpen(true);
   };
@@ -344,6 +377,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     setFormPlan(client.plan);
     setFormStatus(client.status || 'ativo');
     setFormCredits(client.creditsBalance);
+    setFormPassword(client.password || '123456');
     setFormNotes(client.notes || '');
     setIsClientModalOpen(true);
   };
@@ -369,6 +403,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         await api.updateAdminUser(editingClient.id, {
           name: formName.trim(),
           email: formEmail.trim(),
+          password: formPassword.trim() || undefined,
           phone: formPhone.trim(),
           companyName: formCompany.trim(),
           city: formCity.trim(),
@@ -380,6 +415,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         await api.createAdminUser({
           name: formName.trim(),
           email: formEmail.trim(),
+          password: formPassword.trim() || '123456',
           phone: formPhone.trim(),
           companyName: formCompany.trim(),
           city: formCity.trim(),
@@ -772,7 +808,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
             </div>
             <h2 className="text-2xl font-black text-white">Console Super Admin</h2>
             <p className="text-xs sm:text-sm text-zinc-400 mt-1.5">
-              Digite a Senha Mestra ou Chave de Acesso para gerenciar clientes, servidores de IA e créditos.
+              Digite a Senha de Super Admin para gerenciar clientes, servidores de IA, planos e créditos.
             </p>
           </div>
 
@@ -780,21 +816,29 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
             <div className="relative">
               <Key className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPin ? 'text' : 'password'}
                 value={adminPinInput}
                 onChange={(e) => {
                   setAdminPinInput(e.target.value);
                   setPinError(false);
                 }}
-                placeholder="Senha mestra (ex: admin2026)"
-                className="w-full pl-10 pr-4 py-3 bg-[#11131a] border border-zinc-700/90 rounded-2xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition"
+                placeholder="Digite a Senha de Super Admin"
+                className="w-full pl-10 pr-10 py-3 bg-[#11131a] border border-zinc-700/90 rounded-2xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition font-mono"
                 autoFocus
               />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition cursor-pointer"
+                title={showPin ? 'Ocultar senha' : 'Ver senha'}
+              >
+                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
 
             {pinError && (
               <p className="text-xs text-red-400 font-semibold flex items-center justify-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" /> Senha mestra incorreta. Tente novamente.
+                <AlertCircle className="w-3.5 h-3.5" /> Senha incorreta. Digite a senha do Super Admin.
               </p>
             )}
 
@@ -803,15 +847,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
               className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-2xl text-sm shadow-xl shadow-orange-500/25 transition cursor-pointer active:scale-98 flex items-center justify-center gap-2"
             >
               <Unlock className="w-4 h-4 stroke-[2.5]" />
-              <span>Desbloquear Console</span>
+              <span>Entrar no Console Super Admin</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleUnlockAdmin()}
-              className="text-xs text-zinc-400 hover:text-orange-300 transition underline underline-offset-4 cursor-pointer"
+              onClick={() => {
+                window.history.pushState({}, '', '/');
+                if (onNavigate) onNavigate('landing');
+              }}
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-orange-400 transition cursor-pointer pt-2"
             >
-              Acesso Rápido de Administrador (1 Clique)
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar para a Página Inicial</span>
             </button>
           </form>
         </div>
@@ -877,11 +925,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
 
           <button
             onClick={handleLockAdmin}
-            title="Bloquear Painel Super Admin"
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-[#1f2433] hover:bg-red-500/20 text-zinc-400 hover:text-red-300 border border-zinc-700/80 hover:border-red-500/40 rounded-2xl text-xs font-bold transition cursor-pointer"
+            title="Sair do Console Super Admin e Bloquear"
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-white border border-red-500/30 hover:border-red-500/60 rounded-2xl text-xs sm:text-sm font-bold transition cursor-pointer shadow-sm"
           >
-            <Lock className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Bloquear</span>
+            <LogOut className="w-4 h-4 text-red-400" />
+            <span>Sair do Painel Admin</span>
           </button>
         </div>
       </div>
@@ -1435,6 +1483,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                                 <MapPin className="w-3 h-3 text-zinc-500" /> {client.city}
                               </div>
                             )}
+                            <div className="text-orange-400/90 font-mono text-[10px] flex items-center gap-1.5 pt-0.5">
+                              <Lock className="w-3 h-3 text-orange-500/70" />
+                              <span>Senha: <strong>{client.password || '123456'}</strong></span>
+                            </div>
                           </div>
                         </td>
 
@@ -1702,7 +1754,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                       <div className="text-[11px] font-bold text-slate-500 uppercase">{pkg.name || 'Pacote'}</div>
                       <div className="text-lg font-black text-slate-900">{(pkg.credits || 0).toLocaleString('pt-BR')} Créditos</div>
                       <div className="text-[10px] text-slate-500">{pkg.description || 'Equivalência'}</div>
-                      <div className="text-xl font-extrabold text-slate-900 mt-2">R$ {pkg.price}</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-2">R$ {Number(pkg.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </div>
                   </div>
                 </div>
@@ -1919,30 +1971,129 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       {/* ===================================================================== */}
       {activeTab === 'audios' && (
         <div className="space-y-6 animate-in fade-in">
-          {/* Radio Station Realtime Status */}
-          <div className="bg-[#151822] rounded-3xl p-6 border border-zinc-700/80 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-                <h3 className="font-black text-white text-lg">Central da Rádio Web em Loja</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  Ao Vivo
-                </span>
+          {/* Radio Station Realtime Status & Live Radios Monitor */}
+          <div className="bg-[#151822] rounded-3xl p-6 border border-zinc-700/80 shadow-lg space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-4 border-b border-zinc-800">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${onlineRadioStations.length > 0 ? 'bg-emerald-500 animate-ping' : 'bg-zinc-600'}`} />
+                  <h3 className="font-black text-white text-lg">Central da Rádio Web em Loja</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    onlineRadioStations.length > 0
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                  }`}>
+                    {onlineRadioStations.length > 0 ? 'Transmissão Ao Vivo Ativa' : 'Aguardando Lojas'}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400">
+                  A Rádio Web com Deck Duplo sincroniza trilhas musicais e ofertas programadas nos supermercados. Acompanhe em tempo real quais emissoras estão transmitindo no ar.
+                </p>
               </div>
-              <p className="text-xs text-zinc-400">
-                A Rádio Web com Deck Duplo sincroniza trilhas musicais e ofertas programadas nos supermercados.
-              </p>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
+                  <span className="text-zinc-500">Rádios Online Agora:</span>{' '}
+                  <strong className={`font-black ${onlineRadioStations.length > 0 ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                    {onlineRadioStations.length} {onlineRadioStations.length === 1 ? 'loja no ar' : 'lojas no ar'}
+                  </strong>
+                </div>
+                <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
+                  <span className="text-zinc-500">Fila Global:</span>{' '}
+                  <strong className="text-orange-400 font-black">{metrics?.radioStats?.queueCount || 0} ofertas</strong>
+                </div>
+                <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
+                  <span className="text-zinc-500">Intervalo Padrão:</span>{' '}
+                  <strong className="text-white font-black">{metrics?.radioStats?.defaultIntervalSec || 45}s</strong>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
-                <span className="text-zinc-500">Fila de Spots:</span>{' '}
-                <strong className="text-orange-400 font-black">{metrics?.radioStats?.queueCount || 0} ofertas</strong>
+            {/* LIVE ONLINE STATIONS LIST */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-orange-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Supermercados com Rádio Online no Ar ({onlineRadioStations.length})
+                  </span>
+                </div>
+                <span className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Monitoramento em tempo real (atualização automática a cada 4s)
+                </span>
               </div>
-              <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
-                <span className="text-zinc-500">Intervalo Padrão:</span>{' '}
-                <strong className="text-white font-black">{metrics?.radioStats?.defaultIntervalSec || 45}s</strong>
-              </div>
+
+              {onlineRadioStations.length === 0 ? (
+                <div className="p-8 bg-[#10121a] border border-zinc-800/80 rounded-2xl text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-800/60 text-zinc-500 flex items-center justify-center mx-auto">
+                    <WifiOff className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-300">
+                    Nenhuma rádio de supermercado transmitindo no ar neste momento
+                  </h4>
+                  <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                    Assim que um cliente ou operador de supermercado clicar no botão <strong className="text-orange-400 font-semibold">"Ligar Rádio da Loja Ao Vivo"</strong> dentro do painel, a emissora conectará e aparecerá aqui instantaneamente com a música que está tocando e as locuções de ofertas transmitidas.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {onlineRadioStations.map((station) => (
+                    <div
+                      key={station.id}
+                      className="bg-[#10121a] border border-emerald-500/40 hover:border-emerald-500/70 rounded-2xl p-3.5 shadow-md shadow-emerald-950/20 space-y-2.5 relative overflow-hidden transition"
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
+
+                      {/* Header of Station */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                            <Store className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-black text-white truncate max-w-[150px]">
+                                {station.storeName || 'Supermercado'}
+                              </h4>
+                              <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase bg-emerald-500 text-zinc-950 flex items-center gap-1 animate-pulse shrink-0">
+                                <span className="w-1 h-1 rounded-full bg-zinc-950" />
+                                NO AR
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-zinc-400 font-medium truncate max-w-[180px]">
+                              {station.stationName || 'Rádio Supermercado'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right text-[10px] text-zinc-400 shrink-0">
+                          <div className="font-bold text-emerald-400 flex items-center gap-1 justify-end">
+                            <Wifi className="w-3 h-3" />
+                            <span>Online</span>
+                          </div>
+                          <div className="text-zinc-500 font-mono text-[9px]">
+                            {new Date(station.startedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer Details */}
+                      <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
+                        <div className="flex items-center gap-1 truncate text-[11px]">
+                          <span className="text-zinc-500">Operador:</span>
+                          <strong className="text-zinc-300 font-semibold truncate max-w-[120px]">
+                            {station.userName || 'Cliente'}
+                          </strong>
+                        </div>
+                        <div className="text-zinc-500 text-[10px] shrink-0 font-medium">
+                          {station.spotsQueueCount} ofertas
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2945,6 +3096,23 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                   />
                 </div>
 
+                <div className="space-y-1">
+                  <label className="text-zinc-300 font-bold flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Senha de Acesso *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    placeholder="Ex: alvorada123 ou 123456"
+                    className="w-full px-3 py-2.5 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-zinc-300 font-bold">Plano de Assinatura</label>
                   <select

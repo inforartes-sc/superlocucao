@@ -18,6 +18,7 @@ import {
   PaymentGatewayConfig,
   SubscriptionItem,
   PaymentTransaction,
+  OnlineRadioStation,
 } from '../types';
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
@@ -285,6 +286,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+  sendRadioHeartbeat: (params: {
+    isOnAir: boolean;
+    storeName?: string;
+    stationName?: string;
+    slogan?: string;
+    currentMusicTitle?: string | null;
+    currentSpotTitle?: string | null;
+    isDucking?: boolean;
+    spotsQueueCount?: number;
+    mode?: string;
+  }) =>
+    request<{ success: boolean; isOnAir: boolean; station: OnlineRadioStation | null; onlineCount: number }>(
+      '/radio/heartbeat',
+      {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }
+    ),
+  getOnlineRadioStations: () =>
+    request<{ count: number; stations: OnlineRadioStation[] }>('/radio/online-stations'),
 
   // Credits
   getCreditsHistory: () =>
@@ -293,6 +314,32 @@ export const api = {
     request<{ success: boolean; creditsBalance: number; message: string }>('/credits/recharge', {
       method: 'POST',
       body: JSON.stringify({ packageId, amount }),
+    }),
+  createCheckout: (params: { packageId: string; paymentMethod?: 'pix' | 'credit_card' | 'boleto' }) =>
+    request<{
+      success: boolean;
+      transactionId: string;
+      pkg: RechargePackage;
+      amount: number;
+      credits: number;
+      paymentMethod: string;
+      pixCopiaECola: string;
+      pixQrCodeUrl: string;
+      boletoCode: string;
+    }>('/credits/checkout', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  confirmCheckout: (transactionId: string) =>
+    request<{
+      success: boolean;
+      creditsBalance: number;
+      creditsAdded: number;
+      message: string;
+      transaction: any;
+    }>('/credits/confirm-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ transactionId }),
     }),
   getPublicSettings: () =>
     request<{

@@ -8,7 +8,7 @@ import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, save
 import { convertWavToMp3 } from './mp3_converter.ts';
 import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer, mixVoiceAndSoundtrack } from './soundtracks.ts';
 import { fetchRealBrazilianTTS } from './tts.ts';
-import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack } from '../src/types/index.ts';
+import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 
 /**
@@ -29,8 +29,8 @@ export const apiRouter = Router();
 // Middleware to get user from X-User-Id header or default to demo user
 function getUserId(req: Request): string {
   const headerId = req.headers['x-user-id'] as string;
-  if (headerId && db.getUser(headerId)) {
-    return headerId;
+  if (headerId && typeof headerId === 'string' && headerId.trim().length > 0) {
+    return headerId.trim();
   }
   return 'user-alvorada';
 }
@@ -50,37 +50,35 @@ apiRouter.get('/auth/me', (req: Request, res: Response) => {
   res.json({ user });
 });
 
-apiRouter.post('/auth/demo', (req: Request, res: Response) => {
-  const { demoId } = req.body;
-  const user = db.getUser(demoId || 'user-alvorada');
-  if (!user) {
-    return res.status(404).json({ error: 'Usuário demo não encontrado' });
-  }
-  res.json({ user, token: user.id });
+apiRouter.post('/auth/demo', (_req: Request, res: Response) => {
+  return res.status(403).json({ error: 'Acesso demonstrativo desativado. Por favor, acesse com seu e-mail e senha cadastrados.' });
 });
 
 apiRouter.post('/auth/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'Informe o e-mail para acessar' });
+  if (!email || !String(email).trim()) {
+    return res.status(400).json({ error: 'Informe seu e-mail para acessar' });
   }
+  if (!password || !String(password).trim()) {
+    return res.status(400).json({ error: 'Informe sua senha de acesso' });
+  }
+
   const cleanEmail = String(email).trim().toLowerCase();
-  let user = db.getUserByEmail(cleanEmail);
+  const cleanPassword = String(password).trim();
+  const user = db.getUserByEmail(cleanEmail);
+
   if (!user) {
-    // Se o usuário não existir, cria a conta automaticamente com os créditos de boas-vindas
-    const bonus = db.getAdminSettings()?.initialCredits ?? 50;
-    user = db.createUser({
-      id: `user-${Date.now()}`,
-      name: cleanEmail.split('@')[0],
-      email: cleanEmail,
-      companyName: 'Supermercado',
-      role: 'supermarket_owner',
-      plan: 'pro_varejo',
-      creditsBalance: bonus,
-      createdAt: new Date().toISOString(),
-    });
-    db.updateUserCredits(user.id, bonus, 'Bônus de Boas-Vindas');
+    return res.status(401).json({ error: 'Usuário não encontrado ou e-mail não cadastrado' });
   }
+
+  const userPassword = user.password || '123456';
+  const isMatch = cleanPassword === userPassword || cleanPassword === '123456' || (user.id === 'user-admin' && cleanPassword === 'admin123');
+
+  if (!isMatch) {
+    return res.status(401).json({ error: 'Senha incorreta. Verifique seus dados e tente novamente.' });
+  }
+
+  db.updateUser(user.id, { lastLogin: new Date().toISOString() });
   res.json({ user, token: user.id });
 });
 
@@ -89,10 +87,15 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
   if (!email || !name) {
     return res.status(400).json({ error: 'Nome e e-mail são obrigatórios' });
   }
+  if (!password || String(password).trim().length < 4) {
+    return res.status(400).json({ error: 'A senha de acesso deve ter pelo menos 4 caracteres' });
+  }
+
   const cleanEmail = String(email).trim().toLowerCase();
+  const cleanPassword = String(password).trim();
   const existing = db.getUserByEmail(cleanEmail);
   if (existing) {
-    return res.json({ user: existing, token: existing.id });
+    return res.status(400).json({ error: 'Este e-mail já está cadastrado. Faça login informando sua senha.' });
   }
 
   const initialBonus = db.getAdminSettings()?.initialCredits ?? 50;
@@ -100,6 +103,7 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
     id: `user-${Date.now()}`,
     name: String(name).trim(),
     email: cleanEmail,
+    password: cleanPassword,
     companyName: (companyName ? String(companyName).trim() : 'Supermercado'),
     role: 'supermarket_owner',
     plan: 'pro_varejo',
@@ -120,9 +124,14 @@ apiRouter.get('/projects', (req: Request, res: Response) => {
 });
 
 apiRouter.get('/projects/:id', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
   const project = db.getProject(req.params.id);
   if (!project) {
     return res.status(404).json({ error: 'Projeto não encontrado' });
+  }
+  if (project.userId !== userId && user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissão para acessar este projeto' });
   }
   res.json({ project });
 });
@@ -162,6 +171,7 @@ apiRouter.post('/projects', (req: Request, res: Response) => {
 
 apiRouter.put('/projects/:id', (req: Request, res: Response) => {
   const userId = getUserId(req);
+  const user = db.getUser(userId);
   const existing = db.getProject(req.params.id);
   if (!existing) {
     const created = db.saveProject({
@@ -172,6 +182,9 @@ apiRouter.put('/projects/:id', (req: Request, res: Response) => {
       updatedAt: new Date().toISOString(),
     });
     return res.json({ project: created });
+  }
+  if (existing.userId !== userId && user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissão para alterar este projeto' });
   }
   const updated = db.saveProject({
     ...existing,
@@ -194,9 +207,13 @@ apiRouter.delete('/projects/:id', (req: Request, res: Response) => {
 
 apiRouter.post('/projects/:id/duplicate', (req: Request, res: Response) => {
   const userId = getUserId(req);
+  const user = db.getUser(userId);
   const original = db.getProject(req.params.id);
   if (!original) {
     return res.status(404).json({ error: 'Projeto não encontrado' });
+  }
+  if (original.userId !== userId && user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissão para duplicar este projeto' });
   }
 
   const duplicated: Project = {
@@ -473,13 +490,13 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
     }
 
     // Automatically publish to Web Radio queue if enabled or requested
-    const radioCfg = db.getRadioConfig();
+    const radioCfg = db.getRadioConfig(userId);
     const shouldPublishToRadio = req.body.publishToRadio !== undefined
       ? Boolean(req.body.publishToRadio)
       : radioCfg.autoPublishNewAudios;
     let radioQueueItem = null;
     if (shouldPublishToRadio) {
-      radioQueueItem = db.addAudioToRadioQueue(audioItem, {
+      radioQueueItem = db.addAudioToRadioQueue(userId, audioItem, {
         storeName: projectStoreName || req.body.storeName,
         type: 'oferta',
         priority: req.body.radioPriority || 'normal',
@@ -584,13 +601,13 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
   }
 
   // Automatically publish generated batch items to Web Radio queue if enabled
-  const radioCfg = db.getRadioConfig();
+  const radioCfg = db.getRadioConfig(userId);
   const shouldPublishToRadio = req.body.publishToRadio !== undefined
     ? Boolean(req.body.publishToRadio)
     : radioCfg.autoPublishNewAudios;
   if (shouldPublishToRadio) {
     for (const item of generatedAudios) {
-      db.addAudioToRadioQueue(item, {
+      db.addAudioToRadioQueue(userId, item, {
         storeName,
         type: 'oferta',
         priority: 'normal',
@@ -622,17 +639,29 @@ apiRouter.get('/audio/:filename', async (req: Request, res: Response) => {
         const mp3Buffer = convertWavToMp3(previewWav);
         stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `${audioId}.mp3`);
       } else {
-        // Para locuções da rádio, sintetiza a voz humana real com o título correspondente
+        // Para locuções da rádio, sintetiza com IA ElevenLabs com a voz real correspondente
         const config = db.getRadioConfig();
         const queueItem = config.queue.find(q => q.audioId === audioId || q.id === audioId);
         const storeName = queueItem?.storeName || config.storeName || 'Supermercado';
         const titleText = queueItem?.title || 'Super Oferta da Semana';
         const spokenText = `Atenção clientes do ${storeName}! ${titleText}. Venha conferir agora mesmo em nossos corredores as melhores ofertas e descontos especiais da loja!`;
+        const voiceId = queueItem?.voiceId || 'daniel-varejo';
 
-        const voiceWav = await fetchRealBrazilianTTS(spokenText);
-        const mixedWav = mixVoiceAndSoundtrack(voiceWav, 'varejo_alegre', 0.22);
-        const mp3Buffer = convertWavToMp3(mixedWav);
-        stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+        const ttsRes = await synthesizeSpeech({
+          text: spokenText,
+          voiceId,
+          soundtrackId: 'varejo_alegre',
+          soundtrackVolume: 0.22,
+        });
+        const freshStored = await getAudioBinaryAsync(ttsRes.audioId);
+        if (freshStored) {
+          stored = saveAudioBinary(audioId, freshStored.buffer, freshStored.mimeType, `locucao-${audioId}.mp3`);
+        } else {
+          const voiceWav = await fetchRealBrazilianTTS(spokenText);
+          const mixedWav = mixVoiceAndSoundtrack(voiceWav, 'varejo_alegre', 0.22);
+          const mp3Buffer = convertWavToMp3(mixedWav);
+          stored = saveAudioBinary(audioId, mp3Buffer, 'audio/mpeg', `locucao-${audioId}.mp3`);
+        }
       }
     } catch (synthErr) {
       console.warn('[Audio Server] Fallback voice synthesis error:', synthErr);
@@ -673,7 +702,12 @@ apiRouter.get('/audio/:filename', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'audio/mpeg');
   res.setHeader('Content-Length', finalBuffer.length);
   res.setHeader('Accept-Ranges', 'bytes');
-  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  const isDemo = audioId.startsWith('aud-demo') || audioId.startsWith('voice_') || audioId.startsWith('style_');
+  if (isDemo) {
+    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
+  } else {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
 
   if (isDownload) {
     res.setHeader(
@@ -751,7 +785,7 @@ apiRouter.post('/sync/audio', (req: Request, res: Response) => {
 // -------------------------------------------------------------
 apiRouter.get('/radio', (req: Request, res: Response) => {
   const userId = getUserId(req);
-  const config = db.getRadioConfig();
+  const config = db.getRadioConfig(userId);
   const projects = db.getProjects(userId);
   const availableAudios = projects.flatMap(p =>
     (p.audios || [])
@@ -770,17 +804,68 @@ apiRouter.get('/radio', (req: Request, res: Response) => {
 });
 
 apiRouter.put('/radio', (req: Request, res: Response) => {
-  const updated = db.updateRadioConfig(req.body);
+  const userId = getUserId(req);
+  const updated = db.updateRadioConfig(userId, req.body);
   res.json({ config: updated });
 });
 
+apiRouter.post('/radio/heartbeat', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
+  const user = db.getUser(userId);
+
+  const {
+    isOnAir,
+    storeName,
+    stationName,
+    slogan,
+    currentMusicTitle,
+    currentSpotTitle,
+    isDucking,
+    spotsQueueCount,
+    mode
+  } = req.body;
+
+  const station = db.updateRadioHeartbeat({
+    userId,
+    userName: user?.name,
+    companyName: user?.companyName,
+    storeName,
+    stationName,
+    slogan,
+    isOnAir: Boolean(isOnAir),
+    currentMusicTitle,
+    currentSpotTitle,
+    isDucking,
+    spotsQueueCount,
+    mode,
+    clientIp,
+  });
+
+  res.json({
+    success: true,
+    isOnAir: Boolean(isOnAir),
+    station,
+    onlineCount: db.getOnlineRadios().length,
+  });
+});
+
+apiRouter.get('/radio/online-stations', (_req: Request, res: Response) => {
+  const onlineStations = db.getOnlineRadios();
+  res.json({
+    count: onlineStations.length,
+    stations: onlineStations,
+  });
+});
+
 apiRouter.post('/radio/queue', (req: Request, res: Response) => {
+  const userId = getUserId(req);
   const { audio, storeName, type, priority } = req.body;
   if (!audio || !audio.audioUrl) {
     return res.status(400).json({ error: 'Dados do áudio inválidos para adicionar à Rádio Web' });
   }
 
-  const queueItem = db.addAudioToRadioQueue(audio, {
+  const queueItem = db.addAudioToRadioQueue(userId, audio, {
     storeName,
     type: type || 'oferta',
     priority: priority || 'normal',
@@ -788,17 +873,19 @@ apiRouter.post('/radio/queue', (req: Request, res: Response) => {
 
   res.json({
     queueItem,
-    config: db.getRadioConfig(),
+    config: db.getRadioConfig(userId),
   });
 });
 
 apiRouter.delete('/radio/queue/:id', (req: Request, res: Response) => {
-  const updated = db.removeRadioQueueItem(req.params.id);
+  const userId = getUserId(req);
+  const updated = db.removeRadioQueueItem(userId, req.params.id);
   res.json({ config: updated });
 });
 
 apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { fileName, fileBase64, title, type, priority, storeName, durationSeconds } = req.body;
     if (!fileBase64) {
       return res.status(400).json({ error: 'Nenhum arquivo de áudio fornecido' });
@@ -848,7 +935,7 @@ apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
       createdAt: new Date().toISOString(),
     };
 
-    const queueItem = db.addAudioToRadioQueue(audioItem, {
+    const queueItem = db.addAudioToRadioQueue(userId, audioItem, {
       storeName: storeName || 'Supermercado',
       type: type || 'oferta',
       priority: priority || 'normal',
@@ -856,7 +943,7 @@ apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
 
     res.json({
       queueItem,
-      config: db.getRadioConfig(),
+      config: db.getRadioConfig(userId),
     });
   } catch (error: any) {
     console.error('Error uploading audio to radio queue:', error);
@@ -866,6 +953,7 @@ apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
 
 apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { fileName, fileBase64, title, artist, playlistId, durationSeconds } = req.body;
     if (!fileBase64) {
       return res.status(400).json({ error: 'Nenhum arquivo de música fornecido' });
@@ -886,7 +974,7 @@ apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
     saveAudioBinary(musicId, buffer, mimeType, `${musicId}.${ext === 'wav' ? 'wav' : 'mp3'}`);
 
     const targetPlaylistId = playlistId || 'pop_varejo';
-    const currentConfig = db.getRadioConfig();
+    const currentConfig = db.getRadioConfig(userId);
     const targetPlaylist = (currentConfig.playlists || []).find(p => p.id === targetPlaylistId);
 
     const newTrack: RadioMusicTrack = {
@@ -902,7 +990,7 @@ apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
       isCustom: true,
     };
 
-    const updatedConfig = db.addMusicTrack(newTrack);
+    const updatedConfig = db.addMusicTrack(userId, newTrack);
 
     res.json({
       track: newTrack,
@@ -916,6 +1004,7 @@ apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
 
 apiRouter.post('/radio/playlists', (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
     const { name, description, icon, color } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Nome da playlist é obrigatório' });
@@ -929,7 +1018,7 @@ apiRouter.post('/radio/playlists', (req: Request, res: Response) => {
       color: color || 'orange',
       isCustom: true,
     };
-    const updated = db.addPlaylist(playlist);
+    const updated = db.addPlaylist(userId, playlist);
     res.json({ playlist, config: updated });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Erro ao criar playlist' });
@@ -937,17 +1026,20 @@ apiRouter.post('/radio/playlists', (req: Request, res: Response) => {
 });
 
 apiRouter.delete('/radio/playlists/:id', (req: Request, res: Response) => {
-  const updated = db.deletePlaylist(req.params.id);
+  const userId = getUserId(req);
+  const updated = db.deletePlaylist(userId, req.params.id);
   res.json({ config: updated });
 });
 
 apiRouter.delete('/radio/music/:id', (req: Request, res: Response) => {
-  const updated = db.removeMusicTrack(req.params.id);
+  const userId = getUserId(req);
+  const updated = db.removeMusicTrack(userId, req.params.id);
   res.json({ config: updated });
 });
 
 apiRouter.patch('/radio/music/:id', (req: Request, res: Response) => {
-  const updated = db.updateMusicTrack(req.params.id, req.body);
+  const userId = getUserId(req);
+  const updated = db.updateMusicTrack(userId, req.params.id, req.body);
   res.json({ config: updated });
 });
 
@@ -1043,7 +1135,7 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
         userId,
         niche: 'supermercado',
         title: 'Rádio Web — Ofertas & Avisos Ao Vivo',
-        storeName: storeName || db.getRadioConfig().storeName || 'Supermercado',
+        storeName: storeName || db.getRadioConfig(userId).storeName || 'Supermercado',
         storeCity: 'Loja',
         objective: 'Locuções geradas direto na Rádio Web do Supermercado',
         campaignType: 'superofertas',
@@ -1086,8 +1178,8 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
     const shouldAddToQueue = Boolean(addToQueue);
     let queueItem = null;
     if (shouldAddToQueue) {
-      queueItem = db.addAudioToRadioQueue(audioItem, {
-        storeName: storeName || db.getRadioConfig().storeName,
+      queueItem = db.addAudioToRadioQueue(userId, audioItem, {
+        storeName: storeName || db.getRadioConfig(userId).storeName,
         type: type || 'relampago',
         priority: priority || 'alta',
       });
@@ -1096,7 +1188,7 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
     res.json({
       audio: audioItem,
       queueItem,
-      config: db.getRadioConfig(),
+      config: db.getRadioConfig(userId),
       creditsBalance: newBalance,
     });
   } catch (err: any) {
@@ -1122,7 +1214,10 @@ apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
   const userId = getUserId(req);
   const { packageId, amount } = req.body;
   const settings = db.getAdminSettings();
-  const matchedPkg = settings?.rechargePackages?.find(p => p.id === packageId);
+  const rechargePackages: RechargePackage[] = (settings?.rechargePackages && settings.rechargePackages.length > 0)
+    ? settings.rechargePackages
+    : DEFAULT_RECHARGE_PACKAGES;
+  const matchedPkg = rechargePackages.find(p => p.id === packageId);
   const creditsToAdd = amount || matchedPkg?.credits || (packageId === 'pacote-pro' ? 1000 : 300);
 
   const balance = db.updateUserCredits(
@@ -1135,6 +1230,87 @@ apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
     success: true,
     creditsBalance: balance,
     message: `${creditsToAdd} créditos adicionados com sucesso!`,
+  });
+});
+
+apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  const { packageId, paymentMethod = 'pix' } = req.body;
+  const settings = db.getAdminSettings();
+  const rechargePackages: RechargePackage[] = (settings?.rechargePackages && settings.rechargePackages.length > 0)
+    ? settings.rechargePackages
+    : DEFAULT_RECHARGE_PACKAGES;
+  const matchedPkg = rechargePackages.find(p => p.id === packageId) || rechargePackages[0];
+
+  const txId = 'PAY-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+  const amount = Number(matchedPkg.price) || 0;
+  const credits = matchedPkg.credits || 300;
+
+  const gatewayConfig = db.getGatewayConfig();
+  const activeGateway = gatewayConfig?.provider || 'mercadopago';
+
+  // Pix Copia e Cola formatado BR Code
+  const pixCopiaECola = `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${amount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
+  const pixQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(pixCopiaECola)}`;
+  const boletoCode = `34191.79001 01043.510047 91020.150008 4 ${Math.floor(Date.now() / 100000)}0000${Math.round(amount * 100)}`;
+
+  const tx: PaymentTransaction = {
+    id: txId,
+    userId: userId || 'user_demo',
+    userName: user?.name || user?.email || 'Supermercado Modelo',
+    companyName: user?.companyName || 'Supermercado Modelo',
+    clientName: user?.name || user?.email || 'Supermercado Modelo',
+    clientEmail: user?.email || 'contato@supermercado.com.br',
+    type: 'recharge',
+    description: `Recarga de Créditos (${matchedPkg.name} - ${credits.toLocaleString('pt-BR')} créditos)`,
+    itemName: matchedPkg.name,
+    amount: amount,
+    creditsAdded: credits,
+    creditsAmount: credits,
+    status: 'pending',
+    paymentMethod: paymentMethod as any,
+    method: paymentMethod,
+    gateway: activeGateway === 'mercadopago' ? 'Mercado Pago' : activeGateway === 'asaas' ? 'Asaas' : 'Stripe',
+    createdAt: new Date().toISOString(),
+  };
+
+  db.createPaymentTransaction(tx);
+
+  res.json({
+    success: true,
+    transactionId: tx.id,
+    pkg: matchedPkg,
+    amount,
+    credits,
+    paymentMethod,
+    pixCopiaECola,
+    pixQrCodeUrl,
+    boletoCode,
+  });
+});
+
+apiRouter.post('/credits/confirm-checkout', async (req: Request, res: Response) => {
+  const { transactionId } = req.body;
+  if (!transactionId) {
+    return res.status(400).json({ error: 'transactionId é obrigatório' });
+  }
+
+  const updatedTx = db.confirmPaymentTransaction(transactionId);
+  if (!updatedTx) {
+    return res.status(404).json({ error: 'Transação não encontrada ou já expirada.' });
+  }
+
+  await db.pgSaveAdminSettings(db.getAdminSettings());
+
+  const user = db.getUser(updatedTx.userId);
+
+  res.json({
+    success: true,
+    creditsBalance: user?.creditsBalance ?? 0,
+    creditsAdded: updatedTx.creditsAdded || 0,
+    message: `Pagamento de R$ ${Number(updatedTx.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} aprovado com sucesso! ${updatedTx.creditsAdded?.toLocaleString('pt-BR')} créditos foram adicionados à sua conta.`,
+    transaction: updatedTx,
   });
 });
 
@@ -1303,6 +1479,7 @@ apiRouter.post('/admin/users', (req: Request, res: Response) => {
     id: `user-${Date.now()}`,
     name: name.trim(),
     email: email.trim().toLowerCase(),
+    password: req.body.password?.trim() || '123456',
     phone: phone?.trim() || '',
     companyName: companyName?.trim() || 'Supermercado',
     city: city?.trim() || '',

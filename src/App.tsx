@@ -11,7 +11,7 @@ import { AuthModal } from './views/AuthModal';
 import { User, Project } from './types';
 import { api, getActiveUserId, setActiveUserId, clearActiveUserId } from './services/api';
 import { RadioBroadcastProvider } from './context/RadioContext';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, LogOut } from 'lucide-react';
 
 function checkIsAdminUrl(): boolean {
   const path = window.location.pathname.toLowerCase();
@@ -197,17 +197,37 @@ export function App() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                window.history.pushState({}, '', '/');
-                setIsAdminRoute(false);
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1c202d] hover:bg-[#252b3d] text-zinc-200 hover:text-white border border-zinc-700/80 text-xs font-bold transition shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-orange-400" />
-              <span>Voltar ao Painel da Loja</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.pushState({}, '', '/');
+                  setIsAdminRoute(false);
+                }}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1c202d] hover:bg-[#252b3d] text-zinc-200 hover:text-white border border-zinc-700/80 text-xs font-bold transition shadow-sm cursor-pointer"
+                title="Voltar ao painel do supermercado"
+              >
+                <ArrowLeft className="w-4 h-4 text-orange-400" />
+                <span className="hidden sm:inline">Painel da Loja</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.removeItem('superlocucao_admin_auth');
+                  clearActiveUserId();
+                  setUser(null);
+                  window.history.pushState({}, '', '/');
+                  setIsAdminRoute(false);
+                  setActiveView('landing');
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/30 text-xs font-bold transition shadow-sm cursor-pointer"
+                title="Sair do painel e encerrar sessão"
+              >
+                <LogOut className="w-4 h-4 text-red-400" />
+                <span>Sair do Painel</span>
+              </button>
+            </div>
           </div>
         </header>
         <div className="h-16 shrink-0 pointer-events-none" aria-hidden="true" />
@@ -259,6 +279,7 @@ export function App() {
   // =========================================================================
   return (
     <RadioBroadcastProvider
+      key={user.id}
       activeView={activeView}
       onNavigateToRadio={() => setActiveView('radio')}
     >

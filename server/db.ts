@@ -6,7 +6,7 @@ import {
   Project, UserProfile, CreditTransaction, VoicePreset, AudioGenerationItem,
   RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist,
   RechargePackage, CommercialPlan,
-  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation
 } from '../src/types/index.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
@@ -375,7 +375,7 @@ export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
     id: 'pacote-basico',
     name: 'Pacote Básico',
     credits: 300,
-    price: 29,
+    price: 29.9,
     description: 'Aproximadamente 30 locuções comerciais',
     badge: '',
     highlighted: false,
@@ -384,7 +384,7 @@ export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
     id: 'pacote-pro',
     name: 'Pacote Pro Varejo',
     credits: 1000,
-    price: 69,
+    price: 69.9,
     description: 'Aproximadamente 100 locuções comerciais',
     badge: 'Melhor Custo-Benefício',
     highlighted: true,
@@ -393,7 +393,7 @@ export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
     id: 'pacote-atacado',
     name: 'Pacote Atacarejo',
     credits: 3000,
-    price: 149,
+    price: 147.9,
     description: 'Aproximadamente 300 locuções comerciais',
     badge: '',
     highlighted: false,
@@ -604,6 +604,7 @@ interface DbData {
   creditTransactions: CreditTransaction[];
   voices: VoicePreset[];
   radioConfig?: RadioStationConfig;
+  radioConfigs?: Record<string, RadioStationConfig>;
   adminSettings: {
     defaultVoiceId: string;
     creditsPerGeneration: number;
@@ -623,6 +624,7 @@ const DEFAULT_USERS: UserProfile[] = [
     id: 'user-alvorada',
     name: 'Carlos Mendes',
     email: 'carlos@superalvorada.com.br',
+    password: 'alvorada123',
     companyName: 'Supermercado Alvorada',
     role: 'supermarket_owner',
     plan: 'pro_varejo',
@@ -633,6 +635,7 @@ const DEFAULT_USERS: UserProfile[] = [
     id: 'user-atacado',
     name: 'Juliana Castro',
     email: 'juliana@atacadaocentral.com.br',
+    password: 'atacado123',
     companyName: 'Atacadão Central',
     role: 'manager',
     plan: 'redes_atacarejo',
@@ -643,6 +646,7 @@ const DEFAULT_USERS: UserProfile[] = [
     id: 'user-admin',
     name: 'Administrador Locução Super',
     email: 'admin@locucaosuper.com.br',
+    password: 'admin123',
     companyName: 'Locução Super IA Matriz',
     role: 'admin',
     plan: 'redes_atacarejo',
@@ -842,9 +846,12 @@ const DEFAULT_TRANSACTIONS: CreditTransaction[] = [
   }
 ];
 
-function buildInitialRadioConfig(projects: Project[]): RadioStationConfig {
+function buildInitialRadioConfig(projects: Project[], user?: UserProfile): RadioStationConfig {
   const queue: RadioQueueItem[] = [];
   const seenAudioIds = new Set<string>();
+
+  const storeName = user?.companyName || user?.name || (projects.length > 0 && projects[0].storeName) || 'Supermercado';
+  const stationName = `Rádio ${storeName} FM`;
 
   for (const proj of projects) {
     for (const aud of proj.audios || []) {
@@ -860,7 +867,7 @@ function buildInitialRadioConfig(projects: Project[]): RadioStationConfig {
           durationSeconds: aud.durationSeconds || 28,
           voiceName: aud.voiceName || 'Locutor Oficial',
           campaignType: proj.campaignType || 'ofertas_dia',
-          storeName: proj.storeName || 'Supermercado',
+          storeName: proj.storeName || storeName,
           type: 'oferta',
           active: true,
           priority: queue.length < 2 ? 'alta' : 'normal',
@@ -871,7 +878,8 @@ function buildInitialRadioConfig(projects: Project[]): RadioStationConfig {
   }
 
   return {
-    stationName: 'Rádio Supermercado Alvorada FM',
+    stationName,
+    storeName,
     slogan: 'A rádio da economia e das melhores ofertas para a sua família!',
     isOnAir: false,
     mode: 'intervalo_tempo',
@@ -893,14 +901,43 @@ function buildInitialRadioConfig(projects: Project[]): RadioStationConfig {
 class Database {
   private data: DbData;
   private pool: pg.Pool | null = null;
+  private activeOnlineRadios: Map<string, OnlineRadioStation> = new Map();
 
   constructor() {
     this.data = this.load();
+
+    // Garantir que todos os usuários existentes possuam senha cadastrada
+    let usersUpdated = false;
+    this.data.users = (this.data.users || []).map(u => {
+      if (!u.password) {
+        usersUpdated = true;
+        let pwd = '123456';
+        if (u.id === 'user-admin' || u.email?.includes('admin')) {
+          pwd = 'admin123';
+        } else if (u.id === 'user-alvorada' || u.email?.includes('alvorada')) {
+          pwd = 'alvorada123';
+        } else if (u.email === 'negocionlinefree@gmail.com' || u.id === 'user-1793499635601') {
+          pwd = 'leal123';
+        } else if (u.id === 'user-atacado' || u.email?.includes('atacadao')) {
+          pwd = 'atacado123';
+        }
+        return { ...u, password: pwd };
+      }
+      return u;
+    });
+    if (usersUpdated) {
+      this.save();
+    }
+
+    if (!this.data.radioConfigs) {
+      this.data.radioConfigs = {};
+      if (this.data.radioConfig) {
+        this.data.radioConfigs['user-alvorada'] = { ...this.data.radioConfig };
+      }
+      this.save();
+    }
     if (!this.data.radioConfig) {
       this.data.radioConfig = buildInitialRadioConfig(this.data.projects);
-      this.save();
-    } else if (!this.data.radioConfig.musicTracks || this.data.radioConfig.musicTracks.length === 0) {
-      this.data.radioConfig.musicTracks = DEFAULT_RADIO_MUSIC_TRACKS;
       this.save();
     }
 
@@ -976,9 +1013,12 @@ class Database {
           status TEXT DEFAULT 'ativo',
           notes TEXT,
           credits_balance INTEGER DEFAULT 50,
+          password TEXT DEFAULT '123456',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           last_login TIMESTAMPTZ DEFAULT NOW()
         );
+
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '123456';
 
         CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
@@ -1055,8 +1095,10 @@ class Database {
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
 
         CREATE TABLE IF NOT EXISTS radio_config (
-          id INTEGER PRIMARY KEY DEFAULT 1,
-          station_name TEXT NOT NULL DEFAULT 'Rádio Supermercado Alvorada FM',
+          id VARCHAR(64) PRIMARY KEY,
+          user_id VARCHAR(64),
+          store_name TEXT,
+          station_name TEXT NOT NULL DEFAULT 'Rádio Supermercado Ao Vivo',
           slogan TEXT DEFAULT '',
           is_on_air BOOLEAN DEFAULT false,
           mode TEXT DEFAULT 'intervalo_tempo',
@@ -1075,6 +1117,10 @@ class Database {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
 
+        ALTER TABLE radio_config ALTER COLUMN id TYPE VARCHAR(64);
+        ALTER TABLE radio_config ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);
+        ALTER TABLE radio_config ADD COLUMN IF NOT EXISTS store_name TEXT;
+
         CREATE TABLE IF NOT EXISTS audio_binaries (
           id TEXT PRIMARY KEY,
           filename TEXT NOT NULL,
@@ -1092,7 +1138,13 @@ class Database {
       for (const p of this.data.projects) await this.pgSaveProject(p);
       for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
       for (const v of this.data.voices) await this.pgSaveVoice(v);
-      if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
+      if (this.data.radioConfigs) {
+        for (const [uId, rc] of Object.entries(this.data.radioConfigs)) {
+          await this.pgSaveRadioConfig(uId, rc);
+        }
+      } else if (this.data.radioConfig) {
+        await this.pgSaveRadioConfig('user-alvorada', this.data.radioConfig);
+      }
       if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
 
       console.log('[PostgreSQL] Carregando dados do PostgreSQL para o cache em memória...');
@@ -1123,6 +1175,7 @@ class Database {
           status: r.status || 'ativo',
           notes: r.notes || undefined,
           creditsBalance: r.credits_balance ?? 50,
+          password: r.password || '123456',
           createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
           lastLogin: r.last_login ? new Date(r.last_login).toISOString() : undefined,
         }));
@@ -1217,11 +1270,13 @@ class Database {
         await this.pgSaveAdminSettings(this.data.adminSettings);
       }
 
-      const radioRes = await this.pool.query('SELECT * FROM radio_config WHERE id = 1');
-      if (radioRes.rows.length > 0) {
-        const rc = radioRes.rows[0];
-        this.data.radioConfig = {
+      const radioRes = await this.pool.query('SELECT * FROM radio_config');
+      if (!this.data.radioConfigs) this.data.radioConfigs = {};
+      for (const rc of radioRes.rows) {
+        const uId = rc.user_id || (String(rc.id) === '1' ? 'user-alvorada' : String(rc.id));
+        this.data.radioConfigs[uId] = {
           stationName: rc.station_name,
+          storeName: rc.store_name,
           slogan: rc.slogan,
           isOnAir: rc.is_on_air,
           mode: rc.mode,
@@ -1239,6 +1294,9 @@ class Database {
           autoPublishNewAudios: rc.auto_publish_new_audios ?? true,
         };
       }
+      if (this.data.radioConfigs['user-alvorada']) {
+        this.data.radioConfig = this.data.radioConfigs['user-alvorada'];
+      }
 
       this.save();
     } catch (err) {
@@ -1250,8 +1308,8 @@ class Database {
     if (!this.pool) return;
     try {
       await this.pool.query(`
-        INSERT INTO profiles (id, name, email, phone, company_name, city, role, plan, status, notes, credits_balance, created_at, last_login)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        INSERT INTO profiles (id, name, email, phone, company_name, city, role, plan, status, notes, credits_balance, password, created_at, last_login)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
@@ -1263,10 +1321,12 @@ class Database {
           status = EXCLUDED.status,
           notes = EXCLUDED.notes,
           credits_balance = EXCLUDED.credits_balance,
+          password = COALESCE(EXCLUDED.password, profiles.password, '123456'),
           last_login = EXCLUDED.last_login
       `, [
         u.id, u.name, u.email, u.phone || null, u.companyName, u.city || null,
         u.role, u.plan, u.status || 'ativo', u.notes || null, u.creditsBalance,
+        u.password || '123456',
         u.createdAt || new Date().toISOString(), u.lastLogin || new Date().toISOString()
       ]);
     } catch (err) {
@@ -1432,20 +1492,23 @@ class Database {
     }
   }
 
-  private async pgSaveRadioConfig(rc: RadioStationConfig) {
+  private async pgSaveRadioConfig(userId: string, rc: RadioStationConfig) {
     if (!this.pool) return;
     try {
+      const uId = userId || 'user-alvorada';
       await this.pool.query(`
         INSERT INTO radio_config (
-          id, station_name, slogan, is_on_air, mode, spots_every_n_tracks,
+          id, user_id, store_name, station_name, slogan, is_on_air, mode, spots_every_n_tracks,
           spots_interval_seconds, only_offers_pause_seconds, music_volume,
           spot_volume, ducking_level, selected_music_category, active_playlist_id,
           playlists, queue, music_tracks, auto_publish_new_audios, updated_at
         ) VALUES (
-          1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-          $13::jsonb, $14::jsonb, $15::jsonb, $16, NOW()
+          $1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15::jsonb, $16::jsonb, $17::jsonb, $18, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
+          user_id = EXCLUDED.user_id,
+          store_name = EXCLUDED.store_name,
           station_name = EXCLUDED.station_name,
           slogan = EXCLUDED.slogan,
           is_on_air = EXCLUDED.is_on_air,
@@ -1464,6 +1527,7 @@ class Database {
           auto_publish_new_audios = EXCLUDED.auto_publish_new_audios,
           updated_at = NOW()
       `, [
+        uId, rc.storeName || '',
         rc.stationName, rc.slogan, rc.isOnAir, rc.mode, rc.spotsEveryNTracks,
         rc.spotsIntervalSeconds, rc.onlyOffersPauseSeconds, rc.musicVolume,
         rc.spotVolume, rc.duckingLevel, rc.selectedMusicCategory, rc.activePlaylistId,
@@ -1471,7 +1535,7 @@ class Database {
         JSON.stringify(rc.musicTracks || []), rc.autoPublishNewAudios ?? true
       ]);
     } catch (err) {
-      console.error('[PostgreSQL] Erro ao salvar radio_config:', err);
+      console.error(`[PostgreSQL] Erro ao salvar radio_config para ${userId}:`, err);
     }
   }
 
@@ -1599,7 +1663,13 @@ class Database {
     for (const p of this.data.projects) await this.pgSaveProject(p);
     for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
     for (const v of this.data.voices) await this.pgSaveVoice(v);
-    if (this.data.radioConfig) await this.pgSaveRadioConfig(this.data.radioConfig);
+    if (this.data.radioConfigs) {
+      for (const [uId, rc] of Object.entries(this.data.radioConfigs)) {
+        await this.pgSaveRadioConfig(uId, rc);
+      }
+    } else if (this.data.radioConfig) {
+      await this.pgSaveRadioConfig('user-alvorada', this.data.radioConfig);
+    }
     if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
 
     const audiosSync = await this.syncAllLocalAudiosToPg();
@@ -1750,25 +1820,33 @@ class Database {
     return deleted;
   }
 
-  // Web Radio Config & Queue
-  getRadioConfig(): RadioStationConfig {
-    if (!this.data.radioConfig) {
-      this.data.radioConfig = buildInitialRadioConfig(this.data.projects);
-      this.save();
+  // Web Radio Config & Queue (Isolado por Usuário)
+  getRadioConfig(userId?: string): RadioStationConfig {
+    const key = userId || 'user-alvorada';
+    if (!this.data.radioConfigs) {
+      this.data.radioConfigs = {};
     }
+    if (!this.data.radioConfigs[key]) {
+      const user = this.getUser(key);
+      const userProjects = this.getProjects(key);
+      this.data.radioConfigs[key] = buildInitialRadioConfig(userProjects, user);
+      this.save();
+      this.pgSaveRadioConfig(key, this.data.radioConfigs[key]);
+    }
+    const config = this.data.radioConfigs[key];
     // Guarantee playlists exist
-    if (!this.data.radioConfig.playlists || this.data.radioConfig.playlists.length === 0) {
-      this.data.radioConfig.playlists = DEFAULT_RADIO_PLAYLISTS;
+    if (!config.playlists || config.playlists.length === 0) {
+      config.playlists = DEFAULT_RADIO_PLAYLISTS;
       this.save();
     }
     // Guarantee rich default tracks exist if legacy config had 5 or fewer
-    if (!this.data.radioConfig.musicTracks || this.data.radioConfig.musicTracks.length <= 5) {
-      const customTracks = (this.data.radioConfig.musicTracks || []).filter(t => t.isCustom);
-      this.data.radioConfig.musicTracks = [...customTracks, ...DEFAULT_RADIO_MUSIC_TRACKS];
+    if (!config.musicTracks || config.musicTracks.length <= 5) {
+      const customTracks = (config.musicTracks || []).filter(t => t.isCustom);
+      config.musicTracks = [...customTracks, ...DEFAULT_RADIO_MUSIC_TRACKS];
       this.save();
     } else {
       let modified = false;
-      this.data.radioConfig.musicTracks = this.data.radioConfig.musicTracks.map(t => {
+      config.musicTracks = config.musicTracks.map(t => {
         if (!t.playlistId) {
           modified = true;
           return { ...t, playlistId: t.category };
@@ -1777,57 +1855,139 @@ class Database {
       });
       if (modified) this.save();
     }
-    return this.data.radioConfig;
-  }
-
-  updateRadioConfig(updates: Partial<RadioStationConfig>): RadioStationConfig {
-    const current = this.getRadioConfig();
-    this.data.radioConfig = {
-      ...current,
-      ...updates,
-    };
-    this.save();
-    this.pgSaveRadioConfig(this.data.radioConfig);
-    return this.data.radioConfig;
-  }
-
-  addMusicTrack(track: RadioMusicTrack): RadioStationConfig {
-    const config = this.getRadioConfig();
-    config.musicTracks = [track, ...config.musicTracks];
-    this.save();
-    this.pgSaveRadioConfig(config);
-    return config;
-  }
-
-  removeMusicTrack(id: string): RadioStationConfig {
-    const config = this.getRadioConfig();
-    config.musicTracks = config.musicTracks.filter(t => t.id !== id);
-    this.save();
-    this.pgSaveRadioConfig(config);
-    return config;
-  }
-
-  updateMusicTrack(id: string, updates: Partial<RadioMusicTrack>): RadioStationConfig {
-    const config = this.getRadioConfig();
-    config.musicTracks = config.musicTracks.map(t => (t.id === id ? { ...t, ...updates } : t));
-    this.save();
-    this.pgSaveRadioConfig(config);
-    return config;
-  }
-
-  addPlaylist(playlist: RadioPlaylist): RadioStationConfig {
-    const config = this.getRadioConfig();
-    const existing = config.playlists || [];
-    if (!existing.some(p => p.id === playlist.id)) {
-      config.playlists = [...existing, playlist];
-      this.save();
-      this.pgSaveRadioConfig(config);
+    if (key === 'user-alvorada') {
+      this.data.radioConfig = config;
     }
     return config;
   }
 
-  deletePlaylist(id: string): RadioStationConfig {
-    const config = this.getRadioConfig();
+  updateRadioConfig(userId: string, updates: Partial<RadioStationConfig>): RadioStationConfig {
+    const key = userId || 'user-alvorada';
+    const current = this.getRadioConfig(key);
+    this.data.radioConfigs![key] = {
+      ...current,
+      ...updates,
+    };
+    if (key === 'user-alvorada') {
+      this.data.radioConfig = this.data.radioConfigs![key];
+    }
+    this.save();
+    this.pgSaveRadioConfig(key, this.data.radioConfigs![key]);
+    return this.data.radioConfigs![key];
+  }
+
+  updateRadioHeartbeat(data: {
+    userId: string;
+    userName?: string;
+    companyName?: string;
+    storeName?: string;
+    stationName?: string;
+    slogan?: string;
+    isOnAir: boolean;
+    currentMusicTitle?: string;
+    currentSpotTitle?: string;
+    isDucking?: boolean;
+    spotsQueueCount?: number;
+    mode?: string;
+    clientIp?: string;
+  }): OnlineRadioStation | null {
+    const key = data.userId || 'user-default';
+
+    if (!data.isOnAir) {
+      this.activeOnlineRadios.delete(key);
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const existing = this.activeOnlineRadios.get(key);
+    const user = this.getUser(key);
+
+    const station: OnlineRadioStation = {
+      id: key,
+      userId: key,
+      userName: data.userName || user?.name || existing?.userName || 'Operador da Loja',
+      companyName: data.companyName || user?.companyName || existing?.companyName || 'Supermercado',
+      storeName: data.storeName || user?.companyName || existing?.storeName || this.getRadioConfig().storeName || 'Supermercado Modelo',
+      stationName: data.stationName || existing?.stationName || this.getRadioConfig().stationName || 'Rádio Supermercado Ao Vivo',
+      slogan: data.slogan || existing?.slogan || this.getRadioConfig().slogan || '',
+      isOnAir: true,
+      currentMusicTitle: data.currentMusicTitle,
+      currentSpotTitle: data.currentSpotTitle,
+      isDucking: Boolean(data.isDucking),
+      spotsQueueCount: data.spotsQueueCount ?? (existing?.spotsQueueCount || this.getRadioConfig().queue?.length || 0),
+      mode: data.mode || existing?.mode || this.getRadioConfig().mode || 'intervalo_tempo',
+      lastHeartbeat: now,
+      startedAt: existing?.startedAt || now,
+      clientIp: data.clientIp || existing?.clientIp,
+    };
+
+    this.activeOnlineRadios.set(key, station);
+    return station;
+  }
+
+  getOnlineRadios(): OnlineRadioStation[] {
+    const now = Date.now();
+    const list: OnlineRadioStation[] = [];
+    for (const [key, station] of this.activeOnlineRadios.entries()) {
+      const elapsed = now - new Date(station.lastHeartbeat).getTime();
+      // If no heartbeat for > 25 seconds, consider radio offline
+      if (elapsed > 25000 || !station.isOnAir) {
+        this.activeOnlineRadios.delete(key);
+      } else {
+        list.push(station);
+      }
+    }
+    return list;
+  }
+
+  addMusicTrack(userIdOrTrack: string | RadioMusicTrack, trackMaybe?: RadioMusicTrack): RadioStationConfig {
+    const key = typeof userIdOrTrack === 'string' ? userIdOrTrack : 'user-alvorada';
+    const track = typeof userIdOrTrack === 'string' ? trackMaybe! : userIdOrTrack;
+    const config = this.getRadioConfig(key);
+    config.musicTracks = [track, ...config.musicTracks];
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return config;
+  }
+
+  removeMusicTrack(userIdOrId: string, trackIdMaybe?: string): RadioStationConfig {
+    const key = trackIdMaybe !== undefined ? userIdOrId : 'user-alvorada';
+    const id = trackIdMaybe !== undefined ? trackIdMaybe : userIdOrId;
+    const config = this.getRadioConfig(key);
+    config.musicTracks = config.musicTracks.filter(t => t.id !== id);
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return config;
+  }
+
+  updateMusicTrack(userIdOrId: string, idOrUpdates: string | Partial<RadioMusicTrack>, updatesMaybe?: Partial<RadioMusicTrack>): RadioStationConfig {
+    const key = updatesMaybe !== undefined ? (userIdOrId as string) : 'user-alvorada';
+    const id = updatesMaybe !== undefined ? (idOrUpdates as string) : (userIdOrId as string);
+    const updates = updatesMaybe !== undefined ? updatesMaybe : (idOrUpdates as Partial<RadioMusicTrack>);
+    const config = this.getRadioConfig(key);
+    config.musicTracks = config.musicTracks.map(t => (t.id === id ? { ...t, ...updates } : t));
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return config;
+  }
+
+  addPlaylist(userIdOrPlaylist: string | RadioPlaylist, playlistMaybe?: RadioPlaylist): RadioStationConfig {
+    const key = typeof userIdOrPlaylist === 'string' ? userIdOrPlaylist : 'user-alvorada';
+    const playlist = typeof userIdOrPlaylist === 'string' ? playlistMaybe! : userIdOrPlaylist;
+    const config = this.getRadioConfig(key);
+    const existing = config.playlists || [];
+    if (!existing.some(p => p.id === playlist.id)) {
+      config.playlists = [...existing, playlist];
+      this.save();
+      this.pgSaveRadioConfig(key, config);
+    }
+    return config;
+  }
+
+  deletePlaylist(userIdOrId: string, playlistIdMaybe?: string): RadioStationConfig {
+    const key = playlistIdMaybe !== undefined ? userIdOrId : 'user-alvorada';
+    const id = playlistIdMaybe !== undefined ? playlistIdMaybe : userIdOrId;
+    const config = this.getRadioConfig(key);
     config.playlists = (config.playlists || []).filter(p => p.id !== id);
     // Reassign tracks in deleted playlist to pop_varejo
     config.musicTracks = config.musicTracks.map(t =>
@@ -1837,20 +1997,30 @@ class Database {
       config.activePlaylistId = 'todas';
     }
     this.save();
-    this.pgSaveRadioConfig(config);
+    this.pgSaveRadioConfig(key, config);
     return config;
   }
 
   addAudioToRadioQueue(
-    audio: AudioGenerationItem,
-    meta?: {
+    userIdOrAudio: string | AudioGenerationItem,
+    audioOrMeta?: AudioGenerationItem | {
+      campaignType?: string;
+      storeName?: string;
+      type?: 'oferta' | 'vinheta' | 'aviso';
+      priority?: 'alta' | 'normal';
+    },
+    metaMaybe?: {
       campaignType?: string;
       storeName?: string;
       type?: 'oferta' | 'vinheta' | 'aviso';
       priority?: 'alta' | 'normal';
     }
   ): RadioQueueItem {
-    const config = this.getRadioConfig();
+    const key = typeof userIdOrAudio === 'string' ? userIdOrAudio : 'user-alvorada';
+    const audio = (typeof userIdOrAudio === 'string' ? audioOrMeta : userIdOrAudio) as AudioGenerationItem;
+    const meta = (typeof userIdOrAudio === 'string' ? metaMaybe : audioOrMeta) as any;
+
+    const config = this.getRadioConfig(key);
     const existingIdx = config.queue.findIndex(q => q.audioId === audio.id);
 
     const queueItem: RadioQueueItem = {
@@ -1863,7 +2033,7 @@ class Database {
       durationSeconds: audio.durationSeconds || 25,
       voiceName: audio.voiceName || 'Locutor Oficial',
       campaignType: meta?.campaignType || 'ofertas_dia',
-      storeName: meta?.storeName || 'Supermercado',
+      storeName: meta?.storeName || config.storeName || 'Supermercado',
       type: meta?.type || 'oferta',
       active: true,
       priority: meta?.priority || 'normal',
@@ -1877,15 +2047,17 @@ class Database {
     }
 
     this.save();
-    this.pgSaveRadioConfig(config);
+    this.pgSaveRadioConfig(key, config);
     return queueItem;
   }
 
-  removeRadioQueueItem(idOrAudioId: string): RadioStationConfig {
-    const config = this.getRadioConfig();
+  removeRadioQueueItem(userIdOrId: string, idOrAudioIdMaybe?: string): RadioStationConfig {
+    const key = idOrAudioIdMaybe !== undefined ? userIdOrId : 'user-alvorada';
+    const idOrAudioId = idOrAudioIdMaybe !== undefined ? idOrAudioIdMaybe : userIdOrId;
+    const config = this.getRadioConfig(key);
     config.queue = config.queue.filter(q => q.id !== idOrAudioId && q.audioId !== idOrAudioId);
     this.save();
-    this.pgSaveRadioConfig(config);
+    this.pgSaveRadioConfig(key, config);
     return config;
   }
 
@@ -1918,6 +2090,8 @@ class Database {
 
     const totalCreditsBalance = this.data.users.reduce((acc, u) => acc + (u.creditsBalance || 0), 0);
     const radioConfig = this.getRadioConfig();
+    const onlineStations = this.getOnlineRadios();
+    const isBroadcasting = onlineStations.length > 0 || radioConfig.isOnAir;
 
     return {
       totalUsers: this.data.users.length,
@@ -1932,9 +2106,11 @@ class Database {
       radioStats: {
         queueCount: radioConfig.queue.length,
         stationName: radioConfig.stationName,
-        isBroadcasting: radioConfig.isOnAir,
+        isBroadcasting,
         defaultIntervalSec: radioConfig.spotsIntervalSeconds,
         musicTracksCount: radioConfig.musicTracks?.length || 0,
+        onlineStationsCount: onlineStations.length,
+        onlineStations,
       },
       postgresConnected: Boolean(this.pool),
       elevenLabsConfigured: Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_API_KEY !== 'YOUR_ELEVENLABS_API_KEY'),
@@ -1975,6 +2151,20 @@ class Database {
 
   getPaymentTransactions(): PaymentTransaction[] {
     return this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+  }
+
+  createPaymentTransaction(tx: PaymentTransaction): PaymentTransaction {
+    const list = this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+    const idx = list.findIndex(t => t.id === tx.id);
+    if (idx >= 0) {
+      list[idx] = tx;
+    } else {
+      list.unshift(tx);
+    }
+    this.data.adminSettings.payments = list;
+    this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
+    return tx;
   }
 
   confirmPaymentTransaction(id: string): PaymentTransaction | null {

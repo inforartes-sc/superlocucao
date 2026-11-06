@@ -3,10 +3,12 @@ import path from 'path';
 import https from 'https';
 
 const VPS_URL = 'https://superlocucao.inforartes.com.br';
-const AUDIOS_DIR = path.resolve(process.cwd(), '.locucao_audios');
+const DIRS_TO_SCAN = [
+  path.resolve(process.cwd(), 'server', 'seed_audios'),
+  path.resolve(process.cwd(), '.locucao_audios')
+];
 
-async function uploadFile(fileName: string): Promise<boolean> {
-  const filePath = path.join(AUDIOS_DIR, fileName);
+async function uploadFile(filePath: string, fileName: string): Promise<boolean> {
   const id = fileName.replace(/\.(mp3|wav)$/i, '');
   const buffer = fs.readFileSync(filePath);
   const base64 = buffer.toString('base64');
@@ -54,25 +56,37 @@ async function uploadFile(fileName: string): Promise<boolean> {
 }
 
 async function run() {
-  if (!fs.existsSync(AUDIOS_DIR)) {
-    console.error('Pasta .locucao_audios não encontrada.');
-    return;
-  }
+  const seenFiles = new Map<string, string>();
 
-  const files = fs.readdirSync(AUDIOS_DIR).filter((f) => f.endsWith('.mp3'));
-  console.log(`Iniciando sincronização de ${files.length} áudios para ${VPS_URL}...`);
-
-  let successCount = 0;
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const ok = await uploadFile(f);
-    if (ok) successCount++;
-    if ((i + 1) % 10 === 0 || i === files.length - 1) {
-      console.log(`Progresso: ${i + 1}/${files.length} (${successCount} enviados)`);
+  for (const dir of DIRS_TO_SCAN) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav'));
+    for (const file of files) {
+      if (!seenFiles.has(file)) {
+        seenFiles.set(file, path.join(dir, file));
+      }
     }
   }
 
-  console.log(`\nSincronização concluída! ${successCount}/${files.length} arquivos enviados com sucesso.`);
+  const entries = Array.from(seenFiles.entries());
+  console.log(`Iniciando sincronização de ${entries.length} áudios para ${VPS_URL}...\n`);
+
+  // Prioritize demo audios first
+  entries.sort(([a], [b]) => {
+    const aPriority = a.startsWith('aud-demo') || a.startsWith('voice_') || a.startsWith('style_') ? 1 : 0;
+    const bPriority = b.startsWith('aud-demo') || b.startsWith('voice_') || b.startsWith('style_') ? 1 : 0;
+    return bPriority - aPriority;
+  });
+
+  let successCount = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const [fileName, filePath] = entries[i];
+    const ok = await uploadFile(filePath, fileName);
+    if (ok) successCount++;
+    console.log(`[${i + 1}/${entries.length}] ${ok ? '✓' : '✗'} ${fileName}`);
+  }
+
+  console.log(`\nSincronização concluída! ${successCount}/${entries.length} arquivos enviados com sucesso para a VPS.`);
 }
 
 run();

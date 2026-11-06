@@ -154,7 +154,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       sector: 'Açougue & Carnes',
       badge: '🥩 Oferta Açougue',
       voiceName: 'Daniel (Varejo Enérgico)',
-      audioUrl: '/api/audio/aud-demo-1.mp3',
+      audioUrl: '/api/audio/aud-demo-1.mp3?v=eleven',
       durationSeconds: 28,
       script: 'Atenção clientes do Supermercado! Quarta da Carne com Alcatra Friboi por apenas trinta e seis reais e noventa centavos o quilo! Coxa e sobrecoxa Sadia só oito reais e noventa e nove centavos!',
     },
@@ -164,7 +164,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       sector: 'Hortifrúti Fresco',
       badge: '🍎 Feirinha do Dia',
       voiceName: 'Carolina (Vendedora Amigável)',
-      audioUrl: '/api/audio/aud-demo-3.mp3',
+      audioUrl: '/api/audio/aud-demo-3.mp3?v=eleven',
       durationSeconds: 25,
       script: 'Tem feirinha fresca hoje no nosso supermercado! Banana-caturra selecionada por apenas três reais e noventa e nove centavos o quilo! Tomate italiano fresquinho por quatro reais e quarenta e nove centavos o quilo!',
     },
@@ -174,7 +174,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       sector: 'Churrasco & Bebidas',
       badge: '🍺 Queima de Estoque',
       voiceName: 'Rodrigo (Voz de Impacto Grave)',
-      audioUrl: '/api/audio/aud-demo-2.mp3',
+      audioUrl: '/api/audio/aud-demo-2.mp3?v=eleven',
       durationSeconds: 38,
       script: 'O fim de semana chegou com tudo no Supermercado Alvorada! Picanha bovina fatiada grill por só cinquenta e nove reais e noventa centavos o quilo! Cerveja Heineken lata bem gelada, quatro reais e oitenta e nove centavos!',
     },
@@ -184,7 +184,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       sector: 'Institucional & Loja',
       badge: '📢 Comunicado Loja',
       voiceName: 'Marcos (Institucional)',
-      audioUrl: '/api/audio/voice_marcos-institucional.mp3',
+      audioUrl: '/api/audio/voice_marcos-institucional.mp3?v=eleven',
       durationSeconds: 22,
       script: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
     },
@@ -275,7 +275,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         radioMusicRef.current.play().catch(console.warn);
       }
       setIsRadioOnAir(true);
-      setCountdown(15);
+      setCountdown(30);
     }
   };
 
@@ -337,7 +337,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       badgeColor: 'bg-red-500/15 text-red-400 border-red-500/30',
       voice: 'Daniel (Varejo Enérgico)',
       duration: '28s',
-      url: '/api/audio/aud-demo-1.mp3',
+      url: '/api/audio/aud-demo-1.mp3?v=eleven',
       text: 'Atenção clientes do Supermercado! Quarta da Carne com Alcatra Friboi por apenas trinta e seis reais e noventa centavos o quilo! Coxa e sobrecoxa Sadia só oito reais e noventa e nove centavos!',
     },
     {
@@ -347,7 +347,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
       voice: 'Rodrigo (Voz de Impacto Grave)',
       duration: '38s',
-      url: '/api/audio/aud-demo-2.mp3',
+      url: '/api/audio/aud-demo-2.mp3?v=eleven',
       text: 'O fim de semana chegou com tudo no Supermercado Alvorada! Picanha bovina fatiada grill por só cinquenta e nove reais e noventa centavos o quilo! Cerveja Heineken lata bem gelada, quatro reais e oitenta e nove centavos!',
     },
     {
@@ -357,7 +357,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
       voice: 'Carolina (Vendedora Amigável)',
       duration: '25s',
-      url: '/api/audio/aud-demo-3.mp3',
+      url: '/api/audio/aud-demo-3.mp3?v=eleven',
       text: 'Tem feirinha fresca hoje no nosso supermercado! Banana-caturra selecionada por apenas três reais e noventa e nove centavos o quilo! Tomate italiano fresquinho por quatro reais e quarenta e nove centavos o quilo!',
     },
     {
@@ -367,7 +367,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
       voice: 'Marcos (Institucional & Sóbrio)',
       duration: '22s',
-      url: '/api/audio/voice_marcos-institucional.mp3',
+      url: '/api/audio/voice_marcos-institucional.mp3?v=eleven',
       text: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
     },
   ];
@@ -1230,7 +1230,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                       {plan.subtitle}
                     </p>
                     <div className="pt-2">
-                      <span className="text-4xl font-black text-white">R$ {plan.price}</span>
+                      <span className="text-4xl font-black text-white">R$ {Number(plan.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       <span className="text-xs text-zinc-400 ml-1">{plan.billingPeriod}</span>
                     </div>
 

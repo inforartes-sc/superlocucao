@@ -168,6 +168,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  password?: string;
   phone?: string;
   companyName?: string;
   city?: string;
@@ -206,6 +207,8 @@ export interface AdminMetrics {
     isBroadcasting: boolean;
     defaultIntervalSec: number;
     musicTracksCount?: number;
+    onlineStationsCount?: number;
+    onlineStations?: OnlineRadioStation[];
   };
   postgresConnected?: boolean;
   elevenLabsConfigured: boolean;
@@ -377,6 +380,25 @@ export interface RadioStationConfig {
   autoPublishNewAudios: boolean;
   queue: RadioQueueItem[];
   musicTracks: RadioMusicTrack[];
+}
+
+export interface OnlineRadioStation {
+  id: string;
+  userId: string;
+  userName?: string;
+  companyName?: string;
+  storeName: string;
+  stationName: string;
+  slogan?: string;
+  isOnAir: boolean;
+  currentMusicTitle?: string;
+  currentSpotTitle?: string;
+  isDucking?: boolean;
+  spotsQueueCount: number;
+  mode?: string;
+  lastHeartbeat: string;
+  startedAt: string;
+  clientIp?: string;
 }
 
 export * from './campaigns.ts';

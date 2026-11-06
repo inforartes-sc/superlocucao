@@ -74,21 +74,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleSelectDemo = async (demoId: string) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await api.loginDemo(demoId);
-      setActiveUserId(res.user.id);
-      onSuccess(res.user);
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar conta de teste');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
       <div className="bg-[#181b24] text-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-zinc-700/80 relative overflow-hidden">
@@ -267,40 +252,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </button>
         </form>
-
-        {/* Demo Accounts Quick Selector */}
-        <div className="mt-5 pt-4 border-t border-zinc-800">
-          <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 text-center">
-            Ou acesse direto com uma conta de teste:
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleSelectDemo('user-alvorada')}
-              disabled={loading}
-              className="p-2.5 bg-[#12141c] hover:bg-zinc-800/80 border border-zinc-700/80 hover:border-orange-500/40 rounded-xl text-xs font-semibold text-zinc-200 hover:text-white transition text-left cursor-pointer flex flex-col"
-            >
-              <span className="font-bold text-white flex items-center gap-1">
-                <span>🛒</span>
-                <span className="truncate">Sp. Alvorada</span>
-              </span>
-              <span className="text-[10px] text-zinc-400">Carlos Mendes</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSelectDemo('user-atacado')}
-              disabled={loading}
-              className="p-2.5 bg-[#12141c] hover:bg-zinc-800/80 border border-zinc-700/80 hover:border-orange-500/40 rounded-xl text-xs font-semibold text-zinc-200 hover:text-white transition text-left cursor-pointer flex flex-col"
-            >
-              <span className="font-bold text-white flex items-center gap-1">
-                <span>📦</span>
-                <span className="truncate">Atacadão Central</span>
-              </span>
-              <span className="text-[10px] text-zinc-400">Juliana Castro</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

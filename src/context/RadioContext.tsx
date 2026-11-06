@@ -277,11 +277,14 @@ const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   ],
 };
 
-const LOCAL_STORAGE_RADIO_KEY = 'superlocucao_radio_config_v1';
+function getRadioStorageKey(): string {
+  const userId = localStorage.getItem('superlocucao_user_id') || 'guest';
+  return `superlocucao_radio_config_${userId}`;
+}
 
 function loadInitialRadioConfig(): RadioStationConfig {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_RADIO_KEY);
+    const raw = localStorage.getItem(getRadioStorageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.stationName && Array.isArray(parsed.queue) && Array.isArray(parsed.musicTracks)) {
@@ -415,7 +418,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const [isDucking, setIsDucking] = useState<boolean>(false);
   const [currentMusic, setCurrentMusic] = useState<RadioMusicTrack | null>(null);
   const [currentSpot, setCurrentSpot] = useState<RadioQueueItem | null>(null);
-  const [countdownSeconds, setCountdownSeconds] = useState<number>(45);
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(30);
   const [songsSinceLastSpot, setSongsSinceLastSpot] = useState<number>(0);
   const [spotCurrentTime, setSpotCurrentTime] = useState<number>(0);
   const [spotDuration, setSpotDuration] = useState<number>(0);
@@ -447,7 +450,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
   const persistConfigLocally = useCallback((cfg: RadioStationConfig) => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_RADIO_KEY, JSON.stringify(cfg));
+      localStorage.setItem(getRadioStorageKey(), JSON.stringify(cfg));
     } catch {
       // ignore
     }
@@ -854,11 +857,11 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       isOnAirRef.current = true;
       appendLog(`Rádio Web NO AR — ${cfg.stationName}`, 'sistema', cfg.slogan);
 
-      if (cfg.mode === 'somente_ofertas') {
-        playSpotNow();
-      } else {
+      // A primeira locução só inicia após 30 segundos que a rádio estiver no ar
+      setCountdownSeconds(30);
+
+      if (cfg.mode !== 'somente_ofertas') {
         playMusicTrack();
-        setCountdownSeconds(4);
       }
     }
   }, [appendLog, playMusicTrack, playSpotNow]);
@@ -900,6 +903,49 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       musicAudioRef.current.volume = Math.max(0, Math.min(1, targetVol));
     }
   }, [config?.voiceVolume, config?.spotVolume, config?.musicVolume, config?.duckingLevel, isDucking]);
+
+  // Heartbeat to report real-time online status to Super Admin
+  useEffect(() => {
+    const sendPing = (online: boolean) => {
+      const cfg = configRef.current;
+      api
+        .sendRadioHeartbeat({
+          isOnAir: online,
+          storeName: cfg.storeName,
+          stationName: cfg.stationName,
+          slogan: cfg.slogan,
+          currentMusicTitle: currentMusic ? currentMusic.title : null,
+          currentSpotTitle: currentSpot ? currentSpot.title : null,
+          isDucking,
+          spotsQueueCount: (cfg.queue || []).filter(q => q.active).length,
+          mode: cfg.mode,
+        })
+        .catch(() => {});
+    };
+
+    if (isOnAir) {
+      sendPing(true);
+
+      const intervalId = window.setInterval(() => {
+        sendPing(true);
+      }, 6000);
+
+      const handleBeforeUnload = () => {
+        sendPing(false);
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('pagehide', handleBeforeUnload);
+
+      return () => {
+        window.clearInterval(intervalId);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('pagehide', handleBeforeUnload);
+      };
+    } else {
+      sendPing(false);
+    }
+  }, [isOnAir, currentMusic?.title, currentSpot?.title, isDucking]);
 
   // Update config on state, localStorage & server
   const updateConfig = useCallback(
