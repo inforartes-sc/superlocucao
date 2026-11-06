@@ -293,6 +293,14 @@ export function saveAudioBinary(id: string, buffer: Buffer, mimeType: string, fi
   } catch (err) {
     console.warn('Failed to persist audio binary to disk:', err);
   }
+
+  // Also asynchronously save to PostgreSQL database if connected
+  if (typeof db !== 'undefined' && db && db.getPool()) {
+    db.pgSaveAudioBinary(id, filename, mimeType, buffer).catch((err: any) =>
+      console.warn(`[Database] Falha ao salvar áudio ${id} no PostgreSQL:`, err)
+    );
+  }
+
   return item;
 }
 
@@ -301,14 +309,23 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
     return audioBinaryStore.get(id);
   }
   try {
+    // 1. Check in .locucao_audios/
     const mp3Path = path.join(AUDIO_STORAGE_DIR, `${id}.mp3`);
     const wavPath = path.join(AUDIO_STORAGE_DIR, `${id}.wav`);
-    const targetPath = fs.existsSync(mp3Path) ? mp3Path : fs.existsSync(wavPath) ? wavPath : null;
+    // 2. Check in server/seed_audios/
+    const seedMp3 = path.join(process.cwd(), 'server', 'seed_audios', `${id}.mp3`);
+    const seedWav = path.join(process.cwd(), 'server', 'seed_audios', `${id}.wav`);
+
+    const targetPath = fs.existsSync(mp3Path) ? mp3Path
+      : fs.existsSync(wavPath) ? wavPath
+      : fs.existsSync(seedMp3) ? seedMp3
+      : fs.existsSync(seedWav) ? seedWav
+      : null;
 
     if (targetPath) {
       const buffer = fs.readFileSync(targetPath);
       let filename = `${id}.mp3`;
-      let mimeType = 'audio/mpeg';
+      let mimeType = targetPath.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg';
 
       const metaPath = path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`);
       if (fs.existsSync(metaPath)) {
@@ -326,6 +343,33 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
   } catch (err) {
     console.warn('Error reading audio binary from disk:', err);
   }
+  return undefined;
+}
+
+export async function getAudioBinaryAsync(id: string): Promise<StoredAudioBinary | undefined> {
+  const local = getAudioBinary(id);
+  if (local) return local;
+
+  if (typeof db !== 'undefined' && db && db.getPool()) {
+    try {
+      const fromPg = await db.pgGetAudioBinary(id);
+      if (fromPg) {
+        audioBinaryStore.set(id, fromPg);
+        try {
+          const ext = fromPg.filename.endsWith('.wav') ? '.wav' : '.mp3';
+          fs.writeFileSync(path.join(AUDIO_STORAGE_DIR, `${id}${ext}`), fromPg.buffer);
+          fs.writeFileSync(
+            path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`),
+            JSON.stringify({ mimeType: fromPg.mimeType, filename: fromPg.filename })
+          );
+        } catch { }
+        return fromPg;
+      }
+    } catch (err) {
+      console.warn(`[Database] Erro ao buscar áudio ${id} no PostgreSQL:`, err);
+    }
+  }
+
   return undefined;
 }
 
@@ -1022,6 +1066,17 @@ class Database {
           auto_publish_new_audios BOOLEAN DEFAULT true,
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        CREATE TABLE IF NOT EXISTS audio_binaries (
+          id TEXT PRIMARY KEY,
+          filename TEXT NOT NULL,
+          mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
+          file_size INTEGER NOT NULL DEFAULT 0,
+          data_base64 TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_audio_binaries_id ON audio_binaries(id);
       `);
 
       const { rows } = await this.pool.query('SELECT count(*)::int AS cnt FROM profiles');
@@ -1041,6 +1096,9 @@ class Database {
         await this.pgLoadAll();
         console.log(`[PostgreSQL] Sincronização concluída: ${this.data.users.length} usuários, ${this.data.projects.length} projetos.`);
       }
+
+      // Sincronizar todas as locuções reais (seed e locais) diretamente para o banco de dados da VPS
+      await this.syncAllLocalAudiosToPg();
     } catch (err) {
       console.error('[PostgreSQL] Falha na inicialização do PostgreSQL:', err);
     }
@@ -1383,6 +1441,113 @@ class Database {
     } catch (err) {
       console.error('[PostgreSQL] Erro ao salvar radio_config:', err);
     }
+  }
+
+  public getPool(): pg.Pool | null {
+    return this.pool;
+  }
+
+  public async pgSaveAudioBinary(id: string, filename: string, mimeType: string, buffer: Buffer): Promise<boolean> {
+    if (!this.pool) return false;
+    try {
+      const base64Data = buffer.toString('base64');
+      await this.pool.query(`
+        INSERT INTO audio_binaries (id, filename, mime_type, file_size, data_base64, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          filename = EXCLUDED.filename,
+          mime_type = EXCLUDED.mime_type,
+          file_size = EXCLUDED.file_size,
+          data_base64 = EXCLUDED.data_base64,
+          updated_at = NOW()
+      `, [id, filename, mimeType, buffer.length, base64Data]);
+      return true;
+    } catch (err) {
+      console.error(`[PostgreSQL] Erro ao salvar áudio ${id} no banco de dados:`, err);
+      return false;
+    }
+  }
+
+  public async pgGetAudioBinary(id: string): Promise<StoredAudioBinary | null> {
+    if (!this.pool) return null;
+    try {
+      const res = await this.pool.query('SELECT id, filename, mime_type, data_base64 FROM audio_binaries WHERE id = $1', [id]);
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+      const buffer = Buffer.from(row.data_base64, 'base64');
+      return {
+        id: row.id,
+        filename: row.filename || `${id}.mp3`,
+        mimeType: row.mime_type || 'audio/mpeg',
+        buffer
+      };
+    } catch (err) {
+      console.warn(`[PostgreSQL] Erro ao buscar áudio ${id} do banco de dados:`, err);
+      return null;
+    }
+  }
+
+  public async pgCountAudioBinaries(): Promise<number> {
+    if (!this.pool) return 0;
+    try {
+      const res = await this.pool.query('SELECT count(*)::int AS cnt FROM audio_binaries');
+      return res.rows[0]?.cnt || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  public async syncAllLocalAudiosToPg(): Promise<{ total: number; uploaded: number; errors: number }> {
+    if (!this.pool) {
+      console.log('[PostgreSQL] Sincronização de áudios ignorada: PostgreSQL não conectado.');
+      return { total: 0, uploaded: 0, errors: 0 };
+    }
+
+    const dirsToScan = [
+      path.resolve(process.cwd(), 'server', 'seed_audios'),
+      path.resolve(process.cwd(), '.locucao_audios')
+    ];
+
+    let total = 0;
+    let uploaded = 0;
+    let errors = 0;
+    const seenIds = new Set<string>();
+
+    for (const dir of dirsToScan) {
+      if (!fs.existsSync(dir)) continue;
+      try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          if (!file.endsWith('.mp3') && !file.endsWith('.wav')) continue;
+          const id = file.replace(/\.(mp3|wav)$/i, '');
+          if (seenIds.has(id)) continue;
+          seenIds.add(id);
+
+          total++;
+          try {
+            const filePath = path.join(dir, file);
+            const buffer = fs.readFileSync(filePath);
+            const mimeType = file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg';
+
+            const check = await this.pool.query('SELECT id FROM audio_binaries WHERE id = $1', [id]);
+            if (check.rows.length === 0) {
+              const ok = await this.pgSaveAudioBinary(id, file, mimeType, buffer);
+              if (ok) uploaded++;
+            }
+          } catch (e) {
+            errors++;
+            console.warn(`[PostgreSQL] Erro ao sincronizar ${file}:`, e);
+          }
+        }
+      } catch (dirErr) {
+        console.warn(`[PostgreSQL] Erro ao ler pasta ${dir}:`, dirErr);
+      }
+    }
+
+    if (uploaded > 0) {
+      console.log(`[PostgreSQL] Sincronização automática: ${uploaded} locuções reais enviadas para o banco de dados da VPS.`);
+    }
+    return { total, uploaded, errors };
   }
 
   private load(): DbData {

@@ -388,4 +388,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(gateway),
     }),
+  getDatabaseAudiosStats: () =>
+    request<{ pgConnected: boolean; pgCount: number; localCount: number; seedCount: number }>('/admin/database/audios-stats'),
+  syncDatabaseAudios: () =>
+    request<{ success: boolean; message: string; uploaded: number; total: number; errors: number }>('/admin/database/sync-audios', {
+      method: 'POST',
+    }),
 };

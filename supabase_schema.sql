@@ -194,3 +194,23 @@ CREATE POLICY "Usuários podem gerenciar seus próprios projetos" ON public.proj
 
 -- Políticas para Transações
 CREATE POLICY "Usuários podem visualizar suas próprias transações" ON public.credit_transactions FOR SELECT USING (true);
+
+-- -------------------------------------------------------------
+-- 10. TABELA DE BINÁRIOS DE ÁUDIO / LOCUÇÕES REAIS (audio_binaries)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.audio_binaries (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
+    file_size INTEGER NOT NULL DEFAULT 0,
+    data_base64 TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audio_binaries_id ON public.audio_binaries(id);
+CREATE INDEX IF NOT EXISTS idx_audio_binaries_created_at ON public.audio_binaries(created_at DESC);
+
+ALTER TABLE public.audio_binaries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir leitura de audios para todos" ON public.audio_binaries FOR SELECT USING (true);
+CREATE POLICY "Permitir escrita de audios para administradores" ON public.audio_binaries FOR ALL USING (true);

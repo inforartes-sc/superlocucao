@@ -227,6 +227,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [savingGeminiKey, setSavingGeminiKey] = useState(false);
   const [geminiKeyNotice, setGeminiKeyNotice] = useState<string | null>(null);
 
+  // Database Audios Sync State
+  const [dbAudioStats, setDbAudioStats] = useState<{ pgConnected: boolean; pgCount: number; localCount: number; seedCount: number }>({
+    pgConnected: false,
+    pgCount: 0,
+    localCount: 0,
+    seedCount: 0,
+  });
+  const [syncingAudios, setSyncingAudios] = useState(false);
+  const [syncAudioNotice, setSyncAudioNotice] = useState<string | null>(null);
+
   const loadData = async () => {
     try {
       const [metricsRes, usersRes] = await Promise.all([
@@ -273,6 +283,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         if (res && res.gateway) {
           setGatewayConfig(res.gateway);
         }
+      }).catch(console.warn);
+
+      api.getDatabaseAudiosStats().then(stats => {
+        if (stats) setDbAudioStats(stats);
       }).catch(console.warn);
     } catch (e) {
       console.warn('Falha ao carregar dados do admin:', e);
@@ -599,6 +613,22 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     navigator.clipboard.writeText(url);
     setCopiedWebhook(true);
     setTimeout(() => setCopiedWebhook(false), 2500);
+  };
+
+  const handleSyncAudiosToDb = async () => {
+    setSyncingAudios(true);
+    setSyncAudioNotice(null);
+    try {
+      const res = await api.syncDatabaseAudios();
+      setSyncAudioNotice(res.message);
+      const stats = await api.getDatabaseAudiosStats();
+      if (stats) setDbAudioStats(stats);
+      setTimeout(() => setSyncAudioNotice(null), 5000);
+    } catch (e: any) {
+      alert(`Falha ao sincronizar locuções: ${e.message}`);
+    } finally {
+      setSyncingAudios(false);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -1912,6 +1942,64 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
               <div className="bg-[#10121a] border border-zinc-700/80 px-4 py-2 rounded-2xl text-xs text-zinc-300">
                 <span className="text-zinc-500">Intervalo Padrão:</span>{' '}
                 <strong className="text-white font-black">{metrics?.radioStats?.defaultIntervalSec || 45}s</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Sincronização de Locuções Reais no Banco de Dados (VPS) */}
+          <div className="bg-[#151822] rounded-3xl p-6 border border-zinc-700/80 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-black text-white text-base">Banco de Dados & Locuções Reais (VPS)</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    dbAudioStats.pgConnected
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {dbAudioStats.pgConnected ? 'PostgreSQL Conectado' : 'Modo Local (JSON)'}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Garante que todas as vozes humanas, demonstrações e locuções fiquem gravadas diretamente no banco de dados da VPS, sem ruídos ou chiados.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSyncAudiosToDb}
+                disabled={syncingAudios}
+                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-zinc-950 font-black text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncingAudios ? 'animate-spin' : ''}`} />
+                <span>{syncingAudios ? 'Enviando Áudios...' : 'Sincronizar Locuções com o Banco'}</span>
+              </button>
+            </div>
+
+            {syncAudioNotice && (
+              <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{syncAudioNotice}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-3.5 bg-[#10121a] rounded-2xl border border-zinc-800">
+                <div className="text-[11px] text-zinc-400 font-bold uppercase">No Banco PostgreSQL (VPS)</div>
+                <div className="text-xl font-black text-emerald-400 mt-1">{dbAudioStats.pgCount} áudios</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">Gravados na tabela audio_binaries</div>
+              </div>
+
+              <div className="p-3.5 bg-[#10121a] rounded-2xl border border-zinc-800">
+                <div className="text-[11px] text-zinc-400 font-bold uppercase">Armazenamento Local</div>
+                <div className="text-xl font-black text-white mt-1">{dbAudioStats.localCount} arquivos</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">Pasta .locucao_audios/</div>
+              </div>
+
+              <div className="p-3.5 bg-[#10121a] rounded-2xl border border-zinc-800">
+                <div className="text-[11px] text-zinc-400 font-bold uppercase">Vozes & Estilos Seed</div>
+                <div className="text-xl font-black text-orange-400 mt-1">{dbAudioStats.seedCount || 14} matrizes</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">Embutidos no código da VPS</div>
               </div>
             </div>
           </div>

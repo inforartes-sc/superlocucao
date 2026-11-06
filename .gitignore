@@ -14,3 +14,6 @@ coverage/
 .database.json
 *.mp3
 *.wav
+!server/seed_audios/
+!server/seed_audios/*.mp3
+!server/seed_audios/*.wav

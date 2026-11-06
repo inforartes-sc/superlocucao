@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
-import { db, audioBinaryStore, getAudioBinary, saveAudioBinary } from './db.ts';
+import { db, audioBinaryStore, getAudioBinary, saveAudioBinary, getAudioBinaryAsync } from './db.ts';
 import { parseProductsWithGemini, generateSupermarketScript, refineSupermarketScript, formatSpokenPriceBR, saveGeminiApiKeyToEnv, fetchGeminiAccountInfo } from './gemini.ts';
 import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio } from './elevenlabs.ts';
 import { convertWavToMp3 } from './mp3_converter.ts';
@@ -580,7 +580,7 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
 apiRouter.get('/audio/:filename', async (req: Request, res: Response) => {
   const filename = req.params.filename;
   const audioId = filename.replace(/\.(mp3|wav)$/i, '');
-  let stored = getAudioBinary(audioId);
+  let stored = await getAudioBinaryAsync(audioId);
 
   // If not found in storage (e.g. freshly installed server without local audio cache), synthesize real audio on the fly!
   if (!stored) {
@@ -1430,6 +1430,46 @@ apiRouter.post('/admin/gateway', (req: Request, res: Response) => {
     message: 'Configurações do Gateway de Pagamento salvas com sucesso!',
     gateway: updated
   });
+});
+
+// Admin: check database audio stats & sync audios to PostgreSQL
+apiRouter.get('/admin/database/audios-stats', async (_req: Request, res: Response) => {
+  const pgCount = await db.pgCountAudioBinaries();
+  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  let localCount = 0;
+  if (fs.existsSync(audioDir)) {
+    localCount = fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav')).length;
+  }
+  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
+  let seedCount = 0;
+  if (fs.existsSync(seedDir)) {
+    seedCount = fs.readdirSync(seedDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav')).length;
+  }
+  res.json({
+    pgConnected: Boolean(db.getPool()),
+    pgCount,
+    localCount,
+    seedCount
+  });
+});
+
+apiRouter.post('/admin/database/sync-audios', async (_req: Request, res: Response) => {
+  if (!db.getPool()) {
+    return res.status(400).json({
+      error: 'PostgreSQL não conectado nesta instância. Configure a variável de ambiente DATABASE_URL na VPS para sincronizar.',
+      connected: false
+    });
+  }
+  try {
+    const resSync = await db.syncAllLocalAudiosToPg();
+    res.json({
+      success: true,
+      message: `${resSync.uploaded} novas locuções reais sincronizadas com o banco de dados da VPS com sucesso! (${resSync.total} verificadas)`,
+      ...resSync
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Falha ao sincronizar locuções com o banco de dados' });
+  }
 });
 
 // Webhook listener for payment providers (Mercado Pago, Asaas, Stripe)
