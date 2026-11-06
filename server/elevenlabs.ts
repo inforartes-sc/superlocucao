@@ -558,7 +558,8 @@ export async function getVoicePreviewAudio(voiceId: string): Promise<Buffer> {
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
-  // 1. Check local files on disk
+  // 1. Check local files on disk and in seed directory
+  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
   const candidateFiles = [
     path.join(audioDir, `eleven_preview_${voiceId}.mp3`),
     path.join(audioDir, `eleven_${voiceId}.mp3`),

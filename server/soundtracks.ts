@@ -73,16 +73,19 @@ export function getSoundtrackPreviewBuffer(trackId: SoundtrackId): Buffer {
   }
 
   const audioDir = path.resolve(process.cwd(), '.locucao_audios');
-  const filePath = path.join(audioDir, `soundtrack_${trackId}.mp3`);
+  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
 
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath);
-  }
+  const candidatePaths = [
+    path.join(audioDir, `soundtrack_${trackId}.mp3`),
+    path.join(seedDir, `soundtrack_${trackId}.mp3`),
+    path.join(audioDir, 'soundtrack_varejo_alegre.mp3'),
+    path.join(seedDir, 'soundtrack_varejo_alegre.mp3'),
+  ];
 
-  // Fallback para uma trilha real existente (.mp3) caso esta específica não exista no disco
-  const defaultTrack = path.join(audioDir, 'soundtrack_varejo_alegre.mp3');
-  if (fs.existsSync(defaultTrack)) {
-    return fs.readFileSync(defaultTrack);
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p);
+    }
   }
 
   // Fallback synthetic WAV if file not yet downloaded

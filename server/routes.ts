@@ -299,27 +299,47 @@ apiRouter.get('/soundtracks', (_req: Request, res: Response) => {
   res.json({ soundtracks: SOUNDTRACKS_LIST });
 });
 
-apiRouter.get('/soundtracks/:id/preview.:ext', (req: Request, res: Response) => {
+apiRouter.get('/soundtracks/:id/preview.:ext', async (req: Request, res: Response) => {
   const trackId = req.params.id as SoundtrackId;
+  const stored = await getAudioBinaryAsync(`soundtrack_${trackId}`);
+  if (stored) {
+    res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
+    res.setHeader('Content-Length', stored.buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end(stored.buffer);
+  }
   const buffer = getSoundtrackPreviewBuffer(trackId);
   const isMp3 = buffer.length > 3 && (buffer[0] === 0x49 || (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0));
   const contentType = isMp3 ? 'audio/mpeg' : 'audio/wav';
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Length', buffer.length);
   res.setHeader('Accept-Ranges', 'bytes');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
   res.end(buffer);
 });
 
-apiRouter.get('/samples/style/:styleId.:ext', (req: Request, res: Response) => {
+apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response) => {
   const styleId = req.params.styleId;
+  const stored = await getAudioBinaryAsync(`style_${styleId}`);
+  if (stored) {
+    res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
+    res.setHeader('Content-Length', stored.buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end(stored.buffer);
+  }
   const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
   const mp3Path = path.join(audioDir, `style_${styleId}.mp3`);
-  if (fs.existsSync(mp3Path)) {
-    const buffer = fs.readFileSync(mp3Path);
+  const seedMp3 = path.join(seedDir, `style_${styleId}.mp3`);
+  const target = fs.existsSync(mp3Path) ? mp3Path : fs.existsSync(seedMp3) ? seedMp3 : null;
+  if (target) {
+    const buffer = fs.readFileSync(target);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', buffer.length);
     res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.end(buffer);
   }
   const wavBuffer = generateStyleDemoWav(styleId);
@@ -331,12 +351,21 @@ apiRouter.get('/samples/style/:styleId.:ext', (req: Request, res: Response) => {
 
 apiRouter.get('/samples/voice/:voiceId.:ext', async (req: Request, res: Response) => {
   const voiceId = req.params.voiceId;
+  const audioId = `voice_${voiceId}`;
+  const stored = await getAudioBinaryAsync(audioId);
+  if (stored) {
+    res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
+    res.setHeader('Content-Length', stored.buffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end(stored.buffer);
+  }
   try {
     const buffer = await getVoicePreviewAudio(voiceId);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', buffer.length);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.end(buffer);
   } catch (err: any) {
     console.error(`Erro ao carregar amostra da voz ${voiceId}:`, err);
