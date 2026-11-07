@@ -2299,10 +2299,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
           {/* ================================================================= */}
           {/* NAVIGATION TABS FOR RADIO MANAGEMENT                              */}
           {/* ================================================================= */}
-          <div className="sticky top-14 sm:top-16 z-30 bg-[#111318]/95 backdrop-blur-md pt-2 pb-3 border-b border-zinc-700/80 flex items-center overflow-x-auto gap-2 scrollbar-none">
+          <div className="sticky top-14 sm:top-16 z-30 bg-[#111318]/95 backdrop-blur-md pt-2 pb-3 border-b border-zinc-700/80 grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => setActiveTab('flash_studio')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'flash_studio'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
@@ -2315,7 +2315,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
             <button
               onClick={() => setActiveTab('announcements')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'announcements'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
@@ -2324,20 +2324,16 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
               <BellRing className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-amber-400" />
               <span className="sm:hidden">Avisos</span>
               <span className="hidden sm:inline">Avisos & Informativos</span>
-              {isGratuito ? (
+              {isGratuito && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
                   <Lock className="w-2.5 h-2.5" /> PRO
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Liberado
                 </span>
               )}
             </button>
 
             <button
               onClick={() => setActiveTab('vinhetas')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'vinhetas'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
@@ -2346,32 +2342,29 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
               <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-purple-400" />
               <span className="sm:hidden">Vinhetas</span>
               <span className="hidden sm:inline">Vinhetas da Loja</span>
-              {isGratuito ? (
+              {isGratuito && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-0.5">
                   <Lock className="w-2.5 h-2.5" /> PRO
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Liberado
                 </span>
               )}
             </button>
 
             <button
               onClick={() => setActiveTab('queue')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'queue'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
               }`}
             >
               <Megaphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span>Grade no Ar ({config.queue.length})</span>
+              <span className="sm:hidden">Grade ({config.queue.length})</span>
+              <span className="hidden sm:inline">Grade no Ar ({config.queue.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('library_import')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'library_import'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
@@ -2384,7 +2377,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
             <button
               onClick={() => setActiveTab('music')}
-              className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-center whitespace-nowrap shrink-0 shadow-sm ${
+              className={`px-1.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs lg:text-sm flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2 transition cursor-pointer text-center whitespace-nowrap shadow-sm ${
                 activeTab === 'music'
                   ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
                   : 'bg-[#1c202d] hover:bg-[#252a3b] text-zinc-200 border border-zinc-700/80'
@@ -2647,22 +2640,22 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                     </label>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
                     <button
                       onClick={handleGenerateAndBroadcastFlash}
                       disabled={generatingFlash}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-orange-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
+                      className="w-full sm:w-auto px-4 sm:px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-orange-500/20 transition cursor-pointer"
                     >
                       {generatingFlash ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                          <span>Sintetizando Locução e Publicando na Rádio...</span>
+                          <span>Sintetizando e Publicando na Rádio...</span>
                         </>
                       ) : (
                         <>
                           <Radio className="w-4 h-4 shrink-0" />
-                          <span>Gerar Locução & Divulgar na Rádio Web</span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-black/20 text-[11px] font-black text-zinc-950 shrink-0 whitespace-nowrap border border-black/10">
+                          <span className="text-center">Gerar Locução & Divulgar na Rádio Web</span>
+                          <span className="px-2 py-0.5 rounded-full bg-black/20 text-[10px] sm:text-[11px] font-black text-zinc-950 shrink-0 whitespace-nowrap border border-black/10">
                             5 créditos
                           </span>
                         </>
@@ -2671,13 +2664,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
                     <label
                       title="Divulgar automaticamente novas locuções do Estúdio direto na grade da Rádio"
-                      className="flex items-center gap-2 text-xs text-zinc-300 bg-[#141620] hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 rounded-2xl cursor-pointer shrink-0 whitespace-nowrap transition"
+                      className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 text-xs text-zinc-300 bg-[#141620] hover:bg-zinc-800/80 border border-zinc-800 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl cursor-pointer transition"
                     >
                       <input
                         type="checkbox"
                         checked={config.autoPublishNewAudios}
                         onChange={e => updateConfig({ autoPublishNewAudios: e.target.checked })}
-                        className="accent-orange-500 rounded w-4 h-4 cursor-pointer"
+                        className="accent-orange-500 rounded w-4 h-4 cursor-pointer shrink-0"
                       />
                       <span>Auto-divulgar novas locuções</span>
                     </label>

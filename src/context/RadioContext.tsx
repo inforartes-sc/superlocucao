@@ -543,12 +543,13 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     refreshRadioData();
   }, [refreshRadioData]);
 
-  // Smooth volume fader for background music deck
-  const fadeMusicVolume = useCallback((targetVolume: number, durationMs = 500) => {
+  // Smooth volume fader for background music deck (fade-in / fade-out suave sem corte brusco)
+  const fadeMusicVolume = useCallback((targetVolume: number, durationMs = 650) => {
     const audio = musicAudioRef.current;
     if (!audio) return;
     if (fadeIntervalRef.current) {
       window.clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
     }
     const clampedTarget = Math.max(0, Math.min(1, targetVolume));
     const startVolume = audio.volume;
@@ -560,20 +561,25 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       }
     };
 
-    if (Math.abs(diff) < 0.01 || durationMs <= 0) {
+    if (Math.abs(diff) < 0.005 || durationMs <= 0) {
       setVol(clampedTarget);
       return;
     }
-    const steps = 14;
-    const stepTime = Math.max(20, Math.floor(durationMs / steps));
+    const stepTime = 16; // 60fps curva suave
+    const steps = Math.max(4, Math.floor(durationMs / stepTime));
     let currentStep = 0;
 
     fadeIntervalRef.current = window.setInterval(() => {
       currentStep++;
-      const progress = currentStep / steps;
-      setVol(Math.max(0, Math.min(1, startVolume + diff * progress)));
+      const linearProgress = Math.min(1, currentStep / steps);
+      // Curva smoothstep para transição ultra suave da música
+      const smoothProgress = linearProgress * linearProgress * (3 - 2 * linearProgress);
+      setVol(Math.max(0, Math.min(1, startVolume + diff * smoothProgress)));
       if (currentStep >= steps) {
-        if (fadeIntervalRef.current) window.clearInterval(fadeIntervalRef.current);
+        if (fadeIntervalRef.current) {
+          window.clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
         setVol(clampedTarget);
       }
     }, stepTime);
@@ -688,7 +694,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
   // Trigger an offer voiceover spot with Auto-Ducking
   const playSpotNow = useCallback(
-    (specificItem?: RadioQueueItem) => {
+    async (specificItem?: RadioQueueItem) => {
       if (isLiveMicActiveRef.current) {
         return;
       }
@@ -763,9 +769,21 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         }
       }
 
-      // Apply Auto-Ducking to music deck
+      // Suave fade-out de saída na música ambiente ANTES de soltar a voz
       setIsDucking(true);
-      fadeMusicVolume(cfg.duckingLevel, 450);
+      const isMusicPlaying = Boolean(
+        musicAudioRef.current &&
+        !musicAudioRef.current.paused &&
+        musicAudioRef.current.currentTime > 0
+      );
+
+      // Inicia o fade suave de saída da música ambiente para o nível de ducking
+      fadeMusicVolume(cfg.duckingLevel ?? 0.12, 650);
+
+      // Aguarda 400ms para a música baixar suavemente antes da locução começar
+      if (isMusicPlaying) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
 
       setCurrentSpot(chosen);
       currentSpotRef.current = chosen;
