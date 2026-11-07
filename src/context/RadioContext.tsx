@@ -67,7 +67,7 @@ export const DEFAULT_RADIO_PLAYLISTS: RadioPlaylist[] = [
   },
 ];
 
-const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
+export const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   stationName: 'Rádio Supermercado Ao Vivo',
   storeName: 'Supermercado Alvorada',
   slogan: 'As melhores ofertas do dia no ar para você economizar de verdade!',
@@ -596,8 +596,23 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     try {
       const res = await api.getRadio();
       if (res && res.config && res.config.stationName) {
-        setConfig(res.config);
-        persistConfigLocally(res.config);
+        // Guarantee system playlists & tracks are merged even on frontend
+        const existingPlaylistIds = new Set((res.config.playlists || []).map((p: any) => p.id));
+        const missingDefaultPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
+        const finalPlaylists = [...(res.config.playlists || []), ...missingDefaultPlaylists];
+
+        const existingTrackIds = new Set((res.config.musicTracks || []).map((t: any) => t.id));
+        const missingDefaultTracks = DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks.filter(t => !existingTrackIds.has(t.id));
+        const finalTracks = [...(res.config.musicTracks || []), ...missingDefaultTracks];
+
+        const mergedConfig = {
+          ...res.config,
+          playlists: finalPlaylists,
+          musicTracks: finalTracks
+        };
+
+        setConfig(mergedConfig);
+        persistConfigLocally(mergedConfig);
         setAvailableAudios(res.availableAudios || []);
         if (!isOnAirRef.current) {
           setCountdownSeconds(res.config.spotsIntervalSeconds || res.config.offerIntervalSeconds || 45);

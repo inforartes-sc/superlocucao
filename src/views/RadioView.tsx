@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Radio,
   X,
@@ -54,7 +54,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { PlanUpgradeModal } from '../components/PlanUpgradeModal';
-import { useRadio } from '../context/RadioContext';
+import { useRadio, DEFAULT_RADIO_PLAYLISTS, DEFAULT_FALLBACK_RADIO_CONFIG } from '../context/RadioContext';
 import { attachVoiceNormalizer, BroadcastVoiceProcessor } from '../utils/audioNormalizer';
 import {
   playSupermarketChime,
@@ -666,6 +666,22 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
   const [soundtracks, setSoundtracks] = useState<SoundtrackOption[]>([]);
   const [isStoreMonitorMode, setIsStoreMonitorMode] = useState<boolean>(false);
 
+  // Garantir que todas as playlists oficiais (inclusive Natal & Final de Ano) sempre apareçam
+  const effectivePlaylists: RadioPlaylist[] = useMemo(() => {
+    const list = config.playlists && config.playlists.length > 0 ? config.playlists : DEFAULT_RADIO_PLAYLISTS;
+    const existingIds = new Set(list.map((p: RadioPlaylist) => p.id));
+    const missing = DEFAULT_RADIO_PLAYLISTS.filter((p: RadioPlaylist) => !existingIds.has(p.id));
+    return [...list, ...missing];
+  }, [config.playlists]);
+
+  // Garantir que todas as faixas oficiais (inclusive Natal & Réveillon) sempre apareçam
+  const effectiveMusicTracks: RadioMusicTrack[] = useMemo(() => {
+    const list = config.musicTracks && config.musicTracks.length > 0 ? config.musicTracks : DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks;
+    const existingIds = new Set(list.map((t: RadioMusicTrack) => t.id));
+    const missing = DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks.filter((t: RadioMusicTrack) => !existingIds.has(t.id));
+    return [...list, ...missing];
+  }, [config.musicTracks]);
+
   // Announcements & Soundboard State
   const [announcementCategoryFilter, setAnnouncementCategoryFilter] = useState<string>('todas');
   const [isMicActive, setIsMicActive] = useState<boolean>(false);
@@ -902,7 +918,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     setUploadMusicPlaylistId(
       selectedPlaylistFilter !== 'todas'
         ? selectedPlaylistFilter
-        : (config.playlists && config.playlists.length > 0 ? config.playlists[0].id : 'pop_varejo')
+        : (effectivePlaylists.length > 0 ? effectivePlaylists[0].id : 'pop_varejo')
     );
     setUploadMusicAudioUrl(URL.createObjectURL(file));
     setShowCreatePlaylistInline(false);
@@ -4437,13 +4453,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                           selectedPlaylistFilter === 'todas' ? 'bg-zinc-950/30 text-zinc-950 font-black' : 'bg-zinc-800 text-zinc-400'
                         }`}
                       >
-                        {config.musicTracks.length}
+                        {effectiveMusicTracks.length}
                       </span>
                     </button>
 
-                    {(config.playlists || []).map(pl => {
+                    {effectivePlaylists.map(pl => {
                       const isSelected = selectedPlaylistFilter === pl.id;
-                      const count = config.musicTracks.filter(
+                      const count = effectiveMusicTracks.filter(
                         t => (t.playlistId || t.category) === pl.id
                       ).length;
                       const isActiveOnAir = config.activePlaylistId === pl.id;
@@ -4490,10 +4506,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
                 {/* Playlist Active Control Card */}
                 {selectedPlaylistFilter !== 'todas' && (() => {
-                  const currentPl = (config.playlists || []).find(p => p.id === selectedPlaylistFilter);
+                  const currentPl = effectivePlaylists.find(p => p.id === selectedPlaylistFilter);
                   if (!currentPl) return null;
                   const isActiveOnAir = config.activePlaylistId === currentPl.id;
-                  const plTracksCount = config.musicTracks.filter(
+                  const plTracksCount = effectiveMusicTracks.filter(
                     t => (t.playlistId || t.category) === currentPl.id
                   ).length;
 
@@ -4558,8 +4574,8 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                   {(() => {
                     const displayedTracks =
                       selectedPlaylistFilter === 'todas'
-                        ? config.musicTracks
-                        : config.musicTracks.filter(
+                        ? effectiveMusicTracks
+                        : effectiveMusicTracks.filter(
                             t => (t.playlistId || t.category) === selectedPlaylistFilter
                           );
 
@@ -4593,7 +4609,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                         isPreviewingThis && effectiveDuration > 0
                           ? Math.min(100, Math.max(0, (previewCurrentTime / effectiveDuration) * 100))
                           : 0;
-                      const trackPl = (config.playlists || []).find(
+                      const trackPl = effectivePlaylists.find(
                         p => p.id === (track.playlistId || track.category)
                       );
 
@@ -4671,7 +4687,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                                   className="bg-transparent text-zinc-200 text-xs font-bold focus:outline-none cursor-pointer max-w-[150px] sm:max-w-[200px] truncate"
                                   title="Alterar tema desta música"
                                 >
-                                  {(config.playlists || []).map(p => (
+                                  {effectivePlaylists.map(p => (
                                     <option key={p.id} value={p.id} className="bg-zinc-900 text-white">
                                       {p.icon || '🎵'} {p.name}
                                     </option>
@@ -5033,7 +5049,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                   }}
                   className="w-full px-3.5 py-2 rounded-xl bg-[#141620] border border-zinc-700/80 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
-                  {(config.playlists || []).map(p => (
+                  {effectivePlaylists.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.icon || '🎵'} {p.name}
                     </option>

@@ -2011,11 +2011,19 @@ class Database {
       this.pgSaveRadioConfig(key, this.data.radioConfigs[key]);
     }
     const config = this.data.radioConfigs[key];
-    // Guarantee playlists exist
+    // Guarantee all default system playlists (including Natal & Final de Ano) exist
     if (!config.playlists || config.playlists.length === 0) {
       config.playlists = DEFAULT_RADIO_PLAYLISTS;
       this.save();
+    } else {
+      const existingPlaylistIds = new Set((config.playlists || []).map((p: any) => p.id));
+      const missingPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
+      if (missingPlaylists.length > 0) {
+        config.playlists = [...config.playlists, ...missingPlaylists];
+        this.save();
+      }
     }
+
     // Guarantee stores exist
     if (!config.stores || config.stores.length === 0) {
       const user = this.getUser(key);
@@ -2030,13 +2038,22 @@ class Database {
       ];
       this.save();
     }
-    // Guarantee rich default tracks exist if legacy config had 5 or fewer
+
+    // Guarantee all system default music tracks (including Natal & Réveillon) exist
     if (!config.musicTracks || config.musicTracks.length <= 5) {
       const customTracks = (config.musicTracks || []).filter(t => t.isCustom);
       config.musicTracks = [...customTracks, ...DEFAULT_RADIO_MUSIC_TRACKS];
       this.save();
     } else {
+      const existingTrackIds = new Set((config.musicTracks || []).map((t: any) => t.id));
+      const missingTracks = DEFAULT_RADIO_MUSIC_TRACKS.filter(t => !existingTrackIds.has(t.id));
       let modified = false;
+
+      if (missingTracks.length > 0) {
+        config.musicTracks = [...config.musicTracks, ...missingTracks];
+        modified = true;
+      }
+
       config.musicTracks = config.musicTracks.map(t => {
         if (!t.playlistId) {
           modified = true;
@@ -2044,6 +2061,7 @@ class Database {
         }
         return t;
       });
+
       if (modified) this.save();
     }
     if (key === 'user-alvorada') {
