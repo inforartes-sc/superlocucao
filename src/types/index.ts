@@ -316,6 +316,7 @@ export interface PaymentTransaction {
   dueDate?: string;
   pixCopiaECola?: string;
   pixQrCodeUrl?: string;
+  checkoutUrl?: string;
   createdAt: string;
 }
 

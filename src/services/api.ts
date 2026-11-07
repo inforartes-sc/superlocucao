@@ -364,9 +364,18 @@ export const api = {
       pixCopiaECola: string;
       pixQrCodeUrl: string;
       boletoCode: string;
+      checkoutUrl?: string;
     }>('/credits/checkout', {
       method: 'POST',
       body: JSON.stringify(params),
+    }),
+  getInvoiceCheckoutUrl: (invoiceId: string) =>
+    request<{
+      success: boolean;
+      checkoutUrl: string;
+      transactionId: string;
+    }>(`/invoices/${invoiceId}/checkout-url`, {
+      method: 'POST',
     }),
   confirmCheckout: (transactionId: string) =>
     request<{

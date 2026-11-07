@@ -56,6 +56,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<PaymentTransaction | null>(null);
   const [confirmingInvoicePayment, setConfirmingInvoicePayment] = useState(false);
   const [copiedInvoicePix, setCopiedInvoicePix] = useState(false);
+  const [loadingMpRedirect, setLoadingMpRedirect] = useState<string | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
     {
@@ -206,6 +207,23 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
     loadHistory();
     loadInvoices();
 
+    // Detecção de retorno automático do Mercado Pago
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment_status') || urlParams.get('status');
+      const tx = urlParams.get('tx') || urlParams.get('external_reference');
+      if ((paymentStatus === 'success' || paymentStatus === 'approved') && tx) {
+        api.confirmCheckout(tx).then(res => {
+          if (res.success) {
+            loadInvoices();
+            onRefreshUser();
+            alert('🎉 Pagamento confirmado com sucesso pelo Mercado Pago! Sua assinatura foi renovada.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }).catch(console.warn);
+      }
+    }
+
     api
       .getPublicSettings()
       .then((res) => {
@@ -218,6 +236,24 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       })
       .catch(console.warn);
   }, [user?.creditsBalance, user?.plan]);
+
+  // Redirecionamento Direto para o Mercado Pago (Checkout Pro)
+  const handlePayInvoiceWithMercadoPago = async (invoice: PaymentTransaction) => {
+    setLoadingMpRedirect(invoice.id);
+    try {
+      const res = await api.getInvoiceCheckoutUrl(invoice.id);
+      if (res && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+        return;
+      }
+      setSelectedInvoiceForPayment(invoice);
+    } catch (e: any) {
+      console.warn('Falha ao obter link do Mercado Pago:', e);
+      setSelectedInvoiceForPayment(invoice);
+    } finally {
+      setLoadingMpRedirect(null);
+    }
+  };
 
   // Open Checkout for Recharge Package
   const handleOpenCheckout = async (pkg: RechargePackage) => {
@@ -698,14 +734,35 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedInvoiceForPayment(pendingRenewalInvoice)}
-                className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-zinc-950 font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-2 shrink-0 self-stretch sm:self-auto"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Pagar Fatura com PIX</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 shrink-0 self-stretch sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handlePayInvoiceWithMercadoPago(pendingRenewalInvoice)}
+                  disabled={loadingMpRedirect === pendingRenewalInvoice.id}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-[#009ee3] to-[#0082ba] hover:from-[#008cd0] hover:to-[#0074a6] text-white font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-blue-500/25 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loadingMpRedirect === pendingRenewalInvoice.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Conectando ao Mercado Pago...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Pagar no Mercado Pago (Cartão, PIX ou Boleto)</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoiceForPayment(pendingRenewalInvoice)}
+                  className="w-full sm:w-auto px-4 py-3.5 bg-white/60 hover:bg-white text-slate-800 font-bold rounded-2xl text-xs border border-slate-300 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  title="Ver QR Code e PIX Copia e Cola Direto"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  <span>PIX Direto</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -900,14 +957,35 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             {isPending && (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedInvoiceForPayment(inv)}
-                                className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-zinc-950 rounded-xl font-black text-xs transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
-                              >
-                                <QrCode className="w-3.5 h-3.5" />
-                                <span>Pagar PIX</span>
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5 flex-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePayInvoiceWithMercadoPago(inv)}
+                                  disabled={loadingMpRedirect === inv.id}
+                                  className="px-3 py-1.5 bg-[#009ee3] hover:bg-[#0082ba] disabled:opacity-50 text-white rounded-xl font-black text-xs transition cursor-pointer shadow-sm inline-flex items-center gap-1.5 shrink-0"
+                                  title="Pagar no Mercado Pago (Cartão, PIX ou Boleto)"
+                                >
+                                  {loadingMpRedirect === inv.id ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      <span>Abrindo...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CreditCard className="w-3.5 h-3.5" />
+                                      <span>Pagar Fatura</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedInvoiceForPayment(inv)}
+                                  className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer shrink-0"
+                                  title="Ver QR Code e PIX Copia e Cola"
+                                >
+                                  <QrCode className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             )}
 
                             {isApproved && (
@@ -1633,6 +1711,32 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                     R$ {Number(selectedInvoiceForPayment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
+              </div>
+
+              {/* Botão de Pagamento com Mercado Pago */}
+              <button
+                type="button"
+                onClick={() => handlePayInvoiceWithMercadoPago(selectedInvoiceForPayment)}
+                disabled={loadingMpRedirect === selectedInvoiceForPayment.id}
+                className="w-full py-3.5 bg-gradient-to-r from-[#009ee3] to-[#0082ba] hover:from-[#008cd0] hover:to-[#0074a6] text-white font-extrabold rounded-2xl text-xs sm:text-sm transition cursor-pointer shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+              >
+                {loadingMpRedirect === selectedInvoiceForPayment.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Redirecionando para o Mercado Pago...</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Pagar no Mercado Pago (Cartão, PIX ou Boleto)</span>
+                  </>
+                )}
+              </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-200" />
+                <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">Ou pague via PIX direto</span>
+                <div className="flex-grow border-t border-slate-200" />
               </div>
 
               {/* QR Code */}

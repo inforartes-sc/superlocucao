@@ -1335,7 +1335,111 @@ apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
   });
 });
 
-apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
+// Helper: Criação de Preferência de Pagamento no Mercado Pago (Checkout Pro)
+async function createMercadoPagoPreference(params: {
+  transactionId: string;
+  title: string;
+  description?: string;
+  amount: number;
+  clientEmail?: string;
+  clientName?: string;
+  req: Request;
+}): Promise<string> {
+  const gatewayConfig = db.getGatewayConfig();
+  const token = (gatewayConfig?.mercadoPagoAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || '').trim();
+  const isProduction = gatewayConfig?.mode === 'production';
+
+  // Descobre URL base da aplicação
+  const protocol = params.req.headers['x-forwarded-proto'] || params.req.protocol || 'http';
+  const host = params.req.headers['x-forwarded-host'] || params.req.get('host') || 'localhost:3000';
+  const appUrl = (process.env.APP_URL || `${protocol}://${host}`).replace(/\/$/, '');
+
+  if (token && token.length > 10) {
+    try {
+      const payload = {
+        items: [
+          {
+            id: params.transactionId,
+            title: params.title.substring(0, 250),
+            description: (params.description || params.title).substring(0, 250),
+            quantity: 1,
+            currency_id: 'BRL',
+            unit_price: Number(params.amount),
+          }
+        ],
+        payer: {
+          name: (params.clientName || 'Lojista').substring(0, 50),
+          email: params.clientEmail || 'contato@supermercado.com.br',
+        },
+        external_reference: params.transactionId,
+        back_urls: {
+          success: `${appUrl}/?view=credits&payment_status=success&tx=${params.transactionId}`,
+          failure: `${appUrl}/?view=credits&payment_status=failure&tx=${params.transactionId}`,
+          pending: `${appUrl}/?view=credits&payment_status=pending&tx=${params.transactionId}`,
+        },
+        auto_return: 'approved',
+        notification_url: `${appUrl}/api/webhooks/mercadopago`,
+        statement_descriptor: 'SUPERLOCUCAO',
+      };
+
+      const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const url = isProduction ? data.init_point : (data.sandbox_init_point || data.init_point);
+        if (url) {
+          console.log(`[Mercado Pago] Preferência gerada com sucesso: ${data.id} -> ${url}`);
+          return url;
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Mercado Pago] Aviso da API ao gerar preferência (${res.status}):`, errText);
+      }
+    } catch (e: any) {
+      console.warn('[Mercado Pago] Falha na requisição:', e?.message || e);
+    }
+  }
+
+  // Link de redirecionamento interno/sandbox simulando Mercado Pago caso as credenciais oficiais não estejam ativas
+  return `${appUrl}/?view=credits&action=mp_checkout&tx=${params.transactionId}&amount=${params.amount}`;
+}
+
+apiRouter.post('/invoices/:id/checkout-url', async (req: Request, res: Response) => {
+  const txId = req.params.id;
+  const payments = db.getPaymentTransactions();
+  const tx = payments.find(p => p.id === txId);
+  if (!tx) {
+    return res.status(404).json({ error: 'Fatura não encontrada.' });
+  }
+
+  const checkoutUrl = await createMercadoPagoPreference({
+    transactionId: tx.id,
+    title: tx.itemName || tx.description || 'Fatura de Renovação',
+    description: tx.description,
+    amount: Number(tx.amount),
+    clientEmail: tx.clientEmail,
+    clientName: tx.userName || tx.companyName,
+    req,
+  });
+
+  tx.checkoutUrl = checkoutUrl;
+  db.createPaymentTransaction(tx);
+
+  res.json({
+    success: true,
+    checkoutUrl,
+    transactionId: tx.id,
+  });
+});
+
+apiRouter.post('/credits/checkout', async (req: Request, res: Response) => {
   const userId = getUserId(req);
   const user = db.getUser(userId);
   const { packageId, planId, paymentMethod = 'pix' } = req.body;
@@ -1380,6 +1484,17 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
       createdAt: new Date().toISOString(),
     };
 
+    const checkoutUrl = await createMercadoPagoPreference({
+      transactionId: tx.id,
+      title: tx.itemName || tx.description,
+      description: tx.description,
+      amount: tx.amount,
+      clientEmail: tx.clientEmail,
+      clientName: tx.userName || tx.companyName,
+      req,
+    });
+    tx.checkoutUrl = checkoutUrl;
+
     db.createPaymentTransaction(tx);
 
     return res.json({
@@ -1393,6 +1508,7 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
       pixCopiaECola,
       pixQrCodeUrl,
       boletoCode,
+      checkoutUrl,
     });
   }
 
@@ -1430,6 +1546,17 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
+  const checkoutUrl = await createMercadoPagoPreference({
+    transactionId: tx.id,
+    title: tx.itemName || tx.description,
+    description: tx.description,
+    amount: tx.amount,
+    clientEmail: tx.clientEmail,
+    clientName: tx.userName || tx.companyName,
+    req,
+  });
+  tx.checkoutUrl = checkoutUrl;
+
   db.createPaymentTransaction(tx);
 
   res.json({
@@ -1443,6 +1570,7 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
     pixCopiaECola,
     pixQrCodeUrl,
     boletoCode,
+    checkoutUrl,
   });
 });
 
@@ -1953,10 +2081,46 @@ apiRouter.post('/admin/database/sync-audios', async (_req: Request, res: Respons
   }
 });
 
-// Webhook listener for payment providers (Mercado Pago, Asaas, Stripe)
-apiRouter.post('/webhooks/payment', (req: Request, res: Response) => {
-  console.log('[Payment Webhook] Evento recebido:', req.body);
-  // Auto-process payment event if valid
-  const { event, id, status, amount } = req.body || {};
+// Webhook listener oficial do Mercado Pago (e outros gateways)
+apiRouter.all(['/webhooks/mercadopago', '/webhooks/payment'], async (req: Request, res: Response) => {
+  const method = req.method;
+  if (method === 'GET') {
+    return res.status(200).send('Mercado Pago Webhook Endpoint Ativo.');
+  }
+
+  try {
+    const topic = (req.query.topic || req.query.type || req.body?.type || req.body?.topic || '') as string;
+    const paymentId = (req.query.id || req.query['data.id'] || req.body?.data?.id || req.body?.id || '') as string;
+    console.log(`[Mercado Pago Webhook] Notificação recebida - Topic: ${topic}, ID: ${paymentId}`);
+
+    if (paymentId) {
+      const gatewayConfig = db.getGatewayConfig();
+      const token = (gatewayConfig?.mercadoPagoAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || '').trim();
+
+      if (token && token.length > 10) {
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (mpRes.ok) {
+          const mpData = await mpRes.json();
+          const extRef = mpData.external_reference;
+          const status = mpData.status;
+          console.log(`[Mercado Pago Webhook] Pagamento #${paymentId} - Status: ${status}, Transação Ref: ${extRef}`);
+
+          if (status === 'approved' && extRef) {
+            const confirmed = db.confirmPaymentTransaction(extRef);
+            if (confirmed) {
+              console.log(`[Mercado Pago Webhook] ✅ Transação ${extRef} confirmada e créditos liberados.`);
+              await db.pgSaveAdminSettings(db.getAdminSettings()).catch(console.warn);
+            }
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Mercado Pago Webhook] Erro ao processar:', err.message);
+  }
+
   res.status(200).json({ received: true, timestamp: new Date().toISOString() });
 });
