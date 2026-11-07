@@ -395,6 +395,7 @@ export interface RadioStationConfig {
   duckingLevel: number;
   selectedMusicCategory: string;
   activePlaylistId?: string;
+  excludedPlaylistIds?: string[];
   playlists?: RadioPlaylist[];
   autoPublishNewAudios: boolean;
   queue: RadioQueueItem[];

@@ -986,6 +986,7 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     duckingLevel: 0.12,
     selectedMusicCategory: 'todas',
     activePlaylistId: 'todas',
+    excludedPlaylistIds: [],
     playlists: DEFAULT_RADIO_PLAYLISTS,
     autoPublishNewAudios: true,
     queue,

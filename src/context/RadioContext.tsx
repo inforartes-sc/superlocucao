@@ -84,6 +84,7 @@ export const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   duckingLevel: 0.12,
   selectedMusicCategory: 'todas',
   activePlaylistId: 'todas',
+  excludedPlaylistIds: [],
   playlists: DEFAULT_RADIO_PLAYLISTS,
   autoPublishNewAudios: true,
   queue: [
@@ -375,6 +376,7 @@ function loadInitialRadioConfig(): RadioStationConfig {
           ...parsed,
           playlists: finalPlaylists,
           activePlaylistId: parsed.activePlaylistId || 'todas',
+          excludedPlaylistIds: Array.isArray(parsed.excludedPlaylistIds) ? parsed.excludedPlaylistIds : [],
           queue: parsed.queue.length > 0 ? parsed.queue : DEFAULT_FALLBACK_RADIO_CONFIG.queue,
           musicTracks: finalTracks,
         };
@@ -453,6 +455,7 @@ interface RadioContextValue {
   deleteMusicTrack: (id: string) => Promise<void>;
   updateMusicTrack: (id: string, updates: Partial<RadioMusicTrack>) => Promise<void>;
   setActivePlaylist: (playlistId: string) => Promise<void>;
+  togglePlaylistExclusion: (playlistId: string) => Promise<void>;
   playMusicTrackNow: (track: RadioMusicTrack) => void;
   uploadSpotAudioFile: (
     file: File,
@@ -748,9 +751,17 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
       // Filter by active playlist if one is selected and not 'todas'
       let candidateTracks = tracks;
+      const excludedSet = new Set(cfg.excludedPlaylistIds || []);
       if (cfg.activePlaylistId && cfg.activePlaylistId !== 'todas') {
         const filtered = tracks.filter(
           t => t.playlistId === cfg.activePlaylistId || t.category === cfg.activePlaylistId
+        );
+        if (filtered.length > 0) {
+          candidateTracks = filtered;
+        }
+      } else if (excludedSet.size > 0) {
+        const filtered = tracks.filter(
+          t => !excludedSet.has(t.playlistId || '') && !excludedSet.has(t.category || '')
         );
         if (filtered.length > 0) {
           candidateTracks = filtered;
@@ -880,9 +891,15 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     if (cfg && cfg.mode !== 'somente_ofertas') {
       const tracks = (cfg.musicTracks || []).filter(t => t.active);
       let candidateTracks = tracks;
+      const excludedSet = new Set(cfg.excludedPlaylistIds || []);
       if (cfg.activePlaylistId && cfg.activePlaylistId !== 'todas') {
         const filtered = tracks.filter(
           t => t.playlistId === cfg.activePlaylistId || t.category === cfg.activePlaylistId
+        );
+        if (filtered.length > 0) candidateTracks = filtered;
+      } else if (excludedSet.size > 0) {
+        const filtered = tracks.filter(
+          t => !excludedSet.has(t.playlistId || '') && !excludedSet.has(t.category || '')
         );
         if (filtered.length > 0) candidateTracks = filtered;
       }
@@ -1178,9 +1195,15 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     if (cfg.mode !== 'somente_ofertas') {
       const tracks = (cfg.musicTracks || []).filter(t => t.active);
       let candidateTracks = tracks;
+      const excludedSet = new Set(cfg.excludedPlaylistIds || []);
       if (cfg.activePlaylistId && cfg.activePlaylistId !== 'todas') {
         const filtered = tracks.filter(
           t => t.playlistId === cfg.activePlaylistId || t.category === cfg.activePlaylistId
+        );
+        if (filtered.length > 0) candidateTracks = filtered;
+      } else if (excludedSet.size > 0) {
+        const filtered = tracks.filter(
+          t => !excludedSet.has(t.playlistId || '') && !excludedSet.has(t.category || '')
         );
         if (filtered.length > 0) candidateTracks = filtered;
       }
@@ -1673,6 +1696,33 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     [config?.playlists, updateConfig, appendLog]
   );
 
+  const togglePlaylistExclusion = useCallback(
+    async (playlistId: string) => {
+      const current = configRef.current;
+      const currentExcluded = current.excludedPlaylistIds || [];
+      const isCurrentlyExcluded = currentExcluded.includes(playlistId);
+      const updatedExcluded = isCurrentlyExcluded
+        ? currentExcluded.filter(id => id !== playlistId)
+        : [...currentExcluded, playlistId];
+
+      await updateConfig({ excludedPlaylistIds: updatedExcluded });
+      const pl = (current.playlists || []).find(p => p.id === playlistId);
+      const plName = pl?.name || playlistId;
+      if (isCurrentlyExcluded) {
+        appendLog(`Playlist "${plName}" reativada na rotação geral da rádio`, 'sistema');
+      } else {
+        appendLog(`Playlist "${plName}" desmarcada da rotação geral da rádio`, 'sistema');
+        if (!current.activePlaylistId || current.activePlaylistId === 'todas') {
+          const activeTrack = currentMusicRef.current;
+          if (activeTrack && (activeTrack.playlistId === playlistId || activeTrack.category === playlistId)) {
+            playMusicTrack();
+          }
+        }
+      }
+    },
+    [updateConfig, appendLog, playMusicTrack]
+  );
+
   const uploadSpotAudioFile = useCallback(
     async (
       file: File,
@@ -1822,6 +1872,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         deleteMusicTrack,
         updateMusicTrack,
         setActivePlaylist,
+        togglePlaylistExclusion,
         playMusicTrackNow,
         uploadSpotAudioFile,
         sessionConflict,
