@@ -317,10 +317,10 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
     const seedMp3 = path.join(process.cwd(), 'server', 'seed_audios', `${id}.mp3`);
     const seedWav = path.join(process.cwd(), 'server', 'seed_audios', `${id}.wav`);
 
-    const targetPath = fs.existsSync(mp3Path) ? mp3Path
-      : fs.existsSync(wavPath) ? wavPath
-      : fs.existsSync(seedMp3) ? seedMp3
+    const targetPath = fs.existsSync(seedMp3) ? seedMp3
       : fs.existsSync(seedWav) ? seedWav
+      : fs.existsSync(mp3Path) ? mp3Path
+      : fs.existsSync(wavPath) ? wavPath
       : null;
 
     if (targetPath) {
@@ -328,13 +328,15 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
       let filename = `${id}.mp3`;
       let mimeType = targetPath.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg';
 
-      const metaPath = path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`);
-      if (fs.existsSync(metaPath)) {
-        try {
-          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-          if (meta.filename) filename = meta.filename;
-          if (meta.mimeType) mimeType = meta.mimeType;
-        } catch { }
+      if (targetPath !== seedMp3 && targetPath !== seedWav) {
+        const metaPath = path.join(AUDIO_STORAGE_DIR, `${id}.meta.json`);
+        if (fs.existsSync(metaPath)) {
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+            if (meta.filename) filename = meta.filename;
+            if (meta.mimeType) mimeType = meta.mimeType;
+          } catch { }
+        }
       }
 
       const item: StoredAudioBinary = { id, buffer, mimeType, filename };
@@ -348,6 +350,18 @@ export function getAudioBinary(id: string): StoredAudioBinary | undefined {
 }
 
 export async function getAudioBinaryAsync(id: string): Promise<StoredAudioBinary | undefined> {
+  // Master priority for commercial landing page & showcase demos (guarantees real ElevenLabs audio)
+  const isMasterSeed = id.startsWith('aud-demo') || id.startsWith('voice_') || id.startsWith('style_');
+  if (isMasterSeed) {
+    const seedMp3 = path.resolve(process.cwd(), 'server', 'seed_audios', `${id}.mp3`);
+    if (fs.existsSync(seedMp3)) {
+      const buffer = fs.readFileSync(seedMp3);
+      const item: StoredAudioBinary = { id, buffer, mimeType: 'audio/mpeg', filename: `${id}.mp3` };
+      audioBinaryStore.set(id, item);
+      return item;
+    }
+  }
+
   // 1. Check fast in-memory store
   if (audioBinaryStore.has(id)) {
     return audioBinaryStore.get(id);
@@ -1645,6 +1659,49 @@ class Database {
       console.log(`[PostgreSQL] Sincronização automática: ${uploaded} locuções reais enviadas para o banco de dados da VPS.`);
     }
     return { total, uploaded, errors };
+  }
+
+  public async importFullDatabase(incoming: Partial<DbData>): Promise<{
+    users: number;
+    projects: number;
+    transactions: number;
+  }> {
+    if (incoming.users && Array.isArray(incoming.users)) {
+      this.data.users = incoming.users;
+      for (const u of this.data.users) await this.pgSaveUser(u);
+    }
+    if (incoming.projects && Array.isArray(incoming.projects)) {
+      this.data.projects = incoming.projects;
+      for (const p of this.data.projects) await this.pgSaveProject(p);
+    }
+    if (incoming.creditTransactions && Array.isArray(incoming.creditTransactions)) {
+      this.data.creditTransactions = incoming.creditTransactions;
+      for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
+    }
+    if (incoming.voices && Array.isArray(incoming.voices)) {
+      this.data.voices = incoming.voices;
+      for (const v of this.data.voices) await this.pgSaveVoice(v);
+    }
+    if (incoming.radioConfigs && typeof incoming.radioConfigs === 'object') {
+      this.data.radioConfigs = incoming.radioConfigs;
+      for (const [uId, rc] of Object.entries(this.data.radioConfigs)) {
+        await this.pgSaveRadioConfig(uId, rc);
+      }
+    } else if (incoming.radioConfig) {
+      this.data.radioConfig = incoming.radioConfig;
+      await this.pgSaveRadioConfig('user-alvorada', this.data.radioConfig);
+    }
+    if (incoming.adminSettings) {
+      this.data.adminSettings = incoming.adminSettings;
+      await this.pgSaveAdminSettings(this.data.adminSettings);
+    }
+
+    this.save();
+    return {
+      users: this.data.users.length,
+      projects: this.data.projects.length,
+      transactions: this.data.creditTransactions.length,
+    };
   }
 
   public async syncFullLocalDatabaseToPg(): Promise<{

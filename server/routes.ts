@@ -780,6 +780,20 @@ apiRouter.post('/sync/audio', (req: Request, res: Response) => {
   }
 });
 
+// Endpoint para sincronizar todo o banco de dados JSON para o PostgreSQL da VPS
+apiRouter.post('/sync/database', async (req: Request, res: Response) => {
+  try {
+    const stats = await db.importFullDatabase(req.body);
+    res.json({
+      success: true,
+      message: 'Banco de dados sincronizado com sucesso com o PostgreSQL da VPS.',
+      ...stats
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Falha ao sincronizar banco de dados' });
+  }
+});
+
 // -------------------------------------------------------------
 // WEB RADIO SUPERMERCADO (AUTODJ & DIVULGAÇÃO AO VIVO)
 // -------------------------------------------------------------
