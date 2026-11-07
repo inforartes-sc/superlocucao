@@ -62,7 +62,8 @@ export type SoundtrackId =
   | 'batida_comercial'
   | 'black_friday_urgente'
   | 'acustico_hortifruti'
-  | 'institucional_gourmet';
+  | 'institucional_gourmet'
+  | 'natal_fim_de_ano';
 
 export interface SoundtrackOption {
   id: SoundtrackId;

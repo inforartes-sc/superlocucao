@@ -58,6 +58,13 @@ export const DEFAULT_RADIO_PLAYLISTS: RadioPlaylist[] = [
     icon: '☕',
     color: 'sky',
   },
+  {
+    id: 'natal_final_de_ano',
+    name: 'Natal & Final de Ano Mágico',
+    description: 'Clássicos natalinos, sinos festivos e celebração para compras de Natal e Réveillon no supermercado',
+    icon: '🎄',
+    color: 'red',
+  },
 ];
 
 const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
@@ -277,6 +284,66 @@ const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
       bpm: 98,
       active: true,
     },
+    {
+      id: 'music-jingle-bells-varejo',
+      title: 'Jingle Bells & Clássico de Natal',
+      artist: 'Orquestra de Natal Supermercado',
+      style: 'Sinos Festivos, Harmonia de Natal & Ritmo Alegre (120 BPM)',
+      category: 'natal_final_de_ano',
+      playlistId: 'natal_final_de_ano',
+      audioUrl: '/api/soundtracks/natal_jingle_bells/preview.mp3',
+      durationSeconds: 195,
+      bpm: 120,
+      active: true,
+    },
+    {
+      id: 'music-noite-feliz-acustico',
+      title: 'Noite Feliz & Paz nas Compras',
+      artist: 'Piano & Carrilhão Natalino',
+      style: 'Arranjo Suave Acústico & Harpa de Natal (88 BPM)',
+      category: 'natal_final_de_ano',
+      playlistId: 'natal_final_de_ano',
+      audioUrl: '/api/soundtracks/natal_noite_feliz/preview.mp3',
+      durationSeconds: 210,
+      bpm: 88,
+      active: true,
+    },
+    {
+      id: 'music-boas-festas-ano-novo',
+      title: 'Boas Festas & Celebração em Família',
+      artist: 'Coral & Metais de Fim de Ano',
+      style: 'Arranjo Festivo & Espírito de Celebração (116 BPM)',
+      category: 'natal_final_de_ano',
+      playlistId: 'natal_final_de_ano',
+      audioUrl: '/api/soundtracks/natal_boas_festas/preview.mp3',
+      durationSeconds: 190,
+      bpm: 116,
+      active: true,
+    },
+    {
+      id: 'music-magia-ceia-natal',
+      title: 'Magia do Natal & Ceia Especial',
+      artist: 'Sinfonia do Varejo Natalino',
+      style: 'Sinos de Trenó, Cordas & Clima de Ceia (114 BPM)',
+      category: 'natal_final_de_ano',
+      playlistId: 'natal_final_de_ano',
+      audioUrl: '/api/soundtracks/natal_magia_ceia/preview.mp3',
+      durationSeconds: 205,
+      bpm: 114,
+      active: true,
+    },
+    {
+      id: 'music-reveillon-sucesso',
+      title: 'Vem Aí o Ano Novo & Esperança',
+      artist: 'Festa de Réveillon Mix',
+      style: 'Pop Festivo Otimista para Virada de Ano (122 BPM)',
+      category: 'natal_final_de_ano',
+      playlistId: 'natal_final_de_ano',
+      audioUrl: '/api/soundtracks/reveillon_sucesso/preview.mp3',
+      durationSeconds: 185,
+      bpm: 122,
+      active: true,
+    },
   ],
 };
 
@@ -292,21 +359,24 @@ function loadInitialRadioConfig(): RadioStationConfig {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.stationName && Array.isArray(parsed.queue) && Array.isArray(parsed.musicTracks)) {
         const customTracks = (parsed.musicTracks || []).filter((t: any) => t.isCustom);
-        const mergedTracks =
-          parsed.musicTracks.length > 5
-            ? parsed.musicTracks
-            : [...customTracks, ...DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks];
+        
+        // Merge playlists to ensure new system playlists (like Natal & Final de Ano) are always present
+        const existingPlaylistIds = new Set((parsed.playlists || []).map((p: any) => p.id));
+        const missingDefaultPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
+        const finalPlaylists = [...(parsed.playlists || []), ...missingDefaultPlaylists];
+
+        // Merge music tracks to guarantee new festive tracks are available
+        const existingTrackIds = new Set((parsed.musicTracks || []).map((t: any) => t.id));
+        const missingDefaultTracks = DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks.filter(t => !existingTrackIds.has(t.id));
+        const finalTracks = [...(parsed.musicTracks || []), ...missingDefaultTracks];
 
         return {
           ...DEFAULT_FALLBACK_RADIO_CONFIG,
           ...parsed,
-          playlists:
-            parsed.playlists && parsed.playlists.length > 0
-              ? parsed.playlists
-              : DEFAULT_RADIO_PLAYLISTS,
+          playlists: finalPlaylists,
           activePlaylistId: parsed.activePlaylistId || 'todas',
           queue: parsed.queue.length > 0 ? parsed.queue : DEFAULT_FALLBACK_RADIO_CONFIG.queue,
-          musicTracks: mergedTracks,
+          musicTracks: finalTracks,
         };
       }
     }

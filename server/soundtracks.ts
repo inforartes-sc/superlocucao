@@ -62,6 +62,15 @@ export const SOUNDTRACKS_LIST: SoundtrackOption[] = [
     description: 'Piano contemporâneo sofisticado e harmonia envolvente. Ideal para Clube de Vantagens, adega, frios nobres e comunicados.',
     previewUrl: '/api/soundtracks/institucional_gourmet/preview.mp3',
   },
+  {
+    id: 'natal_fim_de_ano',
+    name: 'Natal & Final de Ano Mágico',
+    category: 'Natal & Fim de Ano',
+    bpm: 120,
+    description: 'Clássicos natalinos, sinos festivos e arranjos de fim de ano para compras de Natal e celebrações de Réveillon no supermercado.',
+    previewUrl: '/api/soundtracks/natal_fim_de_ano/preview.mp3',
+    isPopular: true,
+  },
 ];
 
 /**
