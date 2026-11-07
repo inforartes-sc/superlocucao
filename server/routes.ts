@@ -1717,12 +1717,84 @@ apiRouter.post('/admin/users/:id/credits', (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
+// USER: INVOICES & BILLING HISTORY
+// -------------------------------------------------------------
+apiRouter.get('/user/invoices', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  const allPayments = db.getPaymentTransactions();
+  const allSubs = db.getSubscriptions();
+
+  // Filtra faturas do usuário autenticado por userId ou e-mail
+  const userInvoices = allPayments
+    .filter(p =>
+      p.userId === userId ||
+      (user && (p.clientEmail?.toLowerCase() === user.email.toLowerCase() || p.userId === user.id))
+    )
+    .map(p => ({
+      ...p,
+      companyName: p.companyName || user?.companyName || 'Supermercado',
+      userName: p.userName || user?.name || 'Lojista',
+      clientName: p.clientName || user?.name || user?.companyName || 'Lojista',
+      clientEmail: p.clientEmail || user?.email || '',
+      itemName: p.itemName || p.description || (p.type === 'subscription' ? 'Assinatura Mensal' : 'Recarga de Créditos'),
+      method: p.method || p.paymentMethod || 'pix',
+      paymentMethod: p.paymentMethod || p.method || 'pix',
+      amount: Number(p.amount) || 0,
+    }));
+
+  // Assinatura ativa do usuário se houver
+  const userSub = allSubs.find(s =>
+    s.userId === userId ||
+    (user && (s.email?.toLowerCase() === user.email.toLowerCase() || s.userId === user.id))
+  );
+
+  const enrichedSub = userSub ? {
+    ...userSub,
+    companyName: userSub.companyName || user?.companyName || 'Supermercado',
+    userName: userSub.userName || user?.name || 'Lojista',
+    email: userSub.email || user?.email || '',
+    amount: Number(userSub.amount) || (userSub.planId === 'redes_atacarejo' ? 189.9 : 89.9),
+    price: Number(userSub.amount) || (userSub.planId === 'redes_atacarejo' ? 189.9 : 89.9),
+    nextBillingDate: userSub.currentPeriodEnd || userSub.nextBillingDate || new Date(Date.now() + 30 * 86400000).toISOString(),
+  } : null;
+
+  const paidInvoices = userInvoices.filter(i => i.status === 'approved');
+  const pendingInvoices = userInvoices.filter(i => i.status === 'pending');
+  const totalPaid = paidInvoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+
+  res.json({
+    invoices: userInvoices,
+    subscription: enrichedSub,
+    stats: {
+      totalPaid,
+      paidCount: paidInvoices.length,
+      pendingCount: pendingInvoices.length,
+    }
+  });
+});
+
+// -------------------------------------------------------------
 // ADMIN: SUBSCRIPTIONS, PAYMENTS & GATEWAY
 // -------------------------------------------------------------
 apiRouter.get('/admin/subscriptions', (_req: Request, res: Response) => {
-  const subscriptions = db.getSubscriptions();
+  const subscriptions = db.getSubscriptions().map(s => {
+    const u = s.userId ? db.getUser(s.userId) : null;
+    const finalAmount = Number(s.amount ?? s.price ?? (s.planId === 'redes_atacarejo' ? 189.9 : 89.9));
+    return {
+      ...s,
+      companyName: s.companyName || u?.companyName || s.clientName || 'Supermercado',
+      userName: s.userName || u?.name || s.clientName || 'Lojista',
+      email: s.email || u?.email || s.clientEmail || '',
+      clientName: s.companyName || u?.companyName || s.userName || s.clientName || 'Supermercado',
+      clientEmail: s.email || u?.email || s.clientEmail || '',
+      price: finalAmount,
+      amount: finalAmount,
+      nextBillingDate: s.currentPeriodEnd || s.nextBillingDate || new Date(Date.now() + 30 * 86400000).toISOString(),
+    };
+  });
   const activeSubs = subscriptions.filter(s => s.status === 'active');
-  const mrr = activeSubs.reduce((acc, s) => acc + s.amount, 0);
+  const mrr = activeSubs.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
 
   res.json({
     subscriptions,
@@ -1748,9 +1820,22 @@ apiRouter.post('/admin/subscriptions/:id/status', async (req: Request, res: Resp
 });
 
 apiRouter.get('/admin/payments', (_req: Request, res: Response) => {
-  const payments = db.getPaymentTransactions();
+  const payments = db.getPaymentTransactions().map(p => {
+    const u = p.userId ? db.getUser(p.userId) : null;
+    return {
+      ...p,
+      companyName: p.companyName || u?.companyName || p.clientName || 'Supermercado',
+      userName: p.userName || u?.name || p.clientName || 'Lojista',
+      clientName: p.companyName || u?.companyName || p.userName || p.clientName || 'Supermercado',
+      clientEmail: p.clientEmail || u?.email || '',
+      itemName: p.itemName || p.description || (p.type === 'subscription' ? 'Assinatura Mensal' : 'Recarga de Créditos'),
+      method: p.method || p.paymentMethod || 'pix',
+      paymentMethod: p.paymentMethod || p.method || 'pix',
+      amount: Number(p.amount) || 0,
+    };
+  });
   const approved = payments.filter(p => p.status === 'approved');
-  const totalRevenue = approved.reduce((acc, p) => acc + p.amount, 0);
+  const totalRevenue = approved.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
   const pendingCount = payments.filter(p => p.status === 'pending').length;
 
   res.json({

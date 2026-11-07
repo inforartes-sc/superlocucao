@@ -2398,26 +2398,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setFinanceSubTab('subscriptions')}
-                className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer ${
+                className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
                   financeSubTab === 'subscriptions'
-                    ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                    : 'bg-[#10121a] text-zinc-400 hover:text-white border border-zinc-700/80'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-lg shadow-orange-500/20'
+                    : 'bg-[#10121a] text-zinc-300 hover:text-white border border-zinc-700/80 hover:bg-zinc-800'
                 }`}
               >
-                Assinaturas Ativas ({subscriptions.length})
+                <span>📜 Assinaturas & Contratos ({subscriptions.length})</span>
               </button>
               <button
                 onClick={() => setFinanceSubTab('payments')}
-                className={`px-4 py-2.5 rounded-xl font-black text-xs transition cursor-pointer ${
+                className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
                   financeSubTab === 'payments'
-                    ? 'bg-orange-500 text-zinc-950 shadow-lg shadow-orange-500/20'
-                    : 'bg-[#10121a] text-zinc-400 hover:text-white border border-zinc-700/80'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-lg shadow-orange-500/20'
+                    : 'bg-[#10121a] text-zinc-300 hover:text-white border border-zinc-700/80 hover:bg-zinc-800'
                 }`}
               >
-                Transações & PIX ({payments.length})
+                <span>🧾 Faturas & Transações PIX ({payments.length})</span>
               </button>
             </div>
           </div>
@@ -2481,11 +2481,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
           {/* Sub Tab: Subscriptions */}
           {financeSubTab === 'subscriptions' && (
             <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-black text-white">Contratos e Assinaturas de Lojistas</h3>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span>Contratos e Assinaturas de Lojistas</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      {subscriptions.length} ativas
+                    </span>
+                  </h3>
                   <p className="text-xs text-zinc-400">Planos comerciais recorrentes ativos no sistema.</p>
                 </div>
+
+                <button
+                  onClick={() => setFinanceSubTab('payments')}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#10121a] hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-orange-400 hover:text-orange-300 transition cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Ver Faturas & Transações ({payments.length})</span>
+                </button>
               </div>
 
               <div className="overflow-x-auto">
@@ -2511,17 +2524,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                       subscriptions.map((sub) => (
                         <tr key={sub.id} className="hover:bg-[#10121a]/60 transition">
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-white">{sub.clientName}</div>
-                            <div className="text-zinc-400 text-[11px]">{sub.clientEmail}</div>
+                            <div className="font-bold text-white">
+                              {sub.companyName || sub.userName || sub.clientName || 'Supermercado'}
+                            </div>
+                            <div className="text-zinc-400 text-[11px]">
+                              {sub.email || sub.clientEmail || '-'} {sub.userName ? `• ${sub.userName}` : ''}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-zinc-200">
                             {sub.planName}
                           </td>
                           <td className="py-3.5 px-4 font-black text-emerald-400">
-                            R$ {Number(sub.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
+                            R$ {Number(sub.amount ?? sub.price ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
                           </td>
                           <td className="py-3.5 px-4 text-zinc-300">
-                            {sub.nextBillingDate ? new Date(sub.nextBillingDate).toLocaleDateString('pt-BR') : '-'}
+                            {(sub.currentPeriodEnd || sub.nextBillingDate) ? new Date(sub.currentPeriodEnd || sub.nextBillingDate!).toLocaleDateString('pt-BR') : 'Mensal Automático'}
                           </td>
                           <td className="py-3.5 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -2560,11 +2577,23 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
             <div className="p-6 bg-[#161924] border border-zinc-700/80 rounded-3xl shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-black text-white">Transações de Pagamento & PIX</h3>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span>Faturas & Transações de Pagamento (PIX)</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {payments.length} registradas
+                    </span>
+                  </h3>
                   <p className="text-xs text-zinc-400">Histórico de compras de recargas de créditos e pagamentos de planos.</p>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setFinanceSubTab('subscriptions')}
+                    className="px-3 py-1.5 rounded-xl bg-[#10121a] hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-orange-400 hover:text-orange-300 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Ver Assinaturas ({subscriptions.length})</span>
+                  </button>
+
                   <select
                     value={paymentStatusFilter}
                     onChange={(e: any) => setPaymentStatusFilter(e.target.value)}
@@ -2598,20 +2627,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                       .map((pay) => (
                         <tr key={pay.id} className="hover:bg-[#10121a]/60 transition">
                           <td className="py-3.5 px-4 font-mono text-zinc-400 text-[11px]">
-                            {pay.id.substring(0, 8)}...
+                            {pay.id}
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-white">{pay.clientName}</div>
-                            <div className="text-zinc-400 text-[11px]">{pay.clientEmail}</div>
+                            <div className="font-bold text-white">
+                              {pay.companyName || pay.clientName || pay.userName || 'Supermercado'}
+                            </div>
+                            <div className="text-zinc-400 text-[11px]">
+                              {pay.clientEmail || (pay as any).email || '-'} {pay.userName ? `• ${pay.userName}` : ''}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="font-bold text-zinc-200">{pay.itemName}</span>
-                            {pay.creditsAmount ? (
-                              <div className="text-amber-400 text-[11px]">+{pay.creditsAmount} créditos</div>
+                            <span className="font-bold text-zinc-200">{pay.itemName || pay.description}</span>
+                            {(pay.creditsAdded || pay.creditsAmount) ? (
+                              <div className="text-amber-400 text-[11px]">+{pay.creditsAdded || pay.creditsAmount} créditos</div>
                             ) : null}
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-zinc-300 uppercase text-[11px]">
-                            {pay.method === 'pix' ? '⚡ PIX' : pay.method === 'credit_card' ? '💳 Cartão' : '📄 Boleto'}
+                            {(pay.method === 'pix' || pay.paymentMethod === 'pix') ? '⚡ PIX' : (pay.method === 'credit_card' || pay.paymentMethod === 'credit_card') ? '💳 Cartão' : '📄 Boleto'}
                           </td>
                           <td className="py-3.5 px-4 font-black text-white">
                             R$ {Number(pay.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

@@ -336,6 +336,16 @@ export const api = {
   // Credits
   getCreditsHistory: () =>
     request<{ creditsBalance: number; transactions: CreditTransaction[] }>('/credits/history'),
+  getUserInvoices: () =>
+    request<{
+      invoices: PaymentTransaction[];
+      subscription?: SubscriptionItem | null;
+      stats?: {
+        totalPaid: number;
+        paidCount: number;
+        pendingCount: number;
+      };
+    }>('/user/invoices'),
   rechargeCredits: (packageId: string, amount: number) =>
     request<{ success: boolean; creditsBalance: number; message: string }>('/credits/recharge', {
       method: 'POST',

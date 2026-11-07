@@ -17,8 +17,11 @@ import {
   Crown,
   Building2,
   Store,
+  FileText,
+  Printer,
+  ExternalLink,
 } from 'lucide-react';
-import { UserProfile, CreditTransaction, RechargePackage, CommercialPlan } from '../types/index.ts';
+import { UserProfile, CreditTransaction, RechargePackage, CommercialPlan, PaymentTransaction, SubscriptionItem } from '../types/index.ts';
 import { api } from '../services/api.ts';
 
 interface CreditsViewProps {
@@ -28,7 +31,27 @@ interface CreditsViewProps {
 
 export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser }) => {
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [billingTab, setBillingTab] = useState<'plans' | 'packages'>('plans');
+  const [billingTab, setBillingTab] = useState<'plans' | 'packages' | 'invoices'>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.sessionStorage.getItem('credits_initial_tab') : null;
+      if (saved === 'invoices' || saved === 'packages' || saved === 'plans') {
+        window.sessionStorage.removeItem('credits_initial_tab');
+        return saved;
+      }
+    } catch {}
+    return 'plans';
+  });
+
+  // Invoices & Subscription Management State
+  const [invoices, setInvoices] = useState<PaymentTransaction[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionItem | null>(null);
+  const [invoicesStats, setInvoicesStats] = useState<{ totalPaid: number; paidCount: number; pendingCount: number }>({
+    totalPaid: 0,
+    paidCount: 0,
+    pendingCount: 0,
+  });
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [selectedInvoiceForReceipt, setSelectedInvoiceForReceipt] = useState<PaymentTransaction | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
     {
@@ -160,8 +183,24 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       .catch(console.warn);
   };
 
+  const loadInvoices = () => {
+    setLoadingInvoices(true);
+    api
+      .getUserInvoices()
+      .then((res) => {
+        if (res && res.invoices) {
+          setInvoices(res.invoices);
+          setSubscription(res.subscription || null);
+          if (res.stats) setInvoicesStats(res.stats);
+        }
+      })
+      .catch(console.warn)
+      .finally(() => setLoadingInvoices(false));
+  };
+
   useEffect(() => {
     loadHistory();
+    loadInvoices();
 
     api
       .getPublicSettings()
@@ -392,6 +431,29 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
           <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
           <span>Pacotes de Recarga Avulsa</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setBillingTab('invoices');
+            loadInvoices();
+          }}
+          className={`px-4 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 ${
+            billingTab === 'invoices'
+              ? 'bg-[#142B4A] text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-emerald-500" />
+          <span>Minhas Faturas & Assinatura</span>
+          {invoices.length > 0 && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              invoicesStats.pendingCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {invoicesStats.pendingCount > 0 ? `${invoicesStats.pendingCount} pendente` : invoices.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* TAB 1: PLANOS DE ASSINATURA */}
@@ -591,6 +653,219 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: MINHAS FATURAS & ASSINATURA */}
+      {billingTab === 'invoices' && (
+        <div className="space-y-6">
+          {/* Card: Assinatura Atual do Lojista */}
+          <div className="bg-gradient-to-br from-[#142B4A] via-[#10223b] to-[#0a1628] rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-blue-900/50 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                  Sua Assinatura Atual
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black mt-2">
+                  {subscription?.planName || (user?.plan === 'redes_atacarejo' ? 'Redes & Atacarejo' : user?.plan === 'pro_varejo' ? 'Pro Varejo' : 'Degustação (Grátis)')}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                  {user?.companyName ? `Assinatura vinculada ao ${user.companyName}` : 'Plano de locução e rádio web comercial'}
+                </p>
+              </div>
+
+              <div className="sm:text-right">
+                <span className="text-3xl font-black text-white">
+                  R$ {Number(subscription?.amount ?? (user?.plan === 'redes_atacarejo' ? 189.9 : user?.plan === 'pro_varejo' ? 89.9 : 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs text-slate-300 ml-1">/mês</span>
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    {subscription?.status === 'active' ? 'Assinatura Ativa' : user?.plan !== 'gratuito' ? 'Ativa' : 'Plano Gratuito'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10 text-xs">
+              <div>
+                <span className="text-slate-400 block">Créditos por Renovação:</span>
+                <span className="text-sm font-extrabold text-amber-400">
+                  +{user?.plan === 'redes_atacarejo' ? '5.000' : user?.plan === 'pro_varejo' ? '1.500' : '50'} créditos/mês
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Próxima Renovação:</span>
+                <span className="text-sm font-extrabold text-white">
+                  {subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR') : 'Renovação Mensal Automática'}
+                </span>
+              </div>
+              <div className="sm:text-right flex items-center sm:justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBillingTab('plans')}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs transition cursor-pointer"
+                >
+                  Alterar Plano / Upgrade
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards de Métricas Rápidas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs text-slate-500 font-bold uppercase">Total Faturado & Pago</span>
+              <div className="text-2xl font-black text-emerald-700">
+                R$ {Number(invoicesStats.totalPaid || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <span className="text-[11px] text-slate-400">{invoicesStats.paidCount} fatura(s) paga(s)</span>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs text-slate-500 font-bold uppercase">Faturas Pendentes</span>
+              <div className={`text-2xl font-black ${invoicesStats.pendingCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
+                {invoicesStats.pendingCount}
+              </div>
+              <span className="text-[11px] text-slate-400">
+                {invoicesStats.pendingCount > 0 ? 'Aguardando pagamento PIX' : 'Em dia (nenhuma fatura pendente)'}
+              </span>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-xs text-slate-500 font-bold uppercase">Histórico de Faturas</span>
+              <div className="text-2xl font-black text-slate-900">
+                {invoices.length}
+              </div>
+              <span className="text-[11px] text-slate-400">Faturas emitidas registradas</span>
+            </div>
+          </div>
+
+          {/* Tabela de Faturas */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Histórico de Faturas & Comprovantes</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {invoices.length} faturas
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Gerencie todas as faturas geradas, acompanhe comprovantes e pague pendências via PIX.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadInvoices}
+                disabled={loadingInvoices}
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition cursor-pointer self-start sm:self-auto"
+              >
+                {loadingInvoices ? 'Atualizando...' : 'Atualizar Faturas'}
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Fatura</th>
+                    <th className="py-3 px-4">Descrição / Plano</th>
+                    <th className="py-3 px-4">Data</th>
+                    <th className="py-3 px-4">Método</th>
+                    <th className="py-3 px-4">Valor</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                        Nenhuma fatura registrada ainda na sua conta.
+                      </td>
+                    </tr>
+                  ) : (
+                    invoices.map((inv) => {
+                      const isApproved = inv.status === 'approved';
+                      const isPending = inv.status === 'pending';
+
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/60 transition">
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                            #{inv.id.replace(/^pay-tx-/, '').replace(/^SUB-/, '')}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-bold text-slate-900 block">
+                              {inv.itemName || inv.description}
+                            </span>
+                            {(inv.creditsAdded || inv.creditsAmount) ? (
+                              <span className="text-[11px] font-bold text-emerald-600 block">
+                                +{(inv.creditsAdded || inv.creditsAmount)?.toLocaleString('pt-BR')} créditos
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-500 font-mono">
+                            {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('pt-BR') : '-'}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-slate-700">
+                            {(inv.method === 'pix' || inv.paymentMethod === 'pix') ? '⚡ PIX' : '💳 Cartão'}
+                          </td>
+                          <td className="py-3.5 px-4 font-black text-slate-900">
+                            R$ {Number(inv.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                isApproved
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : isPending
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {isApproved ? 'Paga' : isPending ? 'Pendente' : 'Cancelada'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            {isPending && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (inv.planId) {
+                                    const plan = commercialPlans.find(p => p.id === inv.planId);
+                                    if (plan) handleOpenPlanCheckout(plan);
+                                  } else {
+                                    const pkg = packages.find(p => p.credits === inv.creditsAdded) || packages[0];
+                                    if (pkg) handleOpenCheckout(pkg);
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 rounded-xl font-black text-xs transition cursor-pointer shadow-sm inline-flex items-center gap-1.5"
+                              >
+                                <QrCode className="w-3.5 h-3.5" />
+                                <span>Pagar PIX</span>
+                              </button>
+                            )}
+
+                            {isApproved && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedInvoiceForReceipt(inv)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer inline-flex items-center gap-1.5"
+                              >
+                                <Receipt className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Ver Recibo</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1095,6 +1370,142 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECIBO / COMPROVANTE OFICIAL DA FATURA */}
+      {selectedInvoiceForReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Recibo */}
+            <div className="px-6 py-5 bg-[#142B4A] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-zinc-950 font-black">
+                  <Receipt className="w-5 h-5 text-zinc-950" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Comprovante de Pagamento</h3>
+                  <p className="text-xs text-slate-300">SuperLocução Varejo IA • Documento de Quitação</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceForReceipt(null)}
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Corpo do Recibo */}
+            <div className="p-6 space-y-5 text-xs text-slate-700 max-h-[80vh] overflow-y-auto">
+              {/* Badge de Confirmação */}
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-emerald-950 text-sm block">FATURA PAGA & LIQUIDADA</span>
+                    <span className="text-[11px] text-emerald-700 block">Créditos liberados em conta imediatamente</span>
+                  </div>
+                </div>
+                <span className="text-xs font-mono font-bold text-emerald-800">
+                  #{selectedInvoiceForReceipt.id.replace(/^pay-tx-/, '').replace(/^SUB-/, '')}
+                </span>
+              </div>
+
+              {/* Informações da Loja e Cliente */}
+              <div className="space-y-2 border-b border-slate-100 pb-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Dados do Lojista
+                </span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Supermercado:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedInvoiceForReceipt.companyName || user?.companyName || 'Supermercado'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Responsável:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedInvoiceForReceipt.userName || user?.name || 'Lojista'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">E-mail:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedInvoiceForReceipt.clientEmail || user?.email || '-'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Informações do Item Comprado */}
+              <div className="space-y-2 border-b border-slate-100 pb-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Discriminação do Serviço / Pacote
+                </span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Item:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedInvoiceForReceipt.itemName || selectedInvoiceForReceipt.description}
+                  </span>
+                </div>
+                {(selectedInvoiceForReceipt.creditsAdded || selectedInvoiceForReceipt.creditsAmount) ? (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Créditos Adicionados:</span>
+                    <span className="font-extrabold text-emerald-600">
+                      +{(selectedInvoiceForReceipt.creditsAdded || selectedInvoiceForReceipt.creditsAmount)?.toLocaleString('pt-BR')} créditos
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Forma de Pagamento:</span>
+                  <span className="font-bold text-slate-900">
+                    {(selectedInvoiceForReceipt.method === 'pix' || selectedInvoiceForReceipt.paymentMethod === 'pix') ? '⚡ PIX Instantâneo' : '💳 Cartão de Crédito'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Data e Hora:</span>
+                  <span className="font-mono text-slate-700">
+                    {selectedInvoiceForReceipt.paidAt
+                      ? new Date(selectedInvoiceForReceipt.paidAt).toLocaleString('pt-BR')
+                      : selectedInvoiceForReceipt.createdAt
+                      ? new Date(selectedInvoiceForReceipt.createdAt).toLocaleString('pt-BR')
+                      : '-'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm font-black text-slate-900">VALOR TOTAL:</span>
+                <span className="text-2xl font-black text-slate-900">
+                  R$ {Number(selectedInvoiceForReceipt.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              {/* Ações */}
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4 text-slate-500" />
+                  <span>Imprimir Comprovante</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoiceForReceipt(null)}
+                  className="px-5 py-2.5 rounded-xl bg-[#142B4A] hover:bg-[#1a3760] text-white text-xs font-bold transition cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>

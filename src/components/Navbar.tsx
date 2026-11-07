@@ -17,6 +17,7 @@ import {
   Megaphone,
   ArrowUpRight,
   MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { User } from '../types';
 import { useRadio } from '../context/RadioContext';
@@ -230,6 +231,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <Coins className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                       Recarregar Créditos ({user.creditsBalance})
+                    </button>
+                    <button
+                      onClick={() => {
+                        try {
+                          window.sessionStorage.setItem('credits_initial_tab', 'invoices');
+                        } catch {}
+                        onNavigate('credits');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 flex items-center gap-2 cursor-pointer mt-0.5"
+                    >
+                      <FileText className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                      Minhas Faturas & Assinatura
                     </button>
                     <button
                       onClick={() => {
