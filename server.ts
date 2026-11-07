@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { apiRouter } from './server/routes.ts';
@@ -24,6 +25,18 @@ async function startServer() {
   // JSON Body Parser with ample limit for product lists
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+  // Static assets from public directory (Favicons, social share images, etc.)
+  const publicDir = path.resolve(__dirname, 'public');
+  app.use(express.static(publicDir));
+
+  // Direct Social Share Image Endpoints for WhatsApp, Telegram, Facebook & Twitter
+  app.get(['/logo-share.png', '/logo-share.jpg', '/logo-share.jpeg'], (_req, res) => {
+    const file = path.resolve(publicDir, 'logo-share.png');
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(file);
+  });
 
   // API router
   app.use('/api', apiRouter);
@@ -62,8 +75,19 @@ async function startServer() {
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
+    app.get('*', (req, res) => {
+      const htmlPath = path.resolve(distPath, 'index.html');
+      try {
+        let html = fs.readFileSync(htmlPath, 'utf-8');
+        const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+        const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'superlocucao.inforartes.com.br';
+        const origin = `${proto}://${host}`;
+        html = html.replace(/https:\/\/superlocucao\.inforartes\.com\.br/g, origin);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch {
+        res.sendFile(htmlPath);
+      }
     });
   }
 

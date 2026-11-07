@@ -305,17 +305,24 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
                       </p>
 
                       {/* Price Section */}
-                      <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-baseline gap-1">
-                        {p.price === 0 ? (
-                          <span className="text-3xl font-black text-white">Grátis</span>
-                        ) : (
-                          <>
-                            <span className="text-xs font-semibold text-zinc-400">R$</span>
-                            <span className="text-3xl sm:text-4xl font-black text-white">
-                              {Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                            <span className="text-xs text-zinc-400 font-medium">{p.billingPeriod || '/mês'}</span>
-                          </>
+                      <div className="mt-4 pt-3 border-t border-zinc-800/80">
+                        <div className="flex items-baseline gap-1">
+                          {p.price === 0 ? (
+                            <span className="text-3xl font-black text-white">Grátis</span>
+                          ) : (
+                            <>
+                              <span className="text-xs font-semibold text-zinc-400">R$</span>
+                              <span className="text-3xl sm:text-4xl font-black text-white">
+                                {Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-xs text-zinc-400 font-medium">{p.billingPeriod || '/mês'}</span>
+                            </>
+                          )}
+                        </div>
+                        {p.price > 0 && (
+                          <p className="text-xs text-orange-400 font-bold mt-1 tracking-wide">
+                            Apenas R$ {(Number(p.price) / 30).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por dia
+                          </p>
                         )}
                       </div>
 

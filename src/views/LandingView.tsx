@@ -1393,8 +1393,19 @@ export const LandingView: React.FC<LandingViewProps> = ({
                       {plan.subtitle}
                     </p>
                     <div className="pt-2">
-                      <span className="text-4xl font-black text-white">R$ {Number(plan.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-xs sm:text-sm text-zinc-400 ml-1">{plan.billingPeriod}</span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-black text-white">R$ {Number(plan.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-xs sm:text-sm text-zinc-400 ml-1">{plan.billingPeriod}</span>
+                      </div>
+                      {Number(plan.price || 0) > 0 ? (
+                        <p className="text-xs text-orange-400 font-bold mt-1.5 tracking-wide">
+                          Apenas R$ {(Number(plan.price || 0) / 30).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por dia
+                        </p>
+                      ) : (
+                        <p className="text-xs text-emerald-400 font-medium mt-1.5 tracking-wide">
+                          100% gratuito para começar
+                        </p>
+                      )}
                     </div>
 
                     <ul className={`space-y-3 text-sm pt-4 border-t border-zinc-800 ${isHigh ? 'text-zinc-100' : 'text-zinc-200'}`}>

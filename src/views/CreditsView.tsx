@@ -567,16 +567,23 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                     </p>
 
                     {/* Price Formatted */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-baseline gap-1">
-                      {plan.price === 0 ? (
-                        <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">Grátis</span>
-                      ) : (
-                        <>
-                          <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                            R$ {Number(plan.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <span className="text-xs text-slate-400 font-medium">{plan.billingPeriod || '/mês'}</span>
-                        </>
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <div className="flex items-baseline gap-1">
+                        {plan.price === 0 ? (
+                          <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">Grátis</span>
+                        ) : (
+                          <>
+                            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                              R$ {Number(plan.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">{plan.billingPeriod || '/mês'}</span>
+                          </>
+                        )}
+                      </div>
+                      {plan.price > 0 && (
+                        <p className="text-xs text-orange-600 font-bold mt-1 tracking-wide">
+                          Apenas R$ {(Number(plan.price) / 30).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por dia
+                        </p>
                       )}
                     </div>
 
