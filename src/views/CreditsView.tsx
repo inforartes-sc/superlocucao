@@ -20,6 +20,7 @@ import {
   FileText,
   Printer,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import { UserProfile, CreditTransaction, RechargePackage, CommercialPlan, PaymentTransaction, SubscriptionItem } from '../types/index.ts';
 import { api } from '../services/api.ts';
@@ -52,6 +53,9 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
   });
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [selectedInvoiceForReceipt, setSelectedInvoiceForReceipt] = useState<PaymentTransaction | null>(null);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<PaymentTransaction | null>(null);
+  const [confirmingInvoicePayment, setConfirmingInvoicePayment] = useState(false);
+  const [copiedInvoicePix, setCopiedInvoicePix] = useState(false);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
     {
@@ -658,8 +662,53 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       )}
 
       {/* TAB 3: MINHAS FATURAS & ASSINATURA */}
-      {billingTab === 'invoices' && (
+      {billingTab === 'invoices' && (() => {
+        const pendingRenewalInvoice = invoices.find(i => i.status === 'pending' && i.type === 'subscription');
+        const daysToDueDate = pendingRenewalInvoice?.dueDate
+          ? Math.ceil((new Date(pendingRenewalInvoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : null;
+
+        return (
         <div className="space-y-6">
+          {/* Alerta de Fatura Gerada (10 dias antes do vencimento) */}
+          {pendingRenewalInvoice && (
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 border-2 border-amber-500/50 rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in slide-in-from-top-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-zinc-950" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 border border-amber-500/30">
+                      Fatura de Renovação Disponível
+                    </span>
+                    {daysToDueDate !== null && (
+                      <span className="text-xs font-extrabold text-amber-800">
+                        {daysToDueDate > 0 ? `Vence em ${daysToDueDate} ${daysToDueDate === 1 ? 'dia' : 'dias'}` : daysToDueDate === 0 ? 'Vence Hoje!' : 'Vencida'}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1">
+                    Sua fatura do plano {pendingRenewalInvoice.itemName || 'Mensal'} no valor de R$ {Number(pendingRenewalInvoice.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} já está gerada!
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {pendingRenewalInvoice.dueDate ? `Vencimento em ${new Date(pendingRenewalInvoice.dueDate).toLocaleDateString('pt-BR')}. ` : ''}
+                    Efetue o pagamento via PIX para garantir a renovação automática e o crédito de +{(pendingRenewalInvoice.creditsAdded || pendingRenewalInvoice.creditsAmount || 1500).toLocaleString('pt-BR')} créditos.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceForPayment(pendingRenewalInvoice)}
+                className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-zinc-950 font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-500/25 transition cursor-pointer flex items-center justify-center gap-2 shrink-0 self-stretch sm:self-auto"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Pagar Fatura com PIX</span>
+              </button>
+            </div>
+          )}
+
           {/* Card: Assinatura Atual do Lojista */}
           <div className="bg-gradient-to-br from-[#142B4A] via-[#10223b] to-[#0a1628] rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-blue-900/50 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -772,7 +821,8 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                   <tr>
                     <th className="py-3 px-4">Fatura</th>
                     <th className="py-3 px-4">Descrição / Plano</th>
-                    <th className="py-3 px-4">Data</th>
+                    <th className="py-3 px-4">Emissão</th>
+                    <th className="py-3 px-4">Vencimento</th>
                     <th className="py-3 px-4">Método</th>
                     <th className="py-3 px-4">Valor</th>
                     <th className="py-3 px-4">Status</th>
@@ -782,7 +832,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                 <tbody className="divide-y divide-slate-100">
                   {invoices.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
                         Nenhuma fatura registrada ainda na sua conta.
                       </td>
                     </tr>
@@ -809,6 +859,26 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                           <td className="py-3.5 px-4 text-slate-500 font-mono">
                             {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('pt-BR') : '-'}
                           </td>
+                          <td className="py-3.5 px-4 font-mono">
+                            {inv.dueDate ? (
+                              <div>
+                                <span className="font-bold text-slate-800">{new Date(inv.dueDate).toLocaleDateString('pt-BR')}</span>
+                                {isPending && (() => {
+                                  const diffDays = Math.ceil((new Date(inv.dueDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                  if (diffDays > 0 && diffDays <= 10) {
+                                    return <span className="block text-[10px] font-bold text-amber-600">Vence em {diffDays} {diffDays === 1 ? 'dia' : 'dias'}</span>;
+                                  } else if (diffDays === 0) {
+                                    return <span className="block text-[10px] font-extrabold text-red-600">Vence hoje!</span>;
+                                  } else if (diffDays < 0) {
+                                    return <span className="block text-[10px] font-extrabold text-red-600">Vencida</span>;
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
                           <td className="py-3.5 px-4 font-semibold text-slate-700">
                             {(inv.method === 'pix' || inv.paymentMethod === 'pix') ? '⚡ PIX' : '💳 Cartão'}
                           </td>
@@ -832,16 +902,8 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                             {isPending && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (inv.planId) {
-                                    const plan = commercialPlans.find(p => p.id === inv.planId);
-                                    if (plan) handleOpenPlanCheckout(plan);
-                                  } else {
-                                    const pkg = packages.find(p => p.credits === inv.creditsAdded) || packages[0];
-                                    if (pkg) handleOpenCheckout(pkg);
-                                  }
-                                }}
-                                className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 rounded-xl font-black text-xs transition cursor-pointer shadow-sm inline-flex items-center gap-1.5"
+                                onClick={() => setSelectedInvoiceForPayment(inv)}
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-zinc-950 rounded-xl font-black text-xs transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
                               >
                                 <QrCode className="w-3.5 h-3.5" />
                                 <span>Pagar PIX</span>
@@ -868,7 +930,8 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Credit Transactions Ledger */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
@@ -1506,6 +1569,170 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PAGAMENTO PIX DA FATURA */}
+      {selectedInvoiceForPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-5 bg-[#142B4A] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-green-400 flex items-center justify-center text-zinc-950 font-black shadow-md">
+                  <QrCode className="w-5 h-5 text-zinc-950" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Pagar Fatura via PIX</h3>
+                  <p className="text-xs text-slate-300">
+                    Fatura #{selectedInvoiceForPayment.id.replace(/^pay-tx-/, '').replace(/^SUB-/, '')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceForPayment(null)}
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-slate-700 text-xs">
+              {/* Resumo do Pedido */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-bold text-slate-600">Descrição:</span>
+                  <span className="font-black text-slate-900">{selectedInvoiceForPayment.itemName || selectedInvoiceForPayment.description}</span>
+                </div>
+                {selectedInvoiceForPayment.dueDate && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Data de Vencimento:</span>
+                    <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                      {new Date(selectedInvoiceForPayment.dueDate).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                )}
+                {(selectedInvoiceForPayment.creditsAdded || selectedInvoiceForPayment.creditsAmount) ? (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Créditos Inclusos:</span>
+                    <span className="font-extrabold text-amber-600">
+                      +{(selectedInvoiceForPayment.creditsAdded || selectedInvoiceForPayment.creditsAmount)?.toLocaleString('pt-BR')} créditos/mês
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center text-base pt-2 border-t border-slate-200">
+                  <span className="font-black text-slate-800">Total a Pagar:</span>
+                  <span className="font-black text-2xl text-emerald-600">
+                    R$ {Number(selectedInvoiceForPayment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* QR Code */}
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-200">
+                  <img
+                    src={selectedInvoiceForPayment.pixQrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(selectedInvoiceForPayment.pixCopiaECola || '')}`}
+                    alt="QR Code PIX"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="text-center space-y-1">
+                  <span className="font-bold text-slate-800 block text-xs">Abra o app do seu banco e escaneie o código QR</span>
+                  <span className="text-[11px] text-slate-500 block">Renovação e liberação automática dos créditos após o pagamento</span>
+                </div>
+              </div>
+
+              {/* Copia e Cola */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-600 uppercase block">
+                  Ou pague pelo PIX Copia e Cola
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={selectedInvoiceForPayment.pixCopiaECola || ''}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 select-all focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedInvoiceForPayment.pixCopiaECola) {
+                        navigator.clipboard.writeText(selectedInvoiceForPayment.pixCopiaECola);
+                        setCopiedInvoicePix(true);
+                        setTimeout(() => setCopiedInvoicePix(false), 3000);
+                      }
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                      copiedInvoicePix
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-900 hover:bg-slate-800 text-white'
+                    }`}
+                  >
+                    {copiedInvoicePix ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Botão de Confirmação */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setConfirmingInvoicePayment(true);
+                  try {
+                    const res = await api.confirmCheckout(selectedInvoiceForPayment.id);
+                    if (res && res.success) {
+                      await loadInvoices();
+                      onRefreshUser();
+                      const paidInvoice: PaymentTransaction = {
+                        ...selectedInvoiceForPayment,
+                        status: 'approved',
+                        paidAt: new Date().toISOString(),
+                      };
+                      setSelectedInvoiceForPayment(null);
+                      setSelectedInvoiceForReceipt(paidInvoice);
+                    } else {
+                      alert('Não foi possível confirmar automaticamente. Caso já tenha pago, o sistema atualizará assim que o banco enviar o comprovante.');
+                    }
+                  } catch (err: any) {
+                    alert(`Erro ao validar pagamento: ${err.message || 'Tente novamente.'}`);
+                  } finally {
+                    setConfirmingInvoicePayment(false);
+                  }
+                }}
+                disabled={confirmingInvoicePayment}
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition cursor-pointer shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2"
+              >
+                {confirmingInvoicePayment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Confirmando pagamento no banco...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Já Efetuei o Pagamento (Confirmar Quitação)</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

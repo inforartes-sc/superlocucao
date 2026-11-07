@@ -3448,7 +3448,9 @@
         "type": "oferta",
         "active": true,
         "priority": "normal",
-        "addedAt": "2026-11-07T18:40:16.427Z"
+        "addedAt": "2026-11-07T18:40:16.427Z",
+        "playCount": 3,
+        "lastPlayedAt": "2026-11-07T19:19:55.716Z"
       },
       {
         "id": "rq-aud-1794076732710-eiwnh",
@@ -3464,7 +3466,9 @@
         "type": "oferta",
         "active": true,
         "priority": "normal",
-        "addedAt": "2026-11-07T18:38:54.738Z"
+        "addedAt": "2026-11-07T18:38:54.738Z",
+        "playCount": 2,
+        "lastPlayedAt": "2026-11-07T19:21:47.834Z"
       },
       {
         "id": "rq-aud-1794076730669-pepfo",
@@ -3481,8 +3485,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-07T18:38:54.692Z",
-        "playCount": 1,
-        "lastPlayedAt": "2026-11-07T18:40:49.130Z"
+        "playCount": 3,
+        "lastPlayedAt": "2026-11-07T19:23:39.721Z"
       },
       {
         "id": "rq-aud-1794076727386-mi0qh",
@@ -3499,8 +3503,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-07T18:38:54.655Z",
-        "playCount": 1,
-        "lastPlayedAt": "2026-11-07T18:42:43.221Z"
+        "playCount": 2,
+        "lastPlayedAt": "2026-11-07T19:16:34.981Z"
       },
       {
         "id": "rq-aud-1794076500144-ggfge",
@@ -3517,8 +3521,8 @@
         "active": true,
         "priority": "normal",
         "addedAt": "2026-11-07T18:35:04.150Z",
-        "playCount": 3,
-        "lastPlayedAt": "2026-11-07T18:43:42.573Z"
+        "playCount": 4,
+        "lastPlayedAt": "2026-11-07T19:17:34.288Z"
       },
       {
         "id": "rq-aud-1792518599872-mebxa",
@@ -3643,8 +3647,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-06T03:26:23.289Z",
-        "playCount": 11,
-        "lastPlayedAt": "2026-11-07T18:53:04.623Z"
+        "playCount": 13,
+        "lastPlayedAt": "2026-11-07T19:18:31.748Z"
       },
       {
         "id": "rq-aud-1793935578158-or1g3",
@@ -3661,8 +3665,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-06T03:26:20.299Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-07T18:37:12.533Z"
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-07T19:20:50.479Z"
       },
       {
         "id": "rq-aud-1793935569657-20yhh",
@@ -3679,8 +3683,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-06T03:26:12.769Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-07T18:39:52.386Z"
+        "playCount": 11,
+        "lastPlayedAt": "2026-11-07T19:22:43.103Z"
       },
       {
         "id": "rq-aud-1793935552831-iowi7",
@@ -3697,8 +3701,8 @@
         "active": true,
         "priority": "alta",
         "addedAt": "2026-11-06T03:25:58.378Z",
-        "playCount": 9,
-        "lastPlayedAt": "2026-11-07T18:41:46.088Z"
+        "playCount": 10,
+        "lastPlayedAt": "2026-11-07T19:15:37.163Z"
       }
     ],
     "musicTracks": [
@@ -3945,7 +3949,9 @@
           "type": "oferta",
           "active": true,
           "priority": "normal",
-          "addedAt": "2026-11-07T18:40:16.427Z"
+          "addedAt": "2026-11-07T18:40:16.427Z",
+          "playCount": 3,
+          "lastPlayedAt": "2026-11-07T19:19:55.716Z"
         },
         {
           "id": "rq-aud-1794076732710-eiwnh",
@@ -3961,7 +3967,9 @@
           "type": "oferta",
           "active": true,
           "priority": "normal",
-          "addedAt": "2026-11-07T18:38:54.738Z"
+          "addedAt": "2026-11-07T18:38:54.738Z",
+          "playCount": 2,
+          "lastPlayedAt": "2026-11-07T19:21:47.834Z"
         },
         {
           "id": "rq-aud-1794076730669-pepfo",
@@ -3978,8 +3986,8 @@
           "active": true,
           "priority": "normal",
           "addedAt": "2026-11-07T18:38:54.692Z",
-          "playCount": 1,
-          "lastPlayedAt": "2026-11-07T18:40:49.130Z"
+          "playCount": 3,
+          "lastPlayedAt": "2026-11-07T19:23:39.721Z"
         },
         {
           "id": "rq-aud-1794076727386-mi0qh",
@@ -3996,8 +4004,8 @@
           "active": true,
           "priority": "normal",
           "addedAt": "2026-11-07T18:38:54.655Z",
-          "playCount": 1,
-          "lastPlayedAt": "2026-11-07T18:42:43.221Z"
+          "playCount": 2,
+          "lastPlayedAt": "2026-11-07T19:16:34.981Z"
         },
         {
           "id": "rq-aud-1794076500144-ggfge",
@@ -4014,8 +4022,8 @@
           "active": true,
           "priority": "normal",
           "addedAt": "2026-11-07T18:35:04.150Z",
-          "playCount": 3,
-          "lastPlayedAt": "2026-11-07T18:43:42.573Z"
+          "playCount": 4,
+          "lastPlayedAt": "2026-11-07T19:17:34.288Z"
         },
         {
           "id": "rq-aud-1792518599872-mebxa",
@@ -4140,8 +4148,8 @@
           "active": true,
           "priority": "alta",
           "addedAt": "2026-11-06T03:26:23.289Z",
-          "playCount": 11,
-          "lastPlayedAt": "2026-11-07T18:53:04.623Z"
+          "playCount": 13,
+          "lastPlayedAt": "2026-11-07T19:18:31.748Z"
         },
         {
           "id": "rq-aud-1793935578158-or1g3",
@@ -4158,8 +4166,8 @@
           "active": true,
           "priority": "alta",
           "addedAt": "2026-11-06T03:26:20.299Z",
-          "playCount": 9,
-          "lastPlayedAt": "2026-11-07T18:37:12.533Z"
+          "playCount": 11,
+          "lastPlayedAt": "2026-11-07T19:20:50.479Z"
         },
         {
           "id": "rq-aud-1793935569657-20yhh",
@@ -4176,8 +4184,8 @@
           "active": true,
           "priority": "alta",
           "addedAt": "2026-11-06T03:26:12.769Z",
-          "playCount": 9,
-          "lastPlayedAt": "2026-11-07T18:39:52.386Z"
+          "playCount": 11,
+          "lastPlayedAt": "2026-11-07T19:22:43.103Z"
         },
         {
           "id": "rq-aud-1793935552831-iowi7",
@@ -4194,8 +4202,8 @@
           "active": true,
           "priority": "alta",
           "addedAt": "2026-11-06T03:25:58.378Z",
-          "playCount": 9,
-          "lastPlayedAt": "2026-11-07T18:41:46.088Z"
+          "playCount": 10,
+          "lastPlayedAt": "2026-11-07T19:15:37.163Z"
         }
       ],
       "musicTracks": [

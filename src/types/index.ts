@@ -313,6 +313,9 @@ export interface PaymentTransaction {
   gateway: string;
   externalId?: string;
   paidAt?: string;
+  dueDate?: string;
+  pixCopiaECola?: string;
+  pixQrCodeUrl?: string;
   createdAt: string;
 }
 

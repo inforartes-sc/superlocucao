@@ -1720,6 +1720,9 @@ apiRouter.post('/admin/users/:id/credits', (req: Request, res: Response) => {
 // USER: INVOICES & BILLING HISTORY
 // -------------------------------------------------------------
 apiRouter.get('/user/invoices', (req: Request, res: Response) => {
+  // Gera automaticamente as faturas dos planos que vencem em 10 dias ou menos
+  db.generateUpcomingInvoices();
+
   const userId = getUserId(req);
   const user = db.getUser(userId);
   const allPayments = db.getPaymentTransactions();
@@ -1731,17 +1734,26 @@ apiRouter.get('/user/invoices', (req: Request, res: Response) => {
       p.userId === userId ||
       (user && (p.clientEmail?.toLowerCase() === user.email.toLowerCase() || p.userId === user.id))
     )
-    .map(p => ({
-      ...p,
-      companyName: p.companyName || user?.companyName || 'Supermercado',
-      userName: p.userName || user?.name || 'Lojista',
-      clientName: p.clientName || user?.name || user?.companyName || 'Lojista',
-      clientEmail: p.clientEmail || user?.email || '',
-      itemName: p.itemName || p.description || (p.type === 'subscription' ? 'Assinatura Mensal' : 'Recarga de Créditos'),
-      method: p.method || p.paymentMethod || 'pix',
-      paymentMethod: p.paymentMethod || p.method || 'pix',
-      amount: Number(p.amount) || 0,
-    }));
+    .map(p => {
+      const amount = Number(p.amount) || 0;
+      const txId = p.id;
+      const pixCopiaECola = p.pixCopiaECola || `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${amount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
+      const pixQrCodeUrl = p.pixQrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(pixCopiaECola)}`;
+
+      return {
+        ...p,
+        companyName: p.companyName || user?.companyName || 'Supermercado',
+        userName: p.userName || user?.name || 'Lojista',
+        clientName: p.clientName || user?.name || user?.companyName || 'Lojista',
+        clientEmail: p.clientEmail || user?.email || '',
+        itemName: p.itemName || p.description || (p.type === 'subscription' ? 'Assinatura Mensal' : 'Recarga de Créditos'),
+        method: p.method || p.paymentMethod || 'pix',
+        paymentMethod: p.paymentMethod || p.method || 'pix',
+        amount,
+        pixCopiaECola,
+        pixQrCodeUrl,
+      };
+    });
 
   // Assinatura ativa do usuário se houver
   const userSub = allSubs.find(s =>
@@ -1778,6 +1790,7 @@ apiRouter.get('/user/invoices', (req: Request, res: Response) => {
 // ADMIN: SUBSCRIPTIONS, PAYMENTS & GATEWAY
 // -------------------------------------------------------------
 apiRouter.get('/admin/subscriptions', (_req: Request, res: Response) => {
+  db.generateUpcomingInvoices();
   const subscriptions = db.getSubscriptions().map(s => {
     const u = s.userId ? db.getUser(s.userId) : null;
     const finalAmount = Number(s.amount ?? s.price ?? (s.planId === 'redes_atacarejo' ? 189.9 : 89.9));
@@ -1820,8 +1833,14 @@ apiRouter.post('/admin/subscriptions/:id/status', async (req: Request, res: Resp
 });
 
 apiRouter.get('/admin/payments', (_req: Request, res: Response) => {
+  db.generateUpcomingInvoices();
   const payments = db.getPaymentTransactions().map(p => {
     const u = p.userId ? db.getUser(p.userId) : null;
+    const amount = Number(p.amount) || 0;
+    const txId = p.id;
+    const pixCopiaECola = p.pixCopiaECola || `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${amount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
+    const pixQrCodeUrl = p.pixQrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(pixCopiaECola)}`;
+
     return {
       ...p,
       companyName: p.companyName || u?.companyName || p.clientName || 'Supermercado',
@@ -1831,7 +1850,9 @@ apiRouter.get('/admin/payments', (_req: Request, res: Response) => {
       itemName: p.itemName || p.description || (p.type === 'subscription' ? 'Assinatura Mensal' : 'Recarga de Créditos'),
       method: p.method || p.paymentMethod || 'pix',
       paymentMethod: p.paymentMethod || p.method || 'pix',
-      amount: Number(p.amount) || 0,
+      amount,
+      pixCopiaECola,
+      pixQrCodeUrl,
     };
   });
   const approved = payments.filter(p => p.status === 'approved');

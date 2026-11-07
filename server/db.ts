@@ -2357,6 +2357,92 @@ class Database {
     return this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
   }
 
+  // Gera automaticamente faturas de renovação 10 dias antes do vencimento
+  generateUpcomingInvoices(): PaymentTransaction[] {
+    const subs = this.data.adminSettings.subscriptions || DEFAULT_SUBSCRIPTIONS;
+    const payments = this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
+    const now = Date.now();
+    const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+    const generated: PaymentTransaction[] = [];
+
+    for (const sub of subs) {
+      // Ignora planos gratuitos, degustação ou assinaturas canceladas
+      if (!sub || sub.status !== 'active' || sub.planId === 'gratuito' || sub.planId === 'degustacao') {
+        continue;
+      }
+
+      const user = sub.userId ? this.getUser(sub.userId) : null;
+      const endPeriodStr = sub.currentPeriodEnd || sub.nextBillingDate;
+      if (!endPeriodStr) continue;
+
+      const dueDateMs = new Date(endPeriodStr).getTime();
+      if (isNaN(dueDateMs)) continue;
+
+      // Se faltarem 10 dias ou menos para o vencimento (ou se já estiver no período de vencimento)
+      const diffMs = dueDateMs - now;
+      if (diffMs <= tenDaysMs) {
+        const dueDateIso = new Date(dueDateMs).toISOString().slice(0, 10);
+
+        // Verifica se já existe uma fatura de renovação gerada para este ciclo
+        const alreadyExists = payments.some(p => {
+          const isUserMatch = p.userId === sub.userId || (user && p.clientEmail?.toLowerCase() === user.email.toLowerCase());
+          if (!isUserMatch) return false;
+          if (p.type !== 'subscription') return false;
+
+          // Se tiver a mesma dueDate ou se foi criada há menos de 20 dias com status pendente para o mesmo plano
+          if (p.dueDate && p.dueDate.slice(0, 10) === dueDateIso) return true;
+          if (p.status === 'pending' && p.planId === sub.planId) return true;
+          return false;
+        });
+
+        if (!alreadyExists) {
+          const finalAmount = Number(sub.amount ?? sub.price ?? (sub.planId === 'redes_atacarejo' ? 189.9 : 89.9));
+          const credits = sub.creditsPerCycle || (sub.planId === 'redes_atacarejo' ? 5000 : 1500);
+          const txId = 'FAT-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+          const dueDateFormatted = new Date(dueDateMs).toLocaleDateString('pt-BR');
+
+          const pixCopiaECola = `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${finalAmount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
+          const pixQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(pixCopiaECola)}`;
+
+          const newInvoice: PaymentTransaction = {
+            id: txId,
+            userId: sub.userId,
+            userName: sub.userName || user?.name || 'Lojista',
+            companyName: sub.companyName || user?.companyName || 'Supermercado',
+            clientName: sub.clientName || sub.userName || user?.name || 'Lojista',
+            clientEmail: sub.email || user?.email || '',
+            type: 'subscription',
+            planId: sub.planId,
+            itemName: sub.planName || (sub.planId === 'redes_atacarejo' ? 'Redes & Atacarejo' : 'Pro Varejo'),
+            description: `Renovação de Assinatura - ${sub.planName || 'Mensal'} (Vencimento: ${dueDateFormatted})`,
+            amount: finalAmount,
+            creditsAdded: credits,
+            creditsAmount: credits,
+            status: 'pending',
+            paymentMethod: 'pix',
+            method: 'pix',
+            gateway: sub.gateway || 'Mercado Pago',
+            dueDate: new Date(dueDateMs).toISOString(),
+            pixCopiaECola,
+            pixQrCodeUrl,
+            createdAt: new Date().toISOString(),
+          };
+
+          payments.unshift(newInvoice);
+          generated.push(newInvoice);
+        }
+      }
+    }
+
+    if (generated.length > 0) {
+      this.data.adminSettings.payments = payments;
+      this.save();
+      this.pgSaveAdminSettings(this.data.adminSettings).catch(console.warn);
+    }
+
+    return generated;
+  }
+
   createPaymentTransaction(tx: PaymentTransaction): PaymentTransaction {
     const list = this.data.adminSettings.payments || DEFAULT_PAYMENT_TRANSACTIONS;
     const idx = list.findIndex(t => t.id === tx.id);
@@ -2396,8 +2482,22 @@ class Database {
         const user = this.getUser(tx.userId);
         const subList = this.data.adminSettings.subscriptions || DEFAULT_SUBSCRIPTIONS;
         const existingIdx = subList.findIndex(s => s.userId === tx.userId);
+
+        // Se já houver assinatura com vigência futura, prorroga +30 dias a partir do vencimento atual
+        let newEndPeriod: Date;
+        if (existingIdx >= 0 && subList[existingIdx].currentPeriodEnd) {
+          const currentEndMs = new Date(subList[existingIdx].currentPeriodEnd).getTime();
+          if (!isNaN(currentEndMs) && currentEndMs > Date.now()) {
+            newEndPeriod = new Date(currentEndMs + 30 * 24 * 60 * 60 * 1000);
+          } else {
+            newEndPeriod = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          }
+        } else {
+          newEndPeriod = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        }
+
         const newSub: SubscriptionItem = {
-          id: `sub-${Date.now()}`,
+          id: existingIdx >= 0 ? subList[existingIdx].id : `sub-${Date.now()}`,
           userId: tx.userId,
           userName: user?.name || tx.userName,
           companyName: user?.companyName || tx.companyName,
@@ -2409,11 +2509,11 @@ class Database {
           status: 'active',
           paymentMethod: tx.paymentMethod || 'pix',
           gateway: tx.gateway || 'Mercado Pago',
-          currentPeriodStart: new Date().toISOString(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          currentPeriodStart: existingIdx >= 0 ? (subList[existingIdx].currentPeriodStart || new Date().toISOString()) : new Date().toISOString(),
+          currentPeriodEnd: newEndPeriod.toISOString(),
           creditsPerCycle: tx.creditsAdded || (targetPlan === 'redes_atacarejo' ? 5000 : 1500),
           autoRenew: true,
-          createdAt: new Date().toISOString(),
+          createdAt: existingIdx >= 0 ? subList[existingIdx].createdAt : new Date().toISOString(),
         };
 
         if (existingIdx >= 0) {

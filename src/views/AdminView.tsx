@@ -8,7 +8,7 @@ import {
   Play, Pause, LogIn, ExternalLink, Activity, Database, Cpu, HelpCircle,
   AlertTriangle, FileText, Download, Sliders, Layers, CreditCard,
   Wallet, QrCode, DollarSign, CheckSquare, Copy, Link, Send,
-  Music, Mic, Wifi, WifiOff, Store, LogOut, ArrowLeft
+  Music, Mic, Wifi, WifiOff, Store, LogOut, ArrowLeft, Receipt
 } from 'lucide-react';
 import { api } from '../services/api.ts';
 import {
@@ -2407,7 +2407,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                     : 'bg-[#10121a] text-zinc-300 hover:text-white border border-zinc-700/80 hover:bg-zinc-800'
                 }`}
               >
-                <span>📜 Assinaturas & Contratos ({subscriptions.length})</span>
+                <span>📜 Assinaturas & Contratos ({(subscriptions || []).length})</span>
               </button>
               <button
                 onClick={() => setFinanceSubTab('payments')}
@@ -2417,7 +2417,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                     : 'bg-[#10121a] text-zinc-300 hover:text-white border border-zinc-700/80 hover:bg-zinc-800'
                 }`}
               >
-                <span>🧾 Faturas & Transações PIX ({payments.length})</span>
+                <span>🧾 Faturas & Transações PIX ({(payments || []).length})</span>
               </button>
             </div>
           </div>
@@ -2430,10 +2430,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-white">
-                R$ {Number(subscriptionsStats.mrr || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {Number(subscriptionsStats?.mrr || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
               <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                <span>●</span> {subscriptionsStats.active || 0} assinaturas ativas gerando receita
+                <span>●</span> {subscriptionsStats?.active || 0} assinaturas ativas gerando receita
               </div>
             </div>
 
@@ -2443,10 +2443,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 <DollarSign className="w-4 h-4 text-orange-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-white">
-                R$ {Number(paymentsStats.totalRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {Number(paymentsStats?.totalRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
               <div className="text-[11px] text-zinc-400">
-                {paymentsStats.approvedCount || 0} transações aprovadas
+                {paymentsStats?.approvedCount || 0} transações aprovadas
               </div>
             </div>
 
@@ -2456,7 +2456,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 <Clock className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-amber-400">
-                {paymentsStats.pendingCount || 0}
+                {paymentsStats?.pendingCount || 0}
               </div>
               <div className="text-[11px] text-zinc-400">
                 Aguardando confirmação PIX ou compensação
@@ -2469,11 +2469,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 <QrCode className="w-4 h-4 text-blue-400" />
               </div>
               <div className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
-                {gatewayConfig.provider === 'mercadopago' ? 'Mercado Pago' : gatewayConfig.provider === 'asaas' ? 'Asaas' : gatewayConfig.provider === 'stripe' ? 'Stripe' : 'PIX Direto'}
+                {gatewayConfig?.provider === 'mercadopago' ? 'Mercado Pago' : gatewayConfig?.provider === 'asaas' ? 'Asaas' : gatewayConfig?.provider === 'stripe' ? 'Stripe' : 'PIX Direto'}
               </div>
               <div className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${gatewayConfig.mode === 'production' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                <span>Modo: {gatewayConfig.mode === 'production' ? 'Produção (Ao Vivo)' : 'Sandbox (Testes)'}</span>
+                <span className={`w-2 h-2 rounded-full ${gatewayConfig?.mode === 'production' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <span>Modo: {gatewayConfig?.mode === 'production' ? 'Produção (Ao Vivo)' : 'Sandbox (Testes)'}</span>
               </div>
             </div>
           </div>
