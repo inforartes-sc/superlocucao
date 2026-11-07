@@ -31,7 +31,19 @@ async function startServer() {
   app.use(express.static(publicDir));
 
   // Direct Social Share Image Endpoints for WhatsApp, Telegram, Facebook & Twitter
-  app.get(['/logo-share.png', '/logo-share.jpg', '/logo-share.jpeg'], (_req, res) => {
+  app.get(['/logo-share.jpg', '/logo-share.jpeg'], (_req, res) => {
+    const file = path.resolve(publicDir, 'logo-share.jpg');
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(file);
+  });
+  app.get('/logo-share-square.jpg', (_req, res) => {
+    const file = path.resolve(publicDir, 'logo-share-square.jpg');
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(file);
+  });
+  app.get('/logo-share.png', (_req, res) => {
     const file = path.resolve(publicDir, 'logo-share.png');
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
