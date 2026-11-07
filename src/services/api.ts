@@ -351,7 +351,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ packageId, amount }),
     }),
-  createCheckout: (params: { packageId?: string; planId?: string; paymentMethod?: 'pix' | 'credit_card' | 'boleto' }) =>
+  createCheckout: (params: { packageId?: string; planId?: string; paymentMethod?: 'pix' | 'credit_card' | 'boleto' | 'mercadopago' | string }) =>
     request<{
       success: boolean;
       transactionId: string;

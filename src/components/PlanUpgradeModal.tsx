@@ -163,8 +163,12 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
     try {
       const res = await api.createCheckout({
         planId: plan.id,
-        paymentMethod: 'pix',
+        paymentMethod: 'mercadopago',
       });
+      if (res && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+        return;
+      }
       setCheckoutData(res);
     } catch (err: any) {
       console.error('Erro ao iniciar checkout de plano:', err);

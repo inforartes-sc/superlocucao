@@ -57,6 +57,8 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
   const [confirmingInvoicePayment, setConfirmingInvoicePayment] = useState(false);
   const [copiedInvoicePix, setCopiedInvoicePix] = useState(false);
   const [loadingMpRedirect, setLoadingMpRedirect] = useState<string | null>(null);
+  const [loadingCheckoutPlanId, setLoadingCheckoutPlanId] = useState<string | null>(null);
+  const [loadingCheckoutPkgId, setLoadingCheckoutPkgId] = useState<string | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
     {
@@ -255,8 +257,9 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
     }
   };
 
-  // Open Checkout for Recharge Package
+  // Open Checkout for Recharge Package (Redireciona diretamente para o Mercado Pago)
   const handleOpenCheckout = async (pkg: RechargePackage) => {
+    setLoadingCheckoutPkgId(pkg.id);
     setSelectedPkg(pkg);
     setSelectedPlan(null);
     setPaymentSuccess(false);
@@ -269,8 +272,12 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
     try {
       const checkoutRes = await api.createCheckout({
         packageId: pkg.id,
-        paymentMethod: 'pix',
+        paymentMethod: 'mercadopago',
       });
+      if (checkoutRes && checkoutRes.checkoutUrl) {
+        window.location.href = checkoutRes.checkoutUrl;
+        return;
+      }
       setCheckoutData(checkoutRes);
     } catch (e: any) {
       console.error('Erro ao gerar checkout:', e);
@@ -278,12 +285,14 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       setSelectedPkg(null);
     } finally {
       setIsInitializingCheckout(false);
+      setLoadingCheckoutPkgId(null);
     }
   };
 
-  // Open Checkout for Plan Upgrade
+  // Open Checkout for Plan Upgrade (Redireciona diretamente para o Mercado Pago)
   const handleOpenPlanCheckout = async (plan: CommercialPlan) => {
     if (plan.price === 0) return;
+    setLoadingCheckoutPlanId(plan.id);
     setSelectedPlan(plan);
     setSelectedPkg(null);
     setPaymentSuccess(false);
@@ -296,8 +305,12 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
     try {
       const checkoutRes = await api.createCheckout({
         planId: plan.id,
-        paymentMethod: 'pix',
+        paymentMethod: 'mercadopago',
       });
+      if (checkoutRes && checkoutRes.checkoutUrl) {
+        window.location.href = checkoutRes.checkoutUrl;
+        return;
+      }
       setCheckoutData(checkoutRes);
     } catch (e: any) {
       console.error('Erro ao gerar checkout de plano:', e);
@@ -305,6 +318,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       setSelectedPlan(null);
     } finally {
       setIsInitializingCheckout(false);
+      setLoadingCheckoutPlanId(null);
     }
   };
 
@@ -607,6 +621,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                     ) : (
                       <button
                         type="button"
+                        disabled={loadingCheckoutPlanId === plan.id}
                         onClick={() => handleOpenPlanCheckout(plan)}
                         className={`w-full py-3.5 font-black rounded-xl text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
                           isHigh
@@ -614,8 +629,17 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                             : 'bg-[#142B4A] hover:bg-[#1a3760] text-white'
                         }`}
                       >
-                        <Zap className="w-4 h-4 fill-current" />
-                        <span>Fazer Upgrade para {plan.name.replace(/\s*\(.*?\)/, '')}</span>
+                        {loadingCheckoutPlanId === plan.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Conectando ao Mercado Pago...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4" />
+                            <span>Fazer Upgrade para {plan.name.replace(/\s*\(.*?\)/, '')}</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -680,6 +704,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
 
                   <button
                     type="button"
+                    disabled={loadingCheckoutPkgId === pkg.id}
                     onClick={() => handleOpenCheckout(pkg)}
                     className={`mt-6 w-full py-3.5 font-bold rounded-xl text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
                       isHigh
@@ -687,8 +712,17 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                         : 'bg-[#142B4A] hover:bg-[#1a3760] text-white'
                     }`}
                   >
-                    <Zap className="w-4 h-4 fill-white text-white" />
-                    <span>Adicionar {pkg.credits.toLocaleString('pt-BR')} Créditos</span>
+                    {loadingCheckoutPkgId === pkg.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Conectando ao Mercado Pago...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4" />
+                        <span>Adicionar {pkg.credits.toLocaleString('pt-BR')} Créditos</span>
+                      </>
+                    )}
                   </button>
                 </div>
               );
