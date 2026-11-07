@@ -486,16 +486,16 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
 
 export const DEFAULT_PAYMENT_GATEWAY: PaymentGatewayConfig = {
   provider: 'mercadopago',
-  mode: 'sandbox',
+  mode: (process.env.MERCADOPAGO_MODE as any) || 'production',
   isActive: true,
-  mercadoPagoPublicKey: 'TEST-98234710-1293-8472-b8c1-847291048291',
-  mercadoPagoAccessToken: 'TEST-8291048291029384-041812-7291048291829182-1928374',
-  asaasApiKey: '',
-  stripePublicKey: '',
-  stripeSecretKey: '',
-  pixKey: 'contato@superlocucao.inforartes.com.br',
+  mercadoPagoPublicKey: process.env.MERCADOPAGO_PUBLIC_KEY || '',
+  mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || '',
+  asaasApiKey: process.env.ASAAS_API_KEY || '',
+  stripePublicKey: process.env.STRIPE_PUBLIC_KEY || '',
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  pixKey: process.env.PIX_KEY || 'contato@superlocucao.inforartes.com.br',
   pixKeyType: 'email',
-  webhookSecret: 'whsec_superlocucao_prod_2026',
+  webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || '',
 };
 
 export const DEFAULT_SUBSCRIPTIONS: SubscriptionItem[] = [
@@ -1173,22 +1173,34 @@ class Database {
         CREATE INDEX IF NOT EXISTS idx_audio_binaries_id ON audio_binaries(id);
       `);
 
-      console.log('[PostgreSQL] Sincronizando todos os dados locais com o PostgreSQL da VPS...');
-      for (const u of this.data.users) await this.pgSaveUser(u);
-      for (const p of this.data.projects) await this.pgSaveProject(p);
-      for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
-      for (const v of this.data.voices) await this.pgSaveVoice(v);
-      if (this.data.radioConfigs) {
-        for (const [uId, rc] of Object.entries(this.data.radioConfigs)) {
-          await this.pgSaveRadioConfig(uId, rc);
-        }
-      } else if (this.data.radioConfig) {
-        await this.pgSaveRadioConfig('user-alvorada', this.data.radioConfig);
-      }
-      if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
-
       console.log('[PostgreSQL] Carregando dados do PostgreSQL para o cache em memória...');
       await this.pgLoadAll();
+
+      // Somente popula dados locais se o banco PostgreSQL for 100% novo / vazio
+      const usersCheck = await this.pool.query('SELECT COUNT(*) FROM profiles');
+      const count = Number(usersCheck.rows[0]?.count || 0);
+
+      if (count === 0) {
+        console.log('[PostgreSQL] Banco inicial vazio. Realizando carga inicial dos dados locais...');
+        for (const u of this.data.users) await this.pgSaveUser(u);
+        for (const p of this.data.projects) await this.pgSaveProject(p);
+        for (const tx of this.data.creditTransactions) await this.pgSaveTransaction(tx);
+        for (const v of this.data.voices) await this.pgSaveVoice(v);
+        if (this.data.radioConfigs) {
+          for (const [uId, rc] of Object.entries(this.data.radioConfigs)) {
+            await this.pgSaveRadioConfig(uId, rc);
+          }
+        } else if (this.data.radioConfig) {
+          await this.pgSaveRadioConfig('user-alvorada', this.data.radioConfig);
+        }
+        if (this.data.adminSettings) await this.pgSaveAdminSettings(this.data.adminSettings);
+        await this.pgLoadAll();
+      } else {
+        console.log(`[PostgreSQL] Banco existente detectado (${count} perfis). PostgreSQL mantido como fonte primária da verdade (configurações salvas preservadas)!`);
+        // Atualiza o arquivo local em disco para refletir o PostgreSQL oficial
+        this.save();
+      }
+
       console.log(`[PostgreSQL] Sincronização concluída: ${this.data.users.length} usuários, ${this.data.projects.length} projetos.`);
 
       // Sincronizar todas as locuções reais (seed e locais) diretamente para o banco de dados da VPS
@@ -1286,7 +1298,13 @@ class Database {
         const a = adminRes.rows[0];
         const rechargePackages = a.recharge_packages ? (typeof a.recharge_packages === 'string' ? JSON.parse(a.recharge_packages) : a.recharge_packages) : DEFAULT_RECHARGE_PACKAGES;
         const commercialPlans = a.commercial_plans ? (typeof a.commercial_plans === 'string' ? JSON.parse(a.commercial_plans) : a.commercial_plans) : DEFAULT_COMMERCIAL_PLANS;
-        const paymentGateway = a.payment_gateway ? (typeof a.payment_gateway === 'string' ? JSON.parse(a.payment_gateway) : a.payment_gateway) : DEFAULT_PAYMENT_GATEWAY;
+        const paymentGateway: PaymentGatewayConfig = a.payment_gateway ? (typeof a.payment_gateway === 'string' ? JSON.parse(a.payment_gateway) : a.payment_gateway) : DEFAULT_PAYMENT_GATEWAY;
+        if (!paymentGateway.mercadoPagoAccessToken && process.env.MERCADOPAGO_ACCESS_TOKEN) {
+          paymentGateway.mercadoPagoAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+        }
+        if (!paymentGateway.mercadoPagoPublicKey && process.env.MERCADOPAGO_PUBLIC_KEY) {
+          paymentGateway.mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY;
+        }
         const subscriptions = a.subscriptions ? (typeof a.subscriptions === 'string' ? JSON.parse(a.subscriptions) : a.subscriptions) : DEFAULT_SUBSCRIPTIONS;
         const payments = a.payments ? (typeof a.payments === 'string' ? JSON.parse(a.payments) : a.payments) : DEFAULT_PAYMENT_TRANSACTIONS;
 

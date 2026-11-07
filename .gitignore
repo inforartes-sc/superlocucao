@@ -12,6 +12,8 @@ coverage/
 !.env.example
 .locucao_audios/
 .database.json
+.locucao_db.json
+.locucao_db*.json
 *.mp3
 *.wav
 !server/seed_audios/
