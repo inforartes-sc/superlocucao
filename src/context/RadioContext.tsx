@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist, AudioGenerationItem } from '../types';
+import { RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist, AudioGenerationItem, RadioStoreBranch } from '../types';
 import { api } from '../services/api';
 import { Radio, Zap, Pause, SkipForward, Megaphone, ArrowUpRight, Gauge } from 'lucide-react';
 import { attachVoiceNormalizer, attachMusicNormalizer, BroadcastVoiceProcessor } from '../utils/audioNormalizer';
@@ -386,6 +386,16 @@ interface RadioContextValue {
       priority?: RadioQueueItem['priority'];
     }
   ) => Promise<RadioQueueItem | null>;
+  sessionConflict: { message: string; activeDevice?: string } | null;
+  clearSessionConflict: () => void;
+  takeoverRadioSession: () => Promise<void>;
+  supersededMessage: string | null;
+  clearSupersededMessage: () => void;
+  activeStoreId: string;
+  setActiveStoreId: (storeId: string) => void;
+  createRadioStore: (store: { name: string; city?: string; slogan?: string }) => Promise<void>;
+  updateRadioStore: (id: string, updates: Partial<RadioStoreBranch>) => Promise<void>;
+  deleteRadioStore: (id: string) => Promise<void>;
 }
 
 const RadioContext = createContext<RadioContextValue | undefined>(undefined);
@@ -430,6 +440,29 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const [musicBoostDb, setMusicBoostDb] = useState<number>(0);
   const [isMusicLevelerEnabled, setIsMusicLevelerEnabled] = useState<boolean>(true);
   const [isLiveMicActive, setIsLiveMicActive] = useState<boolean>(false);
+  const [sessionConflict, setSessionConflict] = useState<{ message: string; activeDevice?: string } | null>(null);
+  const [supersededMessage, setSupersededMessage] = useState<string | null>(null);
+  const [activeStoreId, setActiveStoreIdState] = useState<string>(() => {
+    return localStorage.getItem('superlocucao_active_store_id') || 'store-matriz';
+  });
+
+  const getRadioSessionId = useCallback(() => {
+    let sId = localStorage.getItem('superlocucao_radio_session_id');
+    if (!sId) {
+      sId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+      localStorage.setItem('superlocucao_radio_session_id', sId);
+    }
+    return sId;
+  }, []);
+
+  const getRadioDeviceName = useCallback(() => {
+    let d = localStorage.getItem('superlocucao_radio_device_name');
+    if (!d) {
+      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      d = isMobile ? 'Dispositivo Móvel' : 'Computador da Loja';
+    }
+    return d;
+  }, []);
   const spotNormalizerRef = useRef<BroadcastVoiceProcessor | null>(null);
   const musicNormalizerRef = useRef<BroadcastVoiceProcessor | null>(null);
 
@@ -904,12 +937,14 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     }
   }, [config?.voiceVolume, config?.spotVolume, config?.musicVolume, config?.duckingLevel, isDucking]);
 
-  // Heartbeat to report real-time online status to Super Admin
+  // Heartbeat to report real-time online status and manage session concurrency
   useEffect(() => {
-    const sendPing = (online: boolean) => {
+    const sendPing = async (online: boolean, forceTakeover: boolean = false) => {
       const cfg = configRef.current;
-      api
-        .sendRadioHeartbeat({
+      const sId = getRadioSessionId();
+      const dName = getRadioDeviceName();
+      try {
+        const res = await api.sendRadioHeartbeat({
           isOnAir: online,
           storeName: cfg.storeName,
           stationName: cfg.stationName,
@@ -919,8 +954,29 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
           isDucking,
           spotsQueueCount: (cfg.queue || []).filter(q => q.active).length,
           mode: cfg.mode,
-        })
-        .catch(() => {});
+          sessionId: sId,
+          deviceName: dName,
+          storeId: activeStoreId,
+          forceTakeover,
+        });
+
+        if (res.conflict) {
+          if (musicAudioRef.current) musicAudioRef.current.pause();
+          if (spotAudioRef.current) spotAudioRef.current.pause();
+          setIsOnAir(false);
+          setSessionConflict({
+            message: res.message || 'A Rádio Web já está tocando em outro computador.',
+            activeDevice: res.activeDevice,
+          });
+        } else if (res.superseded) {
+          if (musicAudioRef.current) musicAudioRef.current.pause();
+          if (spotAudioRef.current) spotAudioRef.current.pause();
+          setIsOnAir(false);
+          setSupersededMessage(res.message || 'A transmissão da rádio foi transferida para outro computador da loja.');
+        }
+      } catch {
+        // ignore connection hiccup
+      }
     };
 
     if (isOnAir) {
@@ -945,7 +1001,38 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     } else {
       sendPing(false);
     }
-  }, [isOnAir, currentMusic?.title, currentSpot?.title, isDucking]);
+  }, [isOnAir, currentMusic?.title, currentSpot?.title, isDucking, activeStoreId, getRadioDeviceName, getRadioSessionId]);
+
+  const takeoverRadioSession = useCallback(async () => {
+    setSessionConflict(null);
+    setSupersededMessage(null);
+    setIsOnAir(true);
+    const cfg = configRef.current;
+    const sId = getRadioSessionId();
+    const dName = getRadioDeviceName();
+    try {
+      await api.sendRadioHeartbeat({
+        isOnAir: true,
+        storeName: cfg.storeName,
+        stationName: cfg.stationName,
+        slogan: cfg.slogan,
+        currentMusicTitle: currentMusic ? currentMusic.title : null,
+        currentSpotTitle: currentSpot ? currentSpot.title : null,
+        isDucking,
+        spotsQueueCount: (cfg.queue || []).filter(q => q.active).length,
+        mode: cfg.mode,
+        sessionId: sId,
+        deviceName: dName,
+        storeId: activeStoreId,
+        forceTakeover: true,
+      });
+      if (musicAudioRef.current && configRef.current.musicTracks.length > 0) {
+        musicAudioRef.current.play().catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeStoreId, currentMusic, currentSpot, isDucking, getRadioDeviceName, getRadioSessionId]);
 
   // Update config on state, localStorage & server
   const updateConfig = useCallback(
@@ -974,6 +1061,37 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     },
     [persistConfigLocally]
   );
+
+  const setActiveStoreId = useCallback((storeId: string) => {
+    setActiveStoreIdState(storeId);
+    localStorage.setItem('superlocucao_active_store_id', storeId);
+    const found = configRef.current.stores?.find(s => s.id === storeId);
+    if (found) {
+      updateConfig({ storeName: found.name });
+    }
+  }, [updateConfig]);
+
+  const createRadioStore = useCallback(async (storeData: { name: string; city?: string; slogan?: string }) => {
+    const res = await api.createRadioStore(storeData);
+    setConfig(res.config);
+    persistConfigLocally(res.config);
+    setActiveStoreId(res.store.id);
+  }, [persistConfigLocally, setActiveStoreId]);
+
+  const updateRadioStore = useCallback(async (id: string, updates: Partial<RadioStoreBranch>) => {
+    const res = await api.updateRadioStore(id, updates);
+    setConfig(res.config);
+    persistConfigLocally(res.config);
+  }, [persistConfigLocally]);
+
+  const deleteRadioStore = useCallback(async (id: string) => {
+    const res = await api.deleteRadioStore(id);
+    setConfig(res.config);
+    persistConfigLocally(res.config);
+    if (activeStoreId === id && res.config.stores && res.config.stores.length > 0) {
+      setActiveStoreId(res.config.stores[0].id);
+    }
+  }, [activeStoreId, persistConfigLocally, setActiveStoreId]);
 
   // Publish any generated or library audio to the Web Radio queue
   const publishAudioToRadio = useCallback(
@@ -1402,6 +1520,16 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         setActivePlaylist,
         playMusicTrackNow,
         uploadSpotAudioFile,
+        sessionConflict,
+        clearSessionConflict: () => setSessionConflict(null),
+        takeoverRadioSession,
+        supersededMessage,
+        clearSupersededMessage: () => setSupersededMessage(null),
+        activeStoreId,
+        setActiveStoreId,
+        createRadioStore,
+        updateRadioStore,
+        deleteRadioStore,
         vocalBoostDb,
         isVocalLevelerEnabled,
         triggerManualDucking,

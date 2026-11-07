@@ -77,7 +77,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [formPhone, setFormPhone] = useState('');
   const [formCompany, setFormCompany] = useState('');
   const [formCity, setFormCity] = useState('');
-  const [formPlan, setFormPlan] = useState<'gratuito' | 'pro_varejo' | 'redes_atacarejo'>('pro_varejo');
+  const [formPlan, setFormPlan] = useState<'gratuito' | 'pro_varejo' | 'redes_atacarejo'>('gratuito');
   const [formStatus, setFormStatus] = useState<'ativo' | 'bloqueado'>('ativo');
   const [formCredits, setFormCredits] = useState<number>(50);
   const [formPassword, setFormPassword] = useState('');
@@ -359,7 +359,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     setFormPhone('');
     setFormCompany('');
     setFormCity('');
-    setFormPlan('pro_varejo');
+    setFormPlan('gratuito');
     setFormStatus('ativo');
     setFormCredits(50);
     setFormPassword('123456');

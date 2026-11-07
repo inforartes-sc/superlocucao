@@ -6,7 +6,8 @@ import {
   Project, UserProfile, CreditTransaction, VoicePreset, AudioGenerationItem,
   RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist,
   RechargePackage, CommercialPlan,
-  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation,
+  RadioStoreBranch
 } from '../src/types/index.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
@@ -416,20 +417,24 @@ export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
 
 export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
   {
-    id: 'degustacao',
-    name: 'Degustação',
+    id: 'gratuito',
+    name: 'Degustação (Grátis)',
     tag: 'Teste Inicial',
     subtitle: 'Perfeito para você experimentar a qualidade na prática na sua loja.',
     price: 0,
     billingPeriod: 'grátis',
     creditsAmount: 50,
     features: [
-      '50 créditos de boas-vindas',
-      'Acesso a todas as 5 vozes de varejo',
-      'Downloads imediatos em MP3',
-      'Acesso à Rádio Web no navegador',
+      '50 créditos de boas-vindas para testes',
+      'Locuções de Ofertas comerciais narradas por IA',
+      '1 Loja / 1 Computador',
+      'Download imediato dos áudios em MP3',
+      'Vinhetas e Sweepers: exclusivo planos Pro',
+      'Avisos e Comunicados: exclusivo planos Pro',
+      'Upload de áudios e músicas do PC: exclusivo Pro',
+      'Transmissão simultânea em vários PCs: não incluso',
     ],
-    ctaText: 'Começar Grátis',
+    ctaText: 'Plano Atual',
     badge: '',
     highlighted: false,
   },
@@ -442,13 +447,16 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
     billingPeriod: '/mês',
     creditsAmount: 1500,
     features: [
-      '1.500 créditos mensais renovados',
-      'Geração em lote com download em arquivo ZIP',
-      'Rádio Web contínua com Auto-Ducking',
-      '15 vinhetas personalizadas com o nome da loja',
+      '1.500 créditos mensais renovados todo mês',
+      '1 Loja / 1 Computador de Transmissão por vez',
+      'Proteção inteligente contra transmissões simultâneas',
+      'Vinhetas & Sweepers personalizadas 100% liberadas',
+      'Avisos Informativos & Utilidade Pública liberados',
+      'Upload de Áudios e Músicas MP3 do seu PC liberado',
+      'Rádio Web ao Vivo com Auto-Ducking automático',
       'Suporte prioritário via WhatsApp',
     ],
-    ctaText: 'Assinar Pro Varejo',
+    ctaText: 'Fazer Upgrade para Pro Varejo',
     badge: 'Mais Escolhido',
     highlighted: true,
   },
@@ -461,13 +469,17 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
     billingPeriod: '/mês',
     creditsAmount: 5000,
     features: [
-      '5.000 créditos mensais',
-      'Múltiplas lojas e filiais gerenciadas',
-      'Clonagem de voz personalizada da marca',
-      'Gerente de conta e suporte dedicado',
+      '5.000 créditos mensais renovados todo mês',
+      'Multi-Lojas: Múltiplas Lojas & Filiais Simultâneas',
+      'Transmissão simultânea em vários computadores ao mesmo tempo',
+      'Painel de Gestão de Filiais da Rede em tempo real',
+      'Programação e campanhas independentes por loja',
+      'Vinhetas, Avisos, Uploads e Recursos Pro 100% liberados',
+      'Clonagem de voz personalizada da marca (sob demanda)',
+      'Gerente de contas e atendimento VIP prioritário',
     ],
-    ctaText: 'Falar com Consultor',
-    badge: '',
+    ctaText: 'Fazer Upgrade para Redes & Atacarejo',
+    badge: 'Potência Máxima',
     highlighted: false,
   },
 ];
@@ -1824,7 +1836,8 @@ class Database {
   updateUserCredits(userId: string, delta: number, description: string, referenceId?: string): number {
     const user = this.getUser(userId);
     if (!user) return 0;
-    user.creditsBalance += delta;
+    const current = typeof user.creditsBalance === 'number' ? user.creditsBalance : Number(user.creditsBalance) || 0;
+    user.creditsBalance = Math.max(0, current + delta);
     const tx: CreditTransaction = {
       id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId,
@@ -1896,6 +1909,20 @@ class Database {
       config.playlists = DEFAULT_RADIO_PLAYLISTS;
       this.save();
     }
+    // Guarantee stores exist
+    if (!config.stores || config.stores.length === 0) {
+      const user = this.getUser(key);
+      config.stores = [
+        {
+          id: 'store-matriz',
+          name: `${config.storeName || user?.companyName || 'Supermercado'} — Loja Matriz`,
+          city: user?.city || 'Centro',
+          slogan: config.slogan || 'O melhor preço todo dia',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      this.save();
+    }
     // Guarantee rich default tracks exist if legacy config had 5 or fewer
     if (!config.musicTracks || config.musicTracks.length <= 5) {
       const customTracks = (config.musicTracks || []).filter(t => t.isCustom);
@@ -1947,39 +1974,137 @@ class Database {
     spotsQueueCount?: number;
     mode?: string;
     clientIp?: string;
-  }): OnlineRadioStation | null {
-    const key = data.userId || 'user-default';
+    sessionId?: string;
+    storeId?: string;
+    deviceName?: string;
+    forceTakeover?: boolean;
+  }): {
+    station: OnlineRadioStation | null;
+    conflict?: boolean;
+    superseded?: boolean;
+    message?: string;
+    activeDevice?: string;
+    plan?: string;
+  } {
+    const userId = data.userId || 'user-default';
+    const user = this.getUser(userId);
+    const userPlan = user?.plan || 'gratuito';
+
+    // Determinar a chave da estação:
+    // Para Redes & Atacarejo: chave composta por usuário + loja (permite multi-lojas simultâneas!)
+    // Para Pro Varejo e Grátis: chave única por usuário (limita a 1 computador no ar por vez)
+    const storeKey = (userPlan === 'redes_atacarejo' && data.storeId) ? `${userId}::${data.storeId}` : userId;
 
     if (!data.isOnAir) {
-      this.activeOnlineRadios.delete(key);
-      return null;
+      const existing = this.activeOnlineRadios.get(storeKey);
+      if (existing && (!data.sessionId || existing.sessionId === data.sessionId)) {
+        this.activeOnlineRadios.delete(storeKey);
+      }
+      return { station: null, plan: userPlan };
     }
 
-    const now = new Date().toISOString();
-    const existing = this.activeOnlineRadios.get(key);
-    const user = this.getUser(key);
+    const nowMs = Date.now();
+    const nowIso = new Date().toISOString();
+    const existing = this.activeOnlineRadios.get(storeKey);
+
+    // REGRA 1: No plano Pro Varejo (e Degustação), limitar a 1 computador simultâneo
+    if (userPlan !== 'redes_atacarejo') {
+      const isExistingAlive = Boolean(existing && existing.isOnAir && (nowMs - new Date(existing.lastHeartbeat).getTime() < 18000));
+
+      // Conflito de sessão: Outro computador já está tocando
+      if (isExistingAlive && existing?.sessionId && data.sessionId && existing.sessionId !== data.sessionId) {
+        if (!data.forceTakeover) {
+          return {
+            station: existing,
+            conflict: true,
+            activeDevice: existing.deviceName || 'Outro Computador da Loja',
+            message: `A Rádio Web já está sendo reproduzida em outro computador (${existing.deviceName || 'Outro terminal'}). O plano Pro Varejo é licenciado para 1 computador por vez. Para transmitir em múltiplas lojas e computadores simultaneamente, faça upgrade para o plano Redes & Atacarejo.`,
+            plan: userPlan,
+          };
+        }
+      }
+
+      // Sessão sobreposta por outro computador (forceTakeover feito por outro dispositivo)
+      if (existing && existing.sessionId && data.sessionId && existing.sessionId !== data.sessionId && isExistingAlive) {
+        return {
+          station: existing,
+          superseded: true,
+          message: 'A transmissão da rádio foi transferida para outro computador da loja.',
+          plan: userPlan,
+        };
+      }
+    }
+
+    const radioCfg = this.getRadioConfig(userId);
+    let effectiveStoreName = data.storeName;
+    if (!effectiveStoreName && data.storeId && radioCfg.stores) {
+      const foundStore = radioCfg.stores.find(s => s.id === data.storeId);
+      if (foundStore) effectiveStoreName = foundStore.name;
+    }
+    if (!effectiveStoreName) {
+      effectiveStoreName = user?.companyName || existing?.storeName || radioCfg.storeName || 'Supermercado';
+    }
 
     const station: OnlineRadioStation = {
-      id: key,
-      userId: key,
+      id: storeKey,
+      userId,
       userName: data.userName || user?.name || existing?.userName || 'Operador da Loja',
       companyName: data.companyName || user?.companyName || existing?.companyName || 'Supermercado',
-      storeName: data.storeName || user?.companyName || existing?.storeName || this.getRadioConfig().storeName || 'Supermercado Modelo',
-      stationName: data.stationName || existing?.stationName || this.getRadioConfig().stationName || 'Rádio Supermercado Ao Vivo',
-      slogan: data.slogan || existing?.slogan || this.getRadioConfig().slogan || '',
+      storeName: effectiveStoreName,
+      stationName: data.stationName || existing?.stationName || radioCfg.stationName || 'Rádio Supermercado Ao Vivo',
+      slogan: data.slogan || existing?.slogan || radioCfg.slogan || '',
       isOnAir: true,
       currentMusicTitle: data.currentMusicTitle,
       currentSpotTitle: data.currentSpotTitle,
       isDucking: Boolean(data.isDucking),
-      spotsQueueCount: data.spotsQueueCount ?? (existing?.spotsQueueCount || this.getRadioConfig().queue?.length || 0),
-      mode: data.mode || existing?.mode || this.getRadioConfig().mode || 'intervalo_tempo',
-      lastHeartbeat: now,
-      startedAt: existing?.startedAt || now,
+      spotsQueueCount: data.spotsQueueCount ?? (existing?.spotsQueueCount || radioCfg.queue?.length || 0),
+      mode: data.mode || existing?.mode || radioCfg.mode || 'intervalo_tempo',
+      lastHeartbeat: nowIso,
+      startedAt: existing?.startedAt || nowIso,
       clientIp: data.clientIp || existing?.clientIp,
+      sessionId: data.sessionId,
+      storeId: data.storeId,
+      deviceName: data.deviceName,
     };
 
-    this.activeOnlineRadios.set(key, station);
-    return station;
+    this.activeOnlineRadios.set(storeKey, station);
+    return { station, plan: userPlan };
+  }
+
+  addRadioStore(userId: string, store: { name: string; city?: string; slogan?: string }): { config: RadioStationConfig; store: RadioStoreBranch } {
+    const key = userId || 'user-alvorada';
+    const config = this.getRadioConfig(key);
+    const newStore: RadioStoreBranch = {
+      id: `store-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: store.name.trim(),
+      city: store.city?.trim() || '',
+      slogan: store.slogan?.trim() || config.slogan || '',
+      createdAt: new Date().toISOString(),
+    };
+    config.stores = [...(config.stores || []), newStore];
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return { config, store: newStore };
+  }
+
+  updateRadioStore(userId: string, storeId: string, updates: Partial<RadioStoreBranch>): { config: RadioStationConfig; store: RadioStoreBranch } | null {
+    const key = userId || 'user-alvorada';
+    const config = this.getRadioConfig(key);
+    const idx = (config.stores || []).findIndex(s => s.id === storeId);
+    if (idx < 0) return null;
+    config.stores![idx] = { ...config.stores![idx], ...updates };
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return { config, store: config.stores![idx] };
+  }
+
+  deleteRadioStore(userId: string, storeId: string): RadioStationConfig {
+    const key = userId || 'user-alvorada';
+    const config = this.getRadioConfig(key);
+    config.stores = (config.stores || []).filter(s => s.id !== storeId);
+    this.save();
+    this.pgSaveRadioConfig(key, config);
+    return config;
   }
 
   getOnlineRadios(): OnlineRadioStation[] {
@@ -2239,6 +2364,44 @@ class Database {
           `Pagamento Confirmado: ${tx.description} (R$ ${tx.amount})`
         );
       }
+
+      // Se for pagamento de assinatura / upgrade de plano
+      if (tx.planId) {
+        const rawPlan = tx.planId === 'degustacao' ? 'gratuito' : tx.planId;
+        const targetPlan = rawPlan as 'gratuito' | 'pro_varejo' | 'redes_atacarejo';
+        this.updateUser(tx.userId, { plan: targetPlan });
+
+        const user = this.getUser(tx.userId);
+        const subList = this.data.adminSettings.subscriptions || DEFAULT_SUBSCRIPTIONS;
+        const existingIdx = subList.findIndex(s => s.userId === tx.userId);
+        const newSub: SubscriptionItem = {
+          id: `sub-${Date.now()}`,
+          userId: tx.userId,
+          userName: user?.name || tx.userName,
+          companyName: user?.companyName || tx.companyName,
+          email: user?.email || tx.clientEmail || '',
+          planId: targetPlan,
+          planName: tx.itemName || (targetPlan === 'redes_atacarejo' ? 'Redes & Atacarejo' : 'Pro Varejo'),
+          amount: tx.amount,
+          billingPeriod: '/mês',
+          status: 'active',
+          paymentMethod: tx.paymentMethod || 'pix',
+          gateway: tx.gateway || 'Mercado Pago',
+          currentPeriodStart: new Date().toISOString(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          creditsPerCycle: tx.creditsAdded || (targetPlan === 'redes_atacarejo' ? 5000 : 1500),
+          autoRenew: true,
+          createdAt: new Date().toISOString(),
+        };
+
+        if (existingIdx >= 0) {
+          subList[existingIdx] = newSub;
+        } else {
+          subList.unshift(newSub);
+        }
+        this.data.adminSettings.subscriptions = subList;
+      }
+
       this.data.adminSettings.payments = list;
       this.save();
       this.pgSaveAdminSettings(this.data.adminSettings);

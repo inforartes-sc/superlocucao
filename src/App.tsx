@@ -325,19 +325,23 @@ export function App() {
                   onNewVoiceover={handleNewCampaign}
                   onOpenProject={handleOpenProjectById}
                   onNavigate={view => setActiveView(view as ActiveView)}
+                  onRefreshUser={loadData}
                 />
               )}
 
               {activeView === 'studio' && selectedProject && (
                 <StudioView
                   project={selectedProject}
+                  user={user}
                   onUpdateProject={handleProjectSaved}
                   onNavigate={view => setActiveView(view as ActiveView)}
+                  onCreditsChanged={handleCreditsChanged}
                 />
               )}
 
               {activeView === 'radio' && (
                 <RadioView
+                  user={user}
                   onCreditsChanged={handleCreditsChanged}
                   onOpenStudio={handleNewCampaign}
                 />

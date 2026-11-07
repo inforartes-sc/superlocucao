@@ -8,6 +8,7 @@ import {
   Project, ProductItem, CampaignType, LocutionTone,
   DesiredDuration, PresentationFormat, VoicePreset,
   SoundtrackOption, SoundtrackId, CAMPAIGN_PRESETS, STYLE_PRESETS,
+  User,
 } from '../types/index.ts';
 import {
   getCampaignsByNiche, getStylesByNiche, getNicheInfo
@@ -21,8 +22,10 @@ import { useFavoriteVoices } from '../services/voiceFavorites.ts';
 
 interface StudioViewProps {
   project: Project;
+  user?: User | null;
   onUpdateProject: (project: Project) => void;
   onNavigate: (view: string) => void;
+  onCreditsChanged?: (newBalance: number) => void;
 }
 
 const DURATION_OPTIONS: { id: DesiredDuration; label: string; approxWords: string }[] = [
@@ -34,8 +37,10 @@ const DURATION_OPTIONS: { id: DesiredDuration; label: string; approxWords: strin
 
 export const StudioView: React.FC<StudioViewProps> = ({
   project: initialProject,
+  user,
   onUpdateProject,
   onNavigate,
+  onCreditsChanged,
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [project, setProject] = useState<Project>(initialProject);
@@ -394,6 +399,12 @@ export const StudioView: React.FC<StudioViewProps> = ({
       return;
     }
 
+    const creditCost = calculateCreditCost(project.products.length);
+    if (user && user.creditsBalance < creditCost) {
+      alert(`Saldo de créditos insuficiente (${user.creditsBalance} disponíveis). São necessários ${creditCost} créditos para gerar esta locução.`);
+      return;
+    }
+
     const cleanScriptText = expandUnitsAndMeasuresToWords(scriptText);
     if (cleanScriptText !== scriptText) {
       setScriptText(cleanScriptText);
@@ -424,6 +435,11 @@ export const StudioView: React.FC<StudioViewProps> = ({
 
       setAudioProgressStatus('Áudio finalizado!');
       setTimeout(() => setAudioProgressStatus(null), 1500);
+
+      // Atualiza o saldo de créditos do usuário na aplicação imediatamente
+      if (typeof res.creditsBalance === 'number' && onCreditsChanged) {
+        onCreditsChanged(res.creditsBalance);
+      }
 
       const updatedAudios = [res.audio, ...project.audios];
       saveProjectChanges({
@@ -462,6 +478,12 @@ export const StudioView: React.FC<StudioViewProps> = ({
       return;
     }
 
+    const totalCost = calculateCreditCost(project.products.length);
+    if (user && user.creditsBalance < totalCost) {
+      alert(`Saldo de créditos insuficiente (${user.creditsBalance} disponíveis). São necessários ${totalCost} créditos para gerar o lote.`);
+      return;
+    }
+
     setIsGeneratingBatch(true);
     setBatchProgress({ current: 1, total: project.products.length });
 
@@ -475,6 +497,11 @@ export const StudioView: React.FC<StudioViewProps> = ({
         soundtrackVolume: soundtrackVolume,
         publishToRadio,
       });
+
+      // Atualiza o saldo de créditos do usuário na aplicação imediatamente
+      if (typeof res.creditsBalance === 'number' && onCreditsChanged) {
+        onCreditsChanged(res.creditsBalance);
+      }
 
       const updatedAudios = [...res.audios, ...project.audios];
       saveProjectChanges({
@@ -1914,11 +1941,20 @@ export const StudioView: React.FC<StudioViewProps> = ({
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1 font-semibold text-slate-600">
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1 font-semibold text-slate-700">
                       <Zap className="w-3.5 h-3.5 text-amber-500" />
                       Custo: {calculateCreditCost(project.products.length)} créditos
                     </span>
+                    {user && (
+                      <>
+                        <span>•</span>
+                        <span className={`font-semibold flex items-center gap-1 ${user.creditsBalance < calculateCreditCost(project.products.length) ? 'text-red-600' : 'text-emerald-700'}`}>
+                          <span>Saldo disponível:</span>
+                          <strong>{user.creditsBalance} créditos</strong>
+                        </span>
+                      </>
+                    )}
                     <span>•</span>
                     <span className="text-slate-400">1 a 5 produtos = 5 créditos (+1 por produto extra)</span>
                     <span>•</span>

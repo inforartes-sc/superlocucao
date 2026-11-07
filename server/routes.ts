@@ -8,7 +8,7 @@ import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, save
 import { convertWavToMp3 } from './mp3_converter.ts';
 import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer, mixVoiceAndSoundtrack } from './soundtracks.ts';
 import { fetchRealBrazilianTTS } from './tts.ts';
-import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage } from '../src/types/index.ts';
+import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage, CommercialPlan } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 
 /**
@@ -106,11 +106,11 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
     password: cleanPassword,
     companyName: (companyName ? String(companyName).trim() : 'Supermercado'),
     role: 'supermarket_owner',
-    plan: 'pro_varejo',
-    creditsBalance: initialBonus,
+    plan: req.body.plan || 'gratuito',
+    creditsBalance: 0,
     createdAt: new Date().toISOString(),
   });
-  db.updateUserCredits(user.id, initialBonus, 'Bônus de Boas-Vindas (Cadastro)');
+  user.creditsBalance = db.updateUserCredits(user.id, initialBonus, 'Bônus de Boas-Vindas (Cadastro)');
   res.json({ user, token: user.id });
 });
 
@@ -414,7 +414,7 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
 
   // Regra de consumo de créditos: de 1 a 5 produtos = 5 créditos. A partir do 5º produto = +1 crédito por produto adicional
   let productCount = 1;
-  if (req.body.productCount) {
+  if (req.body.productCount !== undefined && req.body.productCount !== null) {
     productCount = Number(req.body.productCount);
   } else if (projectId) {
     const proj = db.getProject(projectId);
@@ -837,10 +837,14 @@ apiRouter.post('/radio/heartbeat', (req: Request, res: Response) => {
     currentSpotTitle,
     isDucking,
     spotsQueueCount,
-    mode
+    mode,
+    sessionId,
+    storeId,
+    deviceName,
+    forceTakeover
   } = req.body;
 
-  const station = db.updateRadioHeartbeat({
+  const result = db.updateRadioHeartbeat({
     userId,
     userName: user?.name,
     companyName: user?.companyName,
@@ -854,14 +858,62 @@ apiRouter.post('/radio/heartbeat', (req: Request, res: Response) => {
     spotsQueueCount,
     mode,
     clientIp,
+    sessionId,
+    storeId,
+    deviceName,
+    forceTakeover: Boolean(forceTakeover),
   });
 
   res.json({
-    success: true,
-    isOnAir: Boolean(isOnAir),
-    station,
+    success: !result.conflict,
+    isOnAir: Boolean(isOnAir) && !result.conflict && !result.superseded,
+    station: result.station,
     onlineCount: db.getOnlineRadios().length,
+    conflict: Boolean(result.conflict),
+    superseded: Boolean(result.superseded),
+    message: result.message,
+    activeDevice: result.activeDevice,
+    plan: result.plan,
   });
+});
+
+// MULTI-STORE MANAGEMENT (EXCLUSIVO PLANO REDES & ATACAREJO)
+apiRouter.post('/radio/stores', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (user?.plan !== 'redes_atacarejo' && user?.role !== 'admin') {
+    return res.status(403).json({
+      error: 'O recurso de múltiplas lojas e filiais é exclusivo do plano Redes & Atacarejo. Faça upgrade para gerenciar mais de uma loja.',
+      requiredPlan: 'redes_atacarejo'
+    });
+  }
+  const { name, city, slogan } = req.body;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'O nome da loja/filial é obrigatório.' });
+  }
+  const result = db.addRadioStore(userId, { name, city, slogan });
+  res.json(result);
+});
+
+apiRouter.put('/radio/stores/:id', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (user?.plan !== 'redes_atacarejo' && user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Exclusivo do plano Redes & Atacarejo.' });
+  }
+  const result = db.updateRadioStore(userId, req.params.id, req.body);
+  if (!result) return res.status(404).json({ error: 'Loja não encontrada.' });
+  res.json(result);
+});
+
+apiRouter.delete('/radio/stores/:id', (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  if (user?.plan !== 'redes_atacarejo' && user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Exclusivo do plano Redes & Atacarejo.' });
+  }
+  const config = db.deleteRadioStore(userId, req.params.id);
+  res.json({ config });
 });
 
 apiRouter.get('/radio/online-stations', (_req: Request, res: Response) => {
@@ -874,7 +926,17 @@ apiRouter.get('/radio/online-stations', (_req: Request, res: Response) => {
 
 apiRouter.post('/radio/queue', (req: Request, res: Response) => {
   const userId = getUserId(req);
+  const user = db.getUser(userId);
   const { audio, storeName, type, priority } = req.body;
+
+  // Regra Plano Grátis: Bloquear vinhetas e avisos informativos
+  if (user?.plan === 'gratuito' && (type === 'vinheta' || type === 'comunicado' || type === 'aviso')) {
+    return res.status(403).json({
+      error: 'A utilização de vinhetas e avisos informativos na Rádio Web é exclusiva dos planos Pro Varejo e Redes Atacarejo. Faça upgrade para liberar.',
+      requiredPlan: 'pro_varejo'
+    });
+  }
+
   if (!audio || !audio.audioUrl) {
     return res.status(400).json({ error: 'Dados do áudio inválidos para adicionar à Rádio Web' });
   }
@@ -900,6 +962,16 @@ apiRouter.delete('/radio/queue/:id', (req: Request, res: Response) => {
 apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
+    const user = db.getUser(userId);
+
+    // Regra Plano Grátis: Bloquear envio de áudio do computador para a rádio
+    if (user?.plan === 'gratuito') {
+      return res.status(403).json({
+        error: 'O envio de áudio do computador para a Rádio Web é exclusivo dos planos Pro Varejo e Redes Atacarejo. Faça upgrade para liberar uploads.',
+        requiredPlan: 'pro_varejo'
+      });
+    }
+
     const { fileName, fileBase64, title, type, priority, storeName, durationSeconds } = req.body;
     if (!fileBase64) {
       return res.status(400).json({ error: 'Nenhum arquivo de áudio fornecido' });
@@ -968,6 +1040,16 @@ apiRouter.post('/radio/queue/upload', async (req: Request, res: Response) => {
 apiRouter.post('/radio/music/upload', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
+    const user = db.getUser(userId);
+
+    // Regra Plano Grátis: Bloquear upload de músicas MP3 próprias
+    if (user?.plan === 'gratuito') {
+      return res.status(403).json({
+        error: 'O upload de músicas MP3 próprias para a Rádio Web é exclusivo dos planos Pro Varejo e Redes Atacarejo. Faça upgrade para adicionar suas próprias faixas.',
+        requiredPlan: 'pro_varejo'
+      });
+    }
+
     const { fileName, fileBase64, title, artist, playlistId, durationSeconds } = req.body;
     if (!fileBase64) {
       return res.status(400).json({ error: 'Nenhum arquivo de música fornecido' });
@@ -1076,18 +1158,24 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
     addToQueue,
   } = req.body;
 
+  // Regra Plano Grátis: Bloquear vinhetas e avisos informativos
+  if (user.plan === 'gratuito' && (type === 'vinheta' || type === 'comunicado' || type === 'aviso')) {
+    return res.status(403).json({
+      error: 'A utilização de vinhetas e avisos informativos na Rádio Web é exclusiva dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você pode gerar e divulgar locuções de ofertas comerciais.',
+      requiredPlan: 'pro_varejo'
+    });
+  }
+
   if (!scriptText || !scriptText.trim()) {
     return res.status(400).json({ error: 'Digite o texto da oferta relâmpago ou comunicado para divulgar na rádio' });
   }
 
   // Regra de Consumo de Créditos na Rádio Web:
-  // - Avisos & Informativos (comunicado) e Vinhetas da Loja (vinheta) são 100% gratuitos (NÃO consomem créditos)
-  // - Apenas a aba "Criar Locução" (ofertas relâmpago e comerciais) consome créditos do usuário
-  const isFreeRadioItem = type === 'comunicado' || type === 'vinheta';
+  // Toda locução sintetizada consome créditos do usuário (de 1 a 5 produtos/itens = 5 créditos)
   const productCount = req.body.productCount ? Number(req.body.productCount) : 1;
-  const creditCost = isFreeRadioItem ? 0 : calculateCreditCost(productCount);
+  const creditCost = calculateCreditCost(productCount);
 
-  if (creditCost > 0 && user.creditsBalance < creditCost) {
+  if (user.creditsBalance < creditCost) {
     return res.status(402).json({
       error: `Créditos insuficientes para gerar a locução na Rádio Web. Necessário: ${creditCost} créditos, saldo atual: ${user.creditsBalance}.`,
       required: creditCost,
@@ -1104,16 +1192,13 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
       soundtrackVolume: soundtrackVolume ?? 0.22,
     });
 
-    // Debitar créditos apenas se creditCost > 0
-    let newBalance = user.creditsBalance;
-    if (creditCost > 0) {
-      newBalance = db.updateUserCredits(
-        userId,
-        -creditCost,
-        `Locução Rádio Web: ${title || 'Oferta Relâmpago'}`,
-        ttsResult.audioId
-      );
-    }
+    // Debitar créditos da nova locução gerada
+    const newBalance = db.updateUserCredits(
+      userId,
+      -creditCost,
+      `Locução Rádio Web: ${title || 'Oferta Relâmpago'}`,
+      ttsResult.audioId
+    );
 
     const elevenVoices = await getElevenLabsVoices(false, true);
     const voices = elevenVoices.length > 0 ? elevenVoices : db.getVoices();
@@ -1250,8 +1335,64 @@ apiRouter.post('/credits/recharge', (req: Request, res: Response) => {
 apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
   const userId = getUserId(req);
   const user = db.getUser(userId);
-  const { packageId, paymentMethod = 'pix' } = req.body;
+  const { packageId, planId, paymentMethod = 'pix' } = req.body;
   const settings = db.getAdminSettings();
+
+  const gatewayConfig = db.getGatewayConfig();
+  const activeGateway = gatewayConfig?.provider || 'mercadopago';
+
+  if (planId) {
+    const commercialPlans: CommercialPlan[] = (settings?.commercialPlans && settings.commercialPlans.length > 0)
+      ? settings.commercialPlans
+      : DEFAULT_COMMERCIAL_PLANS;
+    const cleanPlanId = planId === 'degustacao' ? 'gratuito' : planId;
+    const matchedPlan = commercialPlans.find(p => p.id === cleanPlanId || p.id === planId) || commercialPlans[1];
+
+    const txId = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const amount = Number(matchedPlan.price) || 0;
+    const credits = matchedPlan.creditsAmount || (cleanPlanId === 'redes_atacarejo' ? 5000 : 1500);
+
+    const pixCopiaECola = `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${amount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
+    const pixQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(pixCopiaECola)}`;
+    const boletoCode = `34191.79001 01043.510047 91020.150008 4 ${Math.floor(Date.now() / 100000)}0000${Math.round(amount * 100)}`;
+
+    const tx: PaymentTransaction = {
+      id: txId,
+      userId: userId || 'user_demo',
+      userName: user?.name || user?.email || 'Supermercado Modelo',
+      companyName: user?.companyName || 'Supermercado Modelo',
+      clientName: user?.name || user?.email || 'Supermercado Modelo',
+      clientEmail: user?.email || 'contato@supermercado.com.br',
+      type: 'subscription',
+      planId: cleanPlanId,
+      description: `Upgrade de Assinatura (${matchedPlan.name} - ${credits.toLocaleString('pt-BR')} créditos/mês)`,
+      itemName: matchedPlan.name,
+      amount: amount,
+      creditsAdded: credits,
+      creditsAmount: credits,
+      status: 'pending',
+      paymentMethod: paymentMethod as any,
+      method: paymentMethod,
+      gateway: activeGateway === 'mercadopago' ? 'Mercado Pago' : activeGateway === 'asaas' ? 'Asaas' : 'Stripe',
+      createdAt: new Date().toISOString(),
+    };
+
+    db.createPaymentTransaction(tx);
+
+    return res.json({
+      success: true,
+      transactionId: tx.id,
+      plan: matchedPlan,
+      isSubscription: true,
+      amount,
+      credits,
+      paymentMethod,
+      pixCopiaECola,
+      pixQrCodeUrl,
+      boletoCode,
+    });
+  }
+
   const rechargePackages: RechargePackage[] = (settings?.rechargePackages && settings.rechargePackages.length > 0)
     ? settings.rechargePackages
     : DEFAULT_RECHARGE_PACKAGES;
@@ -1260,9 +1401,6 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
   const txId = 'PAY-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
   const amount = Number(matchedPkg.price) || 0;
   const credits = matchedPkg.credits || 300;
-
-  const gatewayConfig = db.getGatewayConfig();
-  const activeGateway = gatewayConfig?.provider || 'mercadopago';
 
   // Pix Copia e Cola formatado BR Code
   const pixCopiaECola = `00020126580014BR.GOV.BCB.PIX0136superlocucao@inforartes.com.br5204000053039865405${amount.toFixed(2)}5802BR5916SUPER LOCUCAO IA6009SAO PAULO62140510${txId}6304`;
@@ -1295,6 +1433,7 @@ apiRouter.post('/credits/checkout', (req: Request, res: Response) => {
     success: true,
     transactionId: tx.id,
     pkg: matchedPkg,
+    isSubscription: false,
     amount,
     credits,
     paymentMethod,
@@ -1319,11 +1458,17 @@ apiRouter.post('/credits/confirm-checkout', async (req: Request, res: Response) 
 
   const user = db.getUser(updatedTx.userId);
 
+  const message = updatedTx.planId
+    ? `Parabéns! Seu plano foi atualizado com sucesso para ${updatedTx.itemName}! ${updatedTx.creditsAdded?.toLocaleString('pt-BR')} créditos foram liberados em sua conta.`
+    : `Pagamento de R$ ${Number(updatedTx.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} aprovado com sucesso! ${updatedTx.creditsAdded?.toLocaleString('pt-BR')} créditos foram adicionados à sua conta.`;
+
   res.json({
     success: true,
+    user,
+    plan: user?.plan,
     creditsBalance: user?.creditsBalance ?? 0,
     creditsAdded: updatedTx.creditsAdded || 0,
-    message: `Pagamento de R$ ${Number(updatedTx.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} aprovado com sucesso! ${updatedTx.creditsAdded?.toLocaleString('pt-BR')} créditos foram adicionados à sua conta.`,
+    message,
     transaction: updatedTx,
   });
 });
@@ -1498,16 +1643,16 @@ apiRouter.post('/admin/users', (req: Request, res: Response) => {
     companyName: companyName?.trim() || 'Supermercado',
     city: city?.trim() || '',
     role: role || 'supermarket_owner',
-    plan: plan || 'pro_varejo',
+    plan: plan || 'gratuito',
     status: 'ativo',
     notes: notes?.trim() || '',
-    creditsBalance: initialCredits,
+    creditsBalance: 0,
     createdAt: new Date().toISOString(),
     lastLogin: new Date().toISOString()
   });
 
   if (initialCredits > 0) {
-    db.updateUserCredits(newUser.id, initialCredits, 'Saldo inicial atribuído pelo Administrador');
+    newUser.creditsBalance = db.updateUserCredits(newUser.id, initialCredits, 'Saldo inicial atribuído pelo Administrador');
   }
 
   res.json({ success: true, user: newUser });

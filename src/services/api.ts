@@ -19,6 +19,7 @@ import {
   SubscriptionItem,
   PaymentTransaction,
   OnlineRadioStation,
+  RadioStoreBranch,
 } from '../types';
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
@@ -296,16 +297,41 @@ export const api = {
     isDucking?: boolean;
     spotsQueueCount?: number;
     mode?: string;
+    sessionId?: string;
+    storeId?: string;
+    deviceName?: string;
+    forceTakeover?: boolean;
   }) =>
-    request<{ success: boolean; isOnAir: boolean; station: OnlineRadioStation | null; onlineCount: number }>(
-      '/radio/heartbeat',
-      {
-        method: 'POST',
-        body: JSON.stringify(params),
-      }
-    ),
+    request<{
+      success: boolean;
+      isOnAir: boolean;
+      station: OnlineRadioStation | null;
+      onlineCount: number;
+      conflict?: boolean;
+      superseded?: boolean;
+      message?: string;
+      activeDevice?: string;
+      plan?: string;
+    }>('/radio/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
   getOnlineRadioStations: () =>
     request<{ count: number; stations: OnlineRadioStation[] }>('/radio/online-stations'),
+  createRadioStore: (store: { name: string; city?: string; slogan?: string }) =>
+    request<{ config: RadioStationConfig; store: RadioStoreBranch }>('/radio/stores', {
+      method: 'POST',
+      body: JSON.stringify(store),
+    }),
+  updateRadioStore: (id: string, updates: Partial<RadioStoreBranch>) =>
+    request<{ config: RadioStationConfig; store: RadioStoreBranch }>(`/radio/stores/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+  deleteRadioStore: (id: string) =>
+    request<{ config: RadioStationConfig }>(`/radio/stores/${id}`, {
+      method: 'DELETE',
+    }),
 
   // Credits
   getCreditsHistory: () =>
@@ -315,11 +341,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ packageId, amount }),
     }),
-  createCheckout: (params: { packageId: string; paymentMethod?: 'pix' | 'credit_card' | 'boleto' }) =>
+  createCheckout: (params: { packageId?: string; planId?: string; paymentMethod?: 'pix' | 'credit_card' | 'boleto' }) =>
     request<{
       success: boolean;
       transactionId: string;
-      pkg: RechargePackage;
+      pkg?: RechargePackage;
+      plan?: CommercialPlan;
+      isSubscription?: boolean;
       amount: number;
       credits: number;
       paymentMethod: string;
@@ -333,6 +361,8 @@ export const api = {
   confirmCheckout: (transactionId: string) =>
     request<{
       success: boolean;
+      user?: User;
+      plan?: string;
       creditsBalance: number;
       creditsAdded: number;
       message: string;

@@ -301,6 +301,7 @@ export interface PaymentTransaction {
   clientName?: string;
   clientEmail?: string;
   type: 'subscription' | 'recharge';
+  planId?: string;
   description: string;
   itemName?: string;
   amount: number;
@@ -324,6 +325,7 @@ export interface RadioQueueItem {
   downloadUrl?: string;
   durationSeconds: number;
   voiceName: string;
+  voiceId?: string;
   campaignType?: string;
   storeName?: string;
   type: 'oferta' | 'vinheta' | 'aviso' | 'relampago' | 'comunicado';
@@ -359,6 +361,18 @@ export interface RadioMusicTrack {
   isCustom?: boolean;
 }
 
+export interface RadioStoreBranch {
+  id: string;
+  name: string;
+  city?: string;
+  slogan?: string;
+  isOnline?: boolean;
+  currentSong?: string;
+  currentSpot?: string;
+  lastHeartbeat?: string;
+  createdAt?: string;
+}
+
 export interface RadioStationConfig {
   stationName: string;
   storeName?: string;
@@ -380,6 +394,8 @@ export interface RadioStationConfig {
   autoPublishNewAudios: boolean;
   queue: RadioQueueItem[];
   musicTracks: RadioMusicTrack[];
+  stores?: RadioStoreBranch[];
+  activeStoreId?: string;
 }
 
 export interface OnlineRadioStation {
@@ -399,6 +415,9 @@ export interface OnlineRadioStation {
   lastHeartbeat: string;
   startedAt: string;
   clientIp?: string;
+  sessionId?: string;
+  storeId?: string;
+  deviceName?: string;
 }
 
 export * from './campaigns.ts';

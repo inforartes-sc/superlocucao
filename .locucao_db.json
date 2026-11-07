@@ -10,7 +10,7 @@
       "creditsBalance": 1250,
       "createdAt": "2026-02-15T10:00:00Z",
       "password": "alvorada123",
-      "lastLogin": "2026-11-06T03:36:22.131Z"
+      "lastLogin": "2026-11-07T00:57:18.492Z"
     },
     {
       "id": "user-admin",
@@ -19,7 +19,7 @@
       "companyName": "Locução Super IA Matriz",
       "role": "admin",
       "plan": "redes_atacarejo",
-      "creditsBalance": 10109,
+      "creditsBalance": 10094,
       "createdAt": "2026-01-01T08:00:00Z",
       "password": "admin123",
       "lastLogin": "2026-11-06T03:47:25.466Z"
@@ -35,19 +35,113 @@
       "plan": "gratuito",
       "status": "ativo",
       "notes": "",
-      "creditsBalance": 100,
+      "creditsBalance": 50,
       "createdAt": "2026-11-01T02:20:35.601Z",
       "lastLogin": "2026-11-06T03:40:29.603Z",
       "password": "leal123"
+    },
+    {
+      "id": "user-1794018982990",
+      "name": "Infor Artes",
+      "email": "inforartes.ap@gmail.com",
+      "password": "12345678",
+      "companyName": "Infor Artes",
+      "role": "supermarket_owner",
+      "plan": "gratuito",
+      "creditsBalance": 40,
+      "createdAt": "2026-11-07T02:36:22.990Z",
+      "lastLogin": "2026-11-07T03:20:43.033Z"
+    },
+    {
+      "id": "user-1794019916659",
+      "name": "Fort",
+      "email": "fort@superfort.com.br",
+      "password": "12345678",
+      "companyName": "Super Fort",
+      "role": "supermarket_owner",
+      "plan": "pro_varejo",
+      "creditsBalance": 1050,
+      "createdAt": "2026-11-07T02:51:56.659Z"
+    },
+    {
+      "id": "user-1794024220579",
+      "name": "Lojista Teste",
+      "email": "lojista1794024220434@teste.com",
+      "password": "teste123",
+      "companyName": "Super Teste",
+      "role": "supermarket_owner",
+      "plan": "redes_atacarejo",
+      "creditsBalance": 6550,
+      "createdAt": "2026-11-07T04:03:40.579Z"
     }
   ],
   "projects": [
     {
+      "id": "proj-1794013084210",
+      "userId": "user-admin",
+      "niche": "supermercado",
+      "title": "Nova Campanha de Ofertas",
+      "storeName": "Locução Super IA Matriz",
+      "storeCity": "São Paulo - SP",
+      "objective": "Aumentar giro de estoque e atrair clientes",
+      "campaignType": "quarta_carne",
+      "style": "energetica_supermercado",
+      "desiredDuration": "30s",
+      "tone": "persuasivo",
+      "presentationFormat": "abertura_sequencia_encerramento",
+      "products": [
+        {
+          "id": "prod-1794013138064-1",
+          "name": "Picanha bovina de por 29,90",
+          "promotionalPrice": 44.9,
+          "unit": "unidade",
+          "spokenPrice": "quarenta e quatro reais e noventa centavos a unidade"
+        }
+      ],
+      "scripts": [
+        {
+          "id": "script-1794013145285",
+          "text": "Atenção apreciadores de uma boa carne! Começou o tradicional Festival de Carnes no nosso supermercado! Preço especial em: Picanha bovina de por 29,90, por apenas quarenta e quatro reais e noventa centavos a unidade! Carnes frescas, inspecionadas e com economia de verdade é no açougue do nosso supermercado! Aproveite hoje mesmo!",
+          "spokenPhoneticText": "Atenção apreciadores de uma boa carne! Começou o tradicional Festival de Carnes no nosso supermercado! Preço especial em: Picanha bovina de por 29,90, por apenas quarenta e quatro reais e noventa centavos a unidade! Carnes frescas, inspecionadas e com economia de verdade é no açougue do nosso supermercado! Aproveite hoje mesmo!",
+          "estimatedDurationSeconds": 19,
+          "wordCount": 51,
+          "createdAt": "2026-11-07T00:59:05.286Z"
+        }
+      ],
+      "currentScriptIndex": 0,
+      "audios": [
+        {
+          "id": "aud-1794013161925-5oz2g",
+          "projectId": "proj-1794013084210",
+          "title": "Nova Campanha de Ofertas",
+          "voiceId": "TY3h8ANhQUsJaa0Bga5F",
+          "voiceName": "Cassio Cruz - Confident and Direct",
+          "soundtrackId": "varejo_alegre",
+          "soundtrackName": "Varejo Alegre & Enérgico",
+          "soundtrackVolume": 0.2,
+          "provider": "elevenlabs",
+          "format": "mp3",
+          "durationSeconds": 19,
+          "audioUrl": "/api/audio/aud-1794013161925-5oz2g.mp3",
+          "downloadUrl": "/api/audio/aud-1794013161925-5oz2g.mp3?download=1",
+          "status": "ready",
+          "creditsUsed": 5,
+          "createdAt": "2026-11-07T00:59:27.236Z",
+          "fileSizeBytes": 515387
+        }
+      ],
+      "status": "ready",
+      "createdAt": "2026-11-07T00:58:04.210Z",
+      "updatedAt": "2026-11-07T00:59:27.761Z",
+      "soundtrackId": "varejo_alegre",
+      "soundtrackVolume": 0.2
+    },
+    {
       "id": "proj-radio-live",
-      "userId": "user-1793499635601",
+      "userId": "user-1794018982990",
       "niche": "supermercado",
       "title": "Rádio Web — Ofertas & Avisos Ao Vivo",
-      "storeName": "Supermercado Leal",
+      "storeName": "Infor Artes",
       "storeCity": "Loja",
       "objective": "Locuções geradas direto na Rádio Web do Supermercado",
       "campaignType": "superofertas",
@@ -58,174 +152,66 @@
       "products": [],
       "scripts": [
         {
-          "id": "scr-1793935594679",
-          "text": "No ar, a Rádio Supermercado Leal! A seleção musical perfeita para embalar o seu dia com ofertas imperdíveis em todos os corredores.",
-          "estimatedDurationSeconds": 8,
-          "wordCount": 22,
-          "createdAt": "2026-11-06T03:26:34.679Z",
-          "note": "Música & Melhores Compras"
+          "id": "scr-1794021825798",
+          "text": "Atenção senhores clientes! Informamos que a nossa loja encerrará o atendimento dentro de quinze minutos. Pedimos por gentileza que se dirijam aos caixas para finalizar suas compras. Agradecemos a preferência!",
+          "estimatedDurationSeconds": 11,
+          "wordCount": 30,
+          "createdAt": "2026-11-07T03:23:45.798Z",
+          "note": "Comunicado — Aviso de Encerramento do Expediente"
         },
         {
-          "id": "scr-1793935591314",
-          "text": "No ar, a Rádio Supermercado Leal! A seleção musical perfeita para embalar o seu dia com ofertas imperdíveis em todos os corredores.",
-          "estimatedDurationSeconds": 8,
-          "wordCount": 22,
-          "createdAt": "2026-11-06T03:26:31.314Z",
-          "note": "Música & Melhores Compras"
-        },
-        {
-          "id": "scr-1793935583285",
-          "text": "Rádio Supermercado Leal! A rádio da economia e das melhores ofertas para a sua família. Aqui você compra mais gastando menos!",
-          "estimatedDurationSeconds": 8,
-          "wordCount": 21,
-          "createdAt": "2026-11-06T03:26:23.285Z",
-          "note": "Slogan & Economia Familiar"
-        },
-        {
-          "id": "scr-1793935580297",
-          "text": "Rádio Supermercado Leal! A rádio da economia e das melhores ofertas para a sua família. Aqui você compra mais gastando menos!",
-          "estimatedDurationSeconds": 8,
-          "wordCount": 21,
-          "createdAt": "2026-11-06T03:26:20.297Z",
-          "note": "Slogan & Economia Familiar"
-        },
-        {
-          "id": "scr-1793935572767",
-          "text": "Seja muito bem-vindo ao Supermercado Leal! É um prazer imenso ter você aqui com a gente. Aproveite nossas promoções e tenha um ótimo dia de compras!",
-          "estimatedDurationSeconds": 10,
-          "wordCount": 26,
-          "createdAt": "2026-11-06T03:26:12.767Z",
-          "note": "Boas-Vindas com Carinho ao Cliente"
-        },
-        {
-          "id": "scr-1793935558374",
-          "text": "Você está sintonizado na Rádio Supermercado Leal! A sua melhor escolha em economia, variedade e produtos selecionados todos os dias.",
-          "estimatedDurationSeconds": 7,
-          "wordCount": 20,
-          "createdAt": "2026-11-06T03:25:58.374Z",
-          "note": "Identificação Oficial da Rádio da Loja"
+          "id": "scr-1794021753661",
+          "text": "Atenção clientes! Oferta relâmpago acabando de entrar no ar: Café Torrado e Moído quinhentos gramas por apenas quatorze reais e noventa centavos a unidade! Aproveite agora nos nossos corredores!",
+          "estimatedDurationSeconds": 11,
+          "wordCount": 29,
+          "createdAt": "2026-11-07T03:22:33.661Z",
+          "note": "Oferta Relâmpago — Rádio do Supermercado"
         }
       ],
       "currentScriptIndex": 0,
       "audios": [
         {
-          "id": "aud-1793935592286-a1ptf",
+          "id": "aud-1794021821318-yyjt8",
           "projectId": "radio-web",
-          "title": "Música & Melhores Compras",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
-          "soundtrackId": "varejo_alegre",
-          "soundtrackName": "Varejo Alegre & Enérgico",
-          "soundtrackVolume": 0.18,
-          "provider": "elevenlabs",
-          "format": "mp3",
-          "durationSeconds": 8,
-          "audioUrl": "/api/audio/aud-1793935592286-a1ptf.mp3",
-          "downloadUrl": "/api/audio/aud-1793935592286-a1ptf.mp3?download=1",
-          "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:26:34.678Z",
-          "fileSizeBytes": 235773
-        },
-        {
-          "id": "aud-1793935587920-byphn",
-          "projectId": "radio-web",
-          "title": "Música & Melhores Compras",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
-          "soundtrackId": "varejo_alegre",
-          "soundtrackName": "Varejo Alegre & Enérgico",
-          "soundtrackVolume": 0.18,
-          "provider": "elevenlabs",
-          "format": "mp3",
-          "durationSeconds": 8,
-          "audioUrl": "/api/audio/aud-1793935587920-byphn.mp3",
-          "downloadUrl": "/api/audio/aud-1793935587920-byphn.mp3?download=1",
-          "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:26:31.314Z",
-          "fileSizeBytes": 251446
-        },
-        {
-          "id": "aud-1793935581492-2kyli",
-          "projectId": "radio-web",
-          "title": "Slogan & Economia Familiar",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
-          "soundtrackId": "varejo_alegre",
-          "soundtrackName": "Varejo Alegre & Enérgico",
-          "soundtrackVolume": 0.18,
-          "provider": "elevenlabs",
-          "format": "mp3",
-          "durationSeconds": 8,
-          "audioUrl": "/api/audio/aud-1793935581492-2kyli.mp3",
-          "downloadUrl": "/api/audio/aud-1793935581492-2kyli.mp3?download=1",
-          "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:26:23.285Z",
-          "fileSizeBytes": 220099
-        },
-        {
-          "id": "aud-1793935578158-or1g3",
-          "projectId": "radio-web",
-          "title": "Slogan & Economia Familiar",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
-          "soundtrackId": "varejo_alegre",
-          "soundtrackName": "Varejo Alegre & Enérgico",
-          "soundtrackVolume": 0.18,
-          "provider": "elevenlabs",
-          "format": "mp3",
-          "durationSeconds": 8,
-          "audioUrl": "/api/audio/aud-1793935578158-or1g3.mp3",
-          "downloadUrl": "/api/audio/aud-1793935578158-or1g3.mp3?download=1",
-          "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:26:20.297Z",
-          "fileSizeBytes": 225742
-        },
-        {
-          "id": "aud-1793935569657-20yhh",
-          "projectId": "radio-web",
-          "title": "Boas-Vindas com Carinho ao Cliente",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
+          "title": "Comunicado — Aviso de Encerramento do Expediente",
+          "voiceId": "cabLxBh81HurPAAJfEHo",
+          "voiceName": "Bea (Acolhedora & Amigável)",
           "soundtrackId": "institucional_gourmet",
           "soundtrackName": "Elegante & Institucional",
-          "soundtrackVolume": 0.18,
+          "soundtrackVolume": 0.22,
           "provider": "elevenlabs",
           "format": "mp3",
-          "durationSeconds": 10,
-          "audioUrl": "/api/audio/aud-1793935569657-20yhh.mp3",
-          "downloadUrl": "/api/audio/aud-1793935569657-20yhh.mp3?download=1",
+          "durationSeconds": 11,
+          "audioUrl": "/api/audio/aud-1794021821318-yyjt8.mp3",
+          "downloadUrl": "/api/audio/aud-1794021821318-yyjt8.mp3?download=1",
           "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:26:12.767Z",
-          "fileSizeBytes": 237653
+          "creditsUsed": 5,
+          "createdAt": "2026-11-07T03:23:45.798Z",
+          "fileSizeBytes": 287182
         },
         {
-          "id": "aud-1793935552831-iowi7",
+          "id": "aud-1794021749720-c6ho2",
           "projectId": "radio-web",
-          "title": "Identificação Oficial da Rádio da Loja",
-          "voiceId": "MZxV5lN3cv7hi1376O0m",
-          "voiceName": "Ana Dias - Engaging, Smooth and Forceful",
+          "title": "Oferta Relâmpago — Rádio do Supermercado",
+          "voiceId": "cabLxBh81HurPAAJfEHo",
+          "voiceName": "Bea (Acolhedora & Amigável)",
           "soundtrackId": "varejo_alegre",
           "soundtrackName": "Varejo Alegre & Enérgico",
-          "soundtrackVolume": 0.18,
+          "soundtrackVolume": 0.22,
           "provider": "elevenlabs",
           "format": "mp3",
-          "durationSeconds": 7,
-          "audioUrl": "/api/audio/aud-1793935552831-iowi7.mp3",
-          "downloadUrl": "/api/audio/aud-1793935552831-iowi7.mp3?download=1",
+          "durationSeconds": 11,
+          "audioUrl": "/api/audio/aud-1794021749720-c6ho2.mp3",
+          "downloadUrl": "/api/audio/aud-1794021749720-c6ho2.mp3?download=1",
           "status": "ready",
-          "creditsUsed": 0,
-          "createdAt": "2026-11-06T03:25:58.374Z",
-          "fileSizeBytes": 277151
+          "creditsUsed": 5,
+          "createdAt": "2026-11-07T03:22:33.661Z",
+          "fileSizeBytes": 374953
         }
       ],
       "status": "ready",
-      "createdAt": "2026-11-06T03:25:58.374Z",
-      "updatedAt": "2026-11-06T03:26:34.679Z"
+      "createdAt": "2026-11-07T03:22:33.661Z",
+      "updatedAt": "2026-11-07T03:23:45.798Z"
     },
     {
       "id": "proj-1793473163359",
@@ -1746,6 +1732,123 @@
   ],
   "creditTransactions": [
     {
+      "id": "tx-1794024220676-sshb",
+      "userId": "user-1794024220579",
+      "type": "credit",
+      "amount": 5000,
+      "description": "Pagamento Confirmado: Upgrade de Assinatura (Redes & Atacarejo - 5.000 créditos/mês) (R$ 199)",
+      "createdAt": "2026-11-07T04:03:40.676Z"
+    },
+    {
+      "id": "tx-1794024220639-qvau",
+      "userId": "user-1794024220579",
+      "type": "credit",
+      "amount": 1500,
+      "description": "Pagamento Confirmado: Upgrade de Assinatura (Pro Varejo - 1.500 créditos/mês) (R$ 89)",
+      "createdAt": "2026-11-07T04:03:40.639Z"
+    },
+    {
+      "id": "tx-1794024220582-8sos",
+      "userId": "user-1794024220579",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T04:03:40.582Z"
+    },
+    {
+      "id": "tx-1794024144841-m2gr",
+      "userId": "user-1794019916659",
+      "type": "credit",
+      "amount": 1000,
+      "description": "Pagamento Confirmado: Upgrade de Assinatura (Pro Varejo - 1.000 créditos/mês) (R$ 89)",
+      "createdAt": "2026-11-07T04:02:24.841Z"
+    },
+    {
+      "id": "tx-1794021825796-umia",
+      "userId": "user-1794018982990",
+      "type": "debit",
+      "amount": 5,
+      "description": "Locução Rádio Web: Comunicado — Aviso de Encerramento do Expediente",
+      "referenceId": "aud-1794021821318-yyjt8",
+      "createdAt": "2026-11-07T03:23:45.796Z"
+    },
+    {
+      "id": "tx-1794021753659-3ukd",
+      "userId": "user-1794018982990",
+      "type": "debit",
+      "amount": 5,
+      "description": "Locução Rádio Web: Oferta Relâmpago — Rádio do Supermercado",
+      "referenceId": "aud-1794021749720-c6ho2",
+      "createdAt": "2026-11-07T03:22:33.659Z"
+    },
+    {
+      "id": "tx-1794019916661-5eky",
+      "userId": "user-1794019916659",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T02:51:56.661Z"
+    },
+    {
+      "id": "tx-1794019734429-bccq",
+      "userId": "user-1794019734427",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T02:48:54.429Z"
+    },
+    {
+      "id": "tx-1794019093297-g16c",
+      "userId": "user-1794019093294",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T02:38:13.297Z"
+    },
+    {
+      "id": "tx-1794018982993-8rbu",
+      "userId": "user-1794018982990",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T02:36:22.993Z"
+    },
+    {
+      "id": "tx-1794018167957-c8a6",
+      "userId": "user-1794018167955",
+      "type": "credit",
+      "amount": 50,
+      "description": "Bônus de Boas-Vindas (Cadastro)",
+      "createdAt": "2026-11-07T02:22:47.958Z"
+    },
+    {
+      "id": "tx-1794014236015-r06u",
+      "userId": "user-admin",
+      "type": "debit",
+      "amount": 5,
+      "description": "Locução Rádio Web: Oferta Rádio — Arroz Tio joao cinco quilos por",
+      "referenceId": "aud-1794014230172-izwpx",
+      "createdAt": "2026-11-07T01:17:16.015Z"
+    },
+    {
+      "id": "tx-1794013167232-am6v",
+      "userId": "user-admin",
+      "type": "debit",
+      "amount": 5,
+      "description": "Geração de Locução: Nova Campanha de Ofertas",
+      "referenceId": "aud-1794013161925-5oz2g",
+      "createdAt": "2026-11-07T00:59:27.232Z"
+    },
+    {
+      "id": "tx-1794012983020-7ygo",
+      "userId": "user-admin",
+      "type": "debit",
+      "amount": 5,
+      "description": "Locução Rádio Web: Oferta Relâmpago — Rádio do Supermercado",
+      "referenceId": "aud-1794012978672-tl47v",
+      "createdAt": "2026-11-07T00:56:23.020Z"
+    },
+    {
       "id": "tx-1793932122884-u8gn",
       "userId": "user-alvorada",
       "type": "credit",
@@ -2717,20 +2820,24 @@
     ],
     "commercialPlans": [
       {
-        "id": "degustacao",
-        "name": "Degustação",
+        "id": "gratuito",
+        "name": "Degustação (Grátis)",
         "tag": "Teste Inicial",
         "subtitle": "Perfeito para você experimentar a qualidade na prática na sua loja.",
         "price": 0,
         "billingPeriod": "grátis",
         "creditsAmount": 50,
         "features": [
-          "50 créditos de boas-vindas",
-          "Acesso a todas as 5 vozes de varejo",
-          "Downloads imediatos em MP3",
-          "Acesso à Rádio Web no navegador"
+          "50 créditos de boas-vindas para testes",
+          "Locuções de Ofertas comerciais narradas por IA",
+          "1 Loja / 1 Computador",
+          "Download imediato dos áudios em MP3",
+          "Vinhetas e Sweepers: exclusivo planos Pro",
+          "Avisos e Comunicados: exclusivo planos Pro",
+          "Upload de áudios e músicas do PC: exclusivo Pro",
+          "Transmissão simultânea em vários PCs: não incluso"
         ],
-        "ctaText": "Começar Grátis",
+        "ctaText": "Plano Grátis",
         "badge": "",
         "highlighted": false
       },
@@ -2741,15 +2848,18 @@
         "subtitle": "Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.",
         "price": 89,
         "billingPeriod": "/mês",
-        "creditsAmount": 1000,
+        "creditsAmount": 1500,
         "features": [
-          "1.500 créditos mensais renovados",
-          "Geração em lote com download em arquivo ZIP",
-          "Rádio Web contínua com Auto-Ducking",
-          "15 vinhetas personalizadas com o nome da loja",
+          "1.500 créditos mensais renovados todo mês",
+          "1 Loja / 1 Computador de Transmissão por vez",
+          "Proteção inteligente contra transmissões simultâneas",
+          "Vinhetas & Sweepers personalizadas 100% liberadas",
+          "Avisos Informativos & Utilidade Pública liberados",
+          "Upload de Áudios e Músicas MP3 do seu PC liberado",
+          "Rádio Web ao Vivo com Auto-Ducking automático",
           "Suporte prioritário via WhatsApp"
         ],
-        "ctaText": "Assinar Pro Varejo",
+        "ctaText": "Fazer Upgrade para Pro Varejo",
         "badge": "Mais Escolhido",
         "highlighted": true
       },
@@ -2760,15 +2870,19 @@
         "subtitle": "Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.",
         "price": 199,
         "billingPeriod": "/mês",
-        "creditsAmount": 4000,
+        "creditsAmount": 5000,
         "features": [
-          "5.000 créditos mensais",
-          "Múltiplas lojas e filiais gerenciadas",
-          "Clonagem de voz personalizada da marca",
-          "Gerente de conta e suporte dedicado"
+          "5.000 créditos mensais renovados todo mês",
+          "Multi-Lojas: Múltiplas Lojas & Filiais Simultâneas",
+          "Transmissão simultânea em vários computadores ao mesmo tempo",
+          "Painel de Gestão de Filiais da Rede em tempo real",
+          "Programação e campanhas independentes por filial",
+          "Vinhetas, Avisos, Uploads e Recursos Pro 100% liberados",
+          "Clonagem de voz personalizada da marca (sob demanda)",
+          "Gerente de contas e atendimento VIP prioritário"
         ],
-        "ctaText": "Falar com Consultor",
-        "badge": "",
+        "ctaText": "Fazer Upgrade para Redes & Atacarejo",
+        "badge": "Potência Máxima",
         "highlighted": false
       }
     ],
@@ -2786,6 +2900,44 @@
       "webhookSecret": "whsec_superlocucao_prod_2026"
     },
     "subscriptions": [
+      {
+        "id": "sub-1794024220683",
+        "userId": "user-1794024220579",
+        "userName": "Lojista Teste",
+        "companyName": "Super Teste",
+        "email": "lojista1794024220434@teste.com",
+        "planId": "redes_atacarejo",
+        "planName": "Redes & Atacarejo",
+        "amount": 199,
+        "billingPeriod": "/mês",
+        "status": "active",
+        "paymentMethod": "pix",
+        "gateway": "Mercado Pago",
+        "currentPeriodStart": "2026-11-07T04:03:40.683Z",
+        "currentPeriodEnd": "2026-12-07T04:03:40.683Z",
+        "creditsPerCycle": 5000,
+        "autoRenew": true,
+        "createdAt": "2026-11-07T04:03:40.683Z"
+      },
+      {
+        "id": "sub-1794024144845",
+        "userId": "user-1794019916659",
+        "userName": "Fort",
+        "companyName": "Super Fort",
+        "email": "fort@superfort.com.br",
+        "planId": "pro_varejo",
+        "planName": "Pro Varejo",
+        "amount": 89,
+        "billingPeriod": "/mês",
+        "status": "active",
+        "paymentMethod": "pix",
+        "gateway": "Mercado Pago",
+        "currentPeriodStart": "2026-11-07T04:02:24.845Z",
+        "currentPeriodEnd": "2026-12-07T04:02:24.845Z",
+        "creditsPerCycle": 1000,
+        "autoRenew": true,
+        "createdAt": "2026-11-07T04:02:24.845Z"
+      },
       {
         "id": "sub-alvorada-01",
         "userId": "user-alvorada",
@@ -2845,6 +2997,108 @@
       }
     ],
     "payments": [
+      {
+        "id": "SUB-MW5VT2OM-JFBD",
+        "userId": "user-1794018982990",
+        "userName": "Infor Artes",
+        "companyName": "Infor Artes",
+        "clientName": "Infor Artes",
+        "clientEmail": "inforartes.ap@gmail.com",
+        "type": "subscription",
+        "planId": "pro_varejo",
+        "description": "Upgrade de Assinatura (Pro Varejo - 1.500 créditos/mês)",
+        "itemName": "Pro Varejo",
+        "amount": 89,
+        "creditsAdded": 1500,
+        "creditsAmount": 1500,
+        "status": "pending",
+        "paymentMethod": "pix",
+        "method": "pix",
+        "gateway": "Mercado Pago",
+        "createdAt": "2026-11-07T04:06:40.342Z"
+      },
+      {
+        "id": "SUB-MW5VP81O-IWUK",
+        "userId": "user-1794024220579",
+        "userName": "Lojista Teste",
+        "companyName": "Super Teste",
+        "clientName": "Lojista Teste",
+        "clientEmail": "lojista1794024220434@teste.com",
+        "type": "subscription",
+        "planId": "redes_atacarejo",
+        "description": "Upgrade de Assinatura (Redes & Atacarejo - 5.000 créditos/mês)",
+        "itemName": "Redes & Atacarejo",
+        "amount": 199,
+        "creditsAdded": 5000,
+        "creditsAmount": 5000,
+        "status": "approved",
+        "paymentMethod": "pix",
+        "method": "pix",
+        "gateway": "Mercado Pago",
+        "createdAt": "2026-11-07T04:03:40.668Z",
+        "paidAt": "2026-11-07T04:03:40.676Z"
+      },
+      {
+        "id": "SUB-MW5VP7ZR-KHD3",
+        "userId": "user-1794024220579",
+        "userName": "Lojista Teste",
+        "companyName": "Super Teste",
+        "clientName": "Lojista Teste",
+        "clientEmail": "lojista1794024220434@teste.com",
+        "type": "subscription",
+        "planId": "pro_varejo",
+        "description": "Upgrade de Assinatura (Pro Varejo - 1.500 créditos/mês)",
+        "itemName": "Pro Varejo",
+        "amount": 89,
+        "creditsAdded": 1500,
+        "creditsAmount": 1500,
+        "status": "approved",
+        "paymentMethod": "pix",
+        "method": "pix",
+        "gateway": "Mercado Pago",
+        "createdAt": "2026-11-07T04:03:40.611Z",
+        "paidAt": "2026-11-07T04:03:40.639Z"
+      },
+      {
+        "id": "SUB-MW5VNLIS-EAQE",
+        "userId": "user-1794019916659",
+        "userName": "Fort",
+        "companyName": "Super Fort",
+        "clientName": "Fort",
+        "clientEmail": "fort@superfort.com.br",
+        "type": "subscription",
+        "planId": "pro_varejo",
+        "description": "Upgrade de Assinatura (Pro Varejo - 1.000 créditos/mês)",
+        "itemName": "Pro Varejo",
+        "amount": 89,
+        "creditsAdded": 1000,
+        "creditsAmount": 1000,
+        "status": "approved",
+        "paymentMethod": "pix",
+        "method": "pix",
+        "gateway": "Mercado Pago",
+        "createdAt": "2026-11-07T04:02:24.825Z",
+        "paidAt": "2026-11-07T04:02:24.841Z"
+      },
+      {
+        "id": "PAY-MW5TDWL5-ZQKK",
+        "userId": "user-1794019916659",
+        "userName": "Fort",
+        "companyName": "Super Fort",
+        "clientName": "Fort",
+        "clientEmail": "fort@superfort.com.br",
+        "type": "recharge",
+        "description": "Recarga de Créditos (Pacote Pro Varejo - 1.000 créditos)",
+        "itemName": "Pacote Pro Varejo",
+        "amount": 69.9,
+        "creditsAdded": 1000,
+        "creditsAmount": 1000,
+        "status": "pending",
+        "paymentMethod": "pix",
+        "method": "pix",
+        "gateway": "Mercado Pago",
+        "createdAt": "2026-11-07T02:58:53.373Z"
+      },
       {
         "id": "PAY-MW4CXICE-R900",
         "userId": "user-alvorada",
@@ -3341,7 +3595,16 @@
       }
     ],
     "activePlaylistId": "todas",
-    "voiceVolume": 1
+    "voiceVolume": 1,
+    "stores": [
+      {
+        "id": "store-matriz",
+        "name": "Supermercado Alvorada — Loja Matriz",
+        "city": "Centro",
+        "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+        "createdAt": "2026-11-07T03:35:33.177Z"
+      }
+    ]
   },
   "radioConfigs": {
     "user-alvorada": {
@@ -3679,11 +3942,20 @@
         }
       ],
       "activePlaylistId": "todas",
-      "voiceVolume": 1
+      "voiceVolume": 1,
+      "stores": [
+        {
+          "id": "store-matriz",
+          "name": "Supermercado Alvorada — Loja Matriz",
+          "city": "Centro",
+          "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+          "createdAt": "2026-11-07T03:35:33.177Z"
+        }
+      ]
     },
     "user-admin": {
       "stationName": "Rádio Locução Super IA Matriz FM",
-      "storeName": "Locução Super IA Matriz",
+      "storeName": "Locução Super IA Matriz — Loja Matriz",
       "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
       "isOnAir": false,
       "mode": "intervalo_tempo",
@@ -3741,6 +4013,90 @@
       ],
       "autoPublishNewAudios": true,
       "queue": [
+        {
+          "id": "rq-upload-1794024219797-ipfln",
+          "audioId": "upload-1794024219797-ipfln",
+          "projectId": "upload-computer",
+          "title": "locucao-demo-hortifruti",
+          "audioUrl": "/api/audio/upload-1794024219797-ipfln.mp3",
+          "downloadUrl": "/api/audio/upload-1794024219797-ipfln.mp3?download=1",
+          "durationSeconds": 17,
+          "voiceName": "Áudio do Computador",
+          "campaignType": "ofertas_dia",
+          "storeName": "Locução Super IA Matriz — Loja Matriz",
+          "type": "vinheta",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T04:03:40.572Z"
+        },
+        {
+          "id": "rq-upload-1794024061150-els20",
+          "audioId": "upload-1794024061150-els20",
+          "projectId": "upload-computer",
+          "title": "locucao-demo-hortifruti",
+          "audioUrl": "/api/audio/upload-1794024061150-els20.mp3",
+          "downloadUrl": "/api/audio/upload-1794024061150-els20.mp3?download=1",
+          "durationSeconds": 17,
+          "voiceName": "Áudio do Computador",
+          "campaignType": "ofertas_dia",
+          "storeName": "Locução Super IA Matriz — Loja Matriz",
+          "type": "vinheta",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T04:01:01.913Z"
+        },
+        {
+          "id": "rq-aud-1794014230172-izwpx",
+          "audioId": "aud-1794014230172-izwpx",
+          "projectId": "radio-web",
+          "title": "Oferta Rádio — Arroz Tio joao cinco quilos por",
+          "audioUrl": "/api/audio/aud-1794014230172-izwpx.mp3",
+          "downloadUrl": "/api/audio/aud-1794014230172-izwpx.mp3?download=1",
+          "durationSeconds": 19,
+          "voiceName": "Dany Varejo",
+          "campaignType": "ofertas_dia",
+          "storeName": "Locução Super IA Matriz",
+          "type": "relampago",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T01:17:16.019Z",
+          "playCount": 1,
+          "lastPlayedAt": "2026-11-07T01:17:37.822Z"
+        },
+        {
+          "id": "rq-aud-1794013161925-5oz2g",
+          "audioId": "aud-1794013161925-5oz2g",
+          "projectId": "proj-1794013084210",
+          "title": "Nova Campanha de Ofertas",
+          "audioUrl": "/api/audio/aud-1794013161925-5oz2g.mp3",
+          "downloadUrl": "/api/audio/aud-1794013161925-5oz2g.mp3?download=1",
+          "durationSeconds": 19,
+          "voiceName": "Cassio Cruz - Confident and Direct",
+          "campaignType": "ofertas_dia",
+          "storeName": "Locução Super IA Matriz",
+          "type": "oferta",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T00:59:34.086Z"
+        },
+        {
+          "id": "rq-aud-1794012978672-tl47v",
+          "audioId": "aud-1794012978672-tl47v",
+          "projectId": "radio-web",
+          "title": "Oferta Relâmpago — Rádio do Supermercado",
+          "audioUrl": "/api/audio/aud-1794012978672-tl47v.mp3",
+          "downloadUrl": "/api/audio/aud-1794012978672-tl47v.mp3?download=1",
+          "durationSeconds": 11,
+          "voiceName": "Ana Alice - Friendly & Clear",
+          "campaignType": "ofertas_dia",
+          "storeName": "Locução Super IA Matriz",
+          "type": "relampago",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T00:56:23.026Z",
+          "playCount": 2,
+          "lastPlayedAt": "2026-11-07T00:57:40.756Z"
+        },
         {
           "id": "rq-aud-1793935592286-a1ptf",
           "audioId": "aud-1793935592286-a1ptf",
@@ -3994,6 +4350,22 @@
           "durationSeconds": 220,
           "bpm": 98,
           "active": true
+        }
+      ],
+      "stores": [
+        {
+          "id": "store-matriz",
+          "name": "Locução Super IA Matriz — Loja Matriz",
+          "city": "Centro",
+          "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+          "createdAt": "2026-11-07T03:40:22.409Z"
+        },
+        {
+          "id": "store-1794022874349-dsft",
+          "name": "Lojas 2",
+          "city": "Floripa",
+          "slogan": "Super Master",
+          "createdAt": "2026-11-07T03:41:14.349Z"
         }
       ]
     },
@@ -4305,6 +4677,15 @@
           "bpm": 98,
           "active": true
         }
+      ],
+      "stores": [
+        {
+          "id": "store-matriz",
+          "name": "Supermercado Leal — Loja Matriz",
+          "city": "Florianópolis",
+          "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+          "createdAt": "2026-11-07T03:58:13.115Z"
+        }
       ]
     },
     "user-alpha-123": {
@@ -4517,6 +4898,880 @@
     "user-beta-456": {
       "stationName": "Rádio Beta Popular",
       "storeName": "Atacado Beta",
+      "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+      "isOnAir": false,
+      "mode": "intervalo_tempo",
+      "spotsEveryNTracks": 1,
+      "spotsIntervalSeconds": 45,
+      "onlyOffersPauseSeconds": 4,
+      "musicVolume": 0.75,
+      "spotVolume": 1,
+      "duckingLevel": 0.12,
+      "selectedMusicCategory": "todas",
+      "activePlaylistId": "todas",
+      "playlists": [
+        {
+          "id": "pop_varejo",
+          "name": "Pop & Varejo Comercial",
+          "description": "Hits animados e ritmo comercial moderno para compras do dia a dia no supermercado",
+          "icon": "🛒",
+          "color": "orange"
+        },
+        {
+          "id": "acustico_manha",
+          "name": "Manhã, Padaria & Hortifrúti",
+          "description": "Violão acústico suave, frescor matinal e compras aconchegantes",
+          "icon": "🥖",
+          "color": "emerald"
+        },
+        {
+          "id": "energetico_ofertas",
+          "name": "Super Ofertas & Batidão de Preço",
+          "description": "Batida acelerada para promoções relâmpago, queima de estoque e hora do rush",
+          "icon": "⚡",
+          "color": "red"
+        },
+        {
+          "id": "lounge_gourmet",
+          "name": "Lounge Empório & Adega Gourmet",
+          "description": "Smooth lounge e harmonia sofisticada para vinhos, queijos nobres e empório",
+          "icon": "🍷",
+          "color": "purple"
+        },
+        {
+          "id": "brasil_sucessos",
+          "name": "Brasilidades & Sertanejo Suave",
+          "description": "Ritmos populares brasileiros, clima acolhedor de feira e fim de semana",
+          "icon": "🤠",
+          "color": "amber"
+        },
+        {
+          "id": "tarde_calma",
+          "name": "Tarde Tranquila & Clássicos de Loja",
+          "description": "Músicas suaves e relaxantes para compras calmas sem pressa",
+          "icon": "☕",
+          "color": "sky"
+        }
+      ],
+      "autoPublishNewAudios": true,
+      "queue": [],
+      "musicTracks": [
+        {
+          "id": "music-varejo-alegre",
+          "title": "Manhã de Compras & Ofertas",
+          "artist": "Rádio Supermercado Instrumental",
+          "style": "Pop Varejo Alegre & Família (124 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 185,
+          "bpm": 124,
+          "active": true
+        },
+        {
+          "id": "music-batida-comercial",
+          "title": "Pop Comercial Varejo Hit",
+          "artist": "Estúdio Som de Loja",
+          "style": "Batida Pop Comercial Moderna (120 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/batida_comercial/preview.mp3",
+          "durationSeconds": 210,
+          "bpm": 120,
+          "active": true
+        },
+        {
+          "id": "music-radio-sucesso",
+          "title": "Rádio Sucesso do Varejo",
+          "artist": "Varejo FM Mix",
+          "style": "Hit Comercial Contagiante de Loja (122 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/radio_sucesso/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 122,
+          "active": true
+        },
+        {
+          "id": "music-acustico-hortifruti",
+          "title": "Feirinha & Padaria Acústica",
+          "artist": "Violão & Café",
+          "style": "Violão Acústico Suave & Pão Quentinho (105 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 105,
+          "active": true
+        },
+        {
+          "id": "music-manha-tropical",
+          "title": "Manhã Tropical & Frutas Frescas",
+          "artist": "Acústico & MPB Instrumental",
+          "style": "Frescor Matinal para Hortifrúti e Padaria (108 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 180,
+          "bpm": 108,
+          "active": true
+        },
+        {
+          "id": "music-black-friday",
+          "title": "Ritmo Quente de Superofertas",
+          "artist": "Groove Atacarejo",
+          "style": "Batidão Promocional & Hora do Rush (128 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 175,
+          "bpm": 128,
+          "active": true
+        },
+        {
+          "id": "music-liquidacao-geral",
+          "title": "Liquidação Imbatível & Queima Geral",
+          "artist": "Super Ofertas Bass",
+          "style": "Ritmo Dinâmico de Grande Urgência (130 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 130,
+          "active": true
+        },
+        {
+          "id": "music-institucional-gourmet",
+          "title": "Lounge Empório & Adega",
+          "artist": "Supermercado Premium",
+          "style": "Smooth Piano & Adega de Vinhos Nobres (96 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 240,
+          "bpm": 96,
+          "active": true
+        },
+        {
+          "id": "music-bossa-emporio",
+          "title": "Bossa & Jazz no Empório Nobre",
+          "artist": "Jazz Café Trio",
+          "style": "Lounge Acústico Sofisticado para Queijos e Vinhos (100 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 215,
+          "bpm": 100,
+          "active": true
+        },
+        {
+          "id": "music-sertanejo-feira",
+          "title": "Sertanejo Acústico de Supermercado",
+          "artist": "Violas do Brasil",
+          "style": "Viola Suave Instrumental & Clima de Feira (112 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/gospel_inspiracional/preview.mp3",
+          "durationSeconds": 200,
+          "bpm": 112,
+          "active": true
+        },
+        {
+          "id": "music-brasilidades-feira",
+          "title": "Brasilidades & MPB de Feira Fresca",
+          "artist": "Ritmos do Brasil",
+          "style": "Percussão Suave & Harmonia Brasileira (110 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 110,
+          "active": true
+        },
+        {
+          "id": "music-tarde-serena",
+          "title": "Tarde Serena de Compras Tranquilas",
+          "artist": "Loja Conforto Ensemble",
+          "style": "Ambiente Calmo para Compras sem Pressa (98 BPM)",
+          "category": "tarde_calma",
+          "playlistId": "tarde_calma",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 220,
+          "bpm": 98,
+          "active": true
+        }
+      ]
+    },
+    "user-1794018167955": {
+      "stationName": "Rádio Infor Artes FM",
+      "storeName": "Infor Artes",
+      "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+      "isOnAir": false,
+      "mode": "intervalo_tempo",
+      "spotsEveryNTracks": 1,
+      "spotsIntervalSeconds": 45,
+      "onlyOffersPauseSeconds": 4,
+      "musicVolume": 0.75,
+      "spotVolume": 1,
+      "duckingLevel": 0.12,
+      "selectedMusicCategory": "todas",
+      "activePlaylistId": "todas",
+      "playlists": [
+        {
+          "id": "pop_varejo",
+          "name": "Pop & Varejo Comercial",
+          "description": "Hits animados e ritmo comercial moderno para compras do dia a dia no supermercado",
+          "icon": "🛒",
+          "color": "orange"
+        },
+        {
+          "id": "acustico_manha",
+          "name": "Manhã, Padaria & Hortifrúti",
+          "description": "Violão acústico suave, frescor matinal e compras aconchegantes",
+          "icon": "🥖",
+          "color": "emerald"
+        },
+        {
+          "id": "energetico_ofertas",
+          "name": "Super Ofertas & Batidão de Preço",
+          "description": "Batida acelerada para promoções relâmpago, queima de estoque e hora do rush",
+          "icon": "⚡",
+          "color": "red"
+        },
+        {
+          "id": "lounge_gourmet",
+          "name": "Lounge Empório & Adega Gourmet",
+          "description": "Smooth lounge e harmonia sofisticada para vinhos, queijos nobres e empório",
+          "icon": "🍷",
+          "color": "purple"
+        },
+        {
+          "id": "brasil_sucessos",
+          "name": "Brasilidades & Sertanejo Suave",
+          "description": "Ritmos populares brasileiros, clima acolhedor de feira e fim de semana",
+          "icon": "🤠",
+          "color": "amber"
+        },
+        {
+          "id": "tarde_calma",
+          "name": "Tarde Tranquila & Clássicos de Loja",
+          "description": "Músicas suaves e relaxantes para compras calmas sem pressa",
+          "icon": "☕",
+          "color": "sky"
+        }
+      ],
+      "autoPublishNewAudios": true,
+      "queue": [],
+      "musicTracks": [
+        {
+          "id": "music-varejo-alegre",
+          "title": "Manhã de Compras & Ofertas",
+          "artist": "Rádio Supermercado Instrumental",
+          "style": "Pop Varejo Alegre & Família (124 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 185,
+          "bpm": 124,
+          "active": true
+        },
+        {
+          "id": "music-batida-comercial",
+          "title": "Pop Comercial Varejo Hit",
+          "artist": "Estúdio Som de Loja",
+          "style": "Batida Pop Comercial Moderna (120 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/batida_comercial/preview.mp3",
+          "durationSeconds": 210,
+          "bpm": 120,
+          "active": true
+        },
+        {
+          "id": "music-radio-sucesso",
+          "title": "Rádio Sucesso do Varejo",
+          "artist": "Varejo FM Mix",
+          "style": "Hit Comercial Contagiante de Loja (122 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/radio_sucesso/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 122,
+          "active": true
+        },
+        {
+          "id": "music-acustico-hortifruti",
+          "title": "Feirinha & Padaria Acústica",
+          "artist": "Violão & Café",
+          "style": "Violão Acústico Suave & Pão Quentinho (105 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 105,
+          "active": true
+        },
+        {
+          "id": "music-manha-tropical",
+          "title": "Manhã Tropical & Frutas Frescas",
+          "artist": "Acústico & MPB Instrumental",
+          "style": "Frescor Matinal para Hortifrúti e Padaria (108 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 180,
+          "bpm": 108,
+          "active": true
+        },
+        {
+          "id": "music-black-friday",
+          "title": "Ritmo Quente de Superofertas",
+          "artist": "Groove Atacarejo",
+          "style": "Batidão Promocional & Hora do Rush (128 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 175,
+          "bpm": 128,
+          "active": true
+        },
+        {
+          "id": "music-liquidacao-geral",
+          "title": "Liquidação Imbatível & Queima Geral",
+          "artist": "Super Ofertas Bass",
+          "style": "Ritmo Dinâmico de Grande Urgência (130 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 130,
+          "active": true
+        },
+        {
+          "id": "music-institucional-gourmet",
+          "title": "Lounge Empório & Adega",
+          "artist": "Supermercado Premium",
+          "style": "Smooth Piano & Adega de Vinhos Nobres (96 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 240,
+          "bpm": 96,
+          "active": true
+        },
+        {
+          "id": "music-bossa-emporio",
+          "title": "Bossa & Jazz no Empório Nobre",
+          "artist": "Jazz Café Trio",
+          "style": "Lounge Acústico Sofisticado para Queijos e Vinhos (100 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 215,
+          "bpm": 100,
+          "active": true
+        },
+        {
+          "id": "music-sertanejo-feira",
+          "title": "Sertanejo Acústico de Supermercado",
+          "artist": "Violas do Brasil",
+          "style": "Viola Suave Instrumental & Clima de Feira (112 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/gospel_inspiracional/preview.mp3",
+          "durationSeconds": 200,
+          "bpm": 112,
+          "active": true
+        },
+        {
+          "id": "music-brasilidades-feira",
+          "title": "Brasilidades & MPB de Feira Fresca",
+          "artist": "Ritmos do Brasil",
+          "style": "Percussão Suave & Harmonia Brasileira (110 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 110,
+          "active": true
+        },
+        {
+          "id": "music-tarde-serena",
+          "title": "Tarde Serena de Compras Tranquilas",
+          "artist": "Loja Conforto Ensemble",
+          "style": "Ambiente Calmo para Compras sem Pressa (98 BPM)",
+          "category": "tarde_calma",
+          "playlistId": "tarde_calma",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 220,
+          "bpm": 98,
+          "active": true
+        }
+      ]
+    },
+    "user-1794018982990": {
+      "stationName": "Rádio Infor Artes FM",
+      "storeName": "Infor Artes",
+      "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+      "isOnAir": false,
+      "mode": "intervalo_tempo",
+      "spotsEveryNTracks": 1,
+      "spotsIntervalSeconds": 45,
+      "onlyOffersPauseSeconds": 4,
+      "musicVolume": 0.75,
+      "spotVolume": 1,
+      "duckingLevel": 0.12,
+      "selectedMusicCategory": "todas",
+      "activePlaylistId": "todas",
+      "playlists": [
+        {
+          "id": "pop_varejo",
+          "name": "Pop & Varejo Comercial",
+          "description": "Hits animados e ritmo comercial moderno para compras do dia a dia no supermercado",
+          "icon": "🛒",
+          "color": "orange"
+        },
+        {
+          "id": "acustico_manha",
+          "name": "Manhã, Padaria & Hortifrúti",
+          "description": "Violão acústico suave, frescor matinal e compras aconchegantes",
+          "icon": "🥖",
+          "color": "emerald"
+        },
+        {
+          "id": "energetico_ofertas",
+          "name": "Super Ofertas & Batidão de Preço",
+          "description": "Batida acelerada para promoções relâmpago, queima de estoque e hora do rush",
+          "icon": "⚡",
+          "color": "red"
+        },
+        {
+          "id": "lounge_gourmet",
+          "name": "Lounge Empório & Adega Gourmet",
+          "description": "Smooth lounge e harmonia sofisticada para vinhos, queijos nobres e empório",
+          "icon": "🍷",
+          "color": "purple"
+        },
+        {
+          "id": "brasil_sucessos",
+          "name": "Brasilidades & Sertanejo Suave",
+          "description": "Ritmos populares brasileiros, clima acolhedor de feira e fim de semana",
+          "icon": "🤠",
+          "color": "amber"
+        },
+        {
+          "id": "tarde_calma",
+          "name": "Tarde Tranquila & Clássicos de Loja",
+          "description": "Músicas suaves e relaxantes para compras calmas sem pressa",
+          "icon": "☕",
+          "color": "sky"
+        }
+      ],
+      "autoPublishNewAudios": true,
+      "queue": [
+        {
+          "id": "rq-aud-1794021821318-yyjt8",
+          "audioId": "aud-1794021821318-yyjt8",
+          "projectId": "radio-web",
+          "title": "Comunicado — Aviso de Encerramento do Expediente",
+          "audioUrl": "/api/audio/aud-1794021821318-yyjt8.mp3",
+          "downloadUrl": "/api/audio/aud-1794021821318-yyjt8.mp3?download=1",
+          "durationSeconds": 11,
+          "voiceName": "Bea (Acolhedora & Amigável)",
+          "campaignType": "ofertas_dia",
+          "storeName": "Infor Artes",
+          "type": "comunicado",
+          "active": true,
+          "priority": "normal",
+          "addedAt": "2026-11-07T03:23:45.800Z",
+          "playCount": 1,
+          "lastPlayedAt": "2026-11-07T03:34:45.208Z"
+        },
+        {
+          "id": "rq-aud-1794021749720-c6ho2",
+          "audioId": "aud-1794021749720-c6ho2",
+          "projectId": "radio-web",
+          "title": "Oferta Relâmpago — Rádio do Supermercado",
+          "audioUrl": "/api/audio/aud-1794021749720-c6ho2.mp3",
+          "downloadUrl": "/api/audio/aud-1794021749720-c6ho2.mp3?download=1",
+          "durationSeconds": 11,
+          "voiceName": "Bea (Acolhedora & Amigável)",
+          "campaignType": "ofertas_dia",
+          "storeName": "Infor Artes",
+          "type": "relampago",
+          "active": true,
+          "priority": "alta",
+          "addedAt": "2026-11-07T03:22:33.664Z",
+          "playCount": 3,
+          "lastPlayedAt": "2026-11-07T03:35:45.806Z"
+        }
+      ],
+      "musicTracks": [
+        {
+          "id": "music-varejo-alegre",
+          "title": "Manhã de Compras & Ofertas",
+          "artist": "Rádio Supermercado Instrumental",
+          "style": "Pop Varejo Alegre & Família (124 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 185,
+          "bpm": 124,
+          "active": true
+        },
+        {
+          "id": "music-batida-comercial",
+          "title": "Pop Comercial Varejo Hit",
+          "artist": "Estúdio Som de Loja",
+          "style": "Batida Pop Comercial Moderna (120 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/batida_comercial/preview.mp3",
+          "durationSeconds": 210,
+          "bpm": 120,
+          "active": true
+        },
+        {
+          "id": "music-radio-sucesso",
+          "title": "Rádio Sucesso do Varejo",
+          "artist": "Varejo FM Mix",
+          "style": "Hit Comercial Contagiante de Loja (122 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/radio_sucesso/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 122,
+          "active": true
+        },
+        {
+          "id": "music-acustico-hortifruti",
+          "title": "Feirinha & Padaria Acústica",
+          "artist": "Violão & Café",
+          "style": "Violão Acústico Suave & Pão Quentinho (105 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 105,
+          "active": true
+        },
+        {
+          "id": "music-manha-tropical",
+          "title": "Manhã Tropical & Frutas Frescas",
+          "artist": "Acústico & MPB Instrumental",
+          "style": "Frescor Matinal para Hortifrúti e Padaria (108 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 180,
+          "bpm": 108,
+          "active": true
+        },
+        {
+          "id": "music-black-friday",
+          "title": "Ritmo Quente de Superofertas",
+          "artist": "Groove Atacarejo",
+          "style": "Batidão Promocional & Hora do Rush (128 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 175,
+          "bpm": 128,
+          "active": true
+        },
+        {
+          "id": "music-liquidacao-geral",
+          "title": "Liquidação Imbatível & Queima Geral",
+          "artist": "Super Ofertas Bass",
+          "style": "Ritmo Dinâmico de Grande Urgência (130 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 130,
+          "active": true
+        },
+        {
+          "id": "music-institucional-gourmet",
+          "title": "Lounge Empório & Adega",
+          "artist": "Supermercado Premium",
+          "style": "Smooth Piano & Adega de Vinhos Nobres (96 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 240,
+          "bpm": 96,
+          "active": true
+        },
+        {
+          "id": "music-bossa-emporio",
+          "title": "Bossa & Jazz no Empório Nobre",
+          "artist": "Jazz Café Trio",
+          "style": "Lounge Acústico Sofisticado para Queijos e Vinhos (100 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 215,
+          "bpm": 100,
+          "active": true
+        },
+        {
+          "id": "music-sertanejo-feira",
+          "title": "Sertanejo Acústico de Supermercado",
+          "artist": "Violas do Brasil",
+          "style": "Viola Suave Instrumental & Clima de Feira (112 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/gospel_inspiracional/preview.mp3",
+          "durationSeconds": 200,
+          "bpm": 112,
+          "active": true
+        },
+        {
+          "id": "music-brasilidades-feira",
+          "title": "Brasilidades & MPB de Feira Fresca",
+          "artist": "Ritmos do Brasil",
+          "style": "Percussão Suave & Harmonia Brasileira (110 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 110,
+          "active": true
+        },
+        {
+          "id": "music-tarde-serena",
+          "title": "Tarde Serena de Compras Tranquilas",
+          "artist": "Loja Conforto Ensemble",
+          "style": "Ambiente Calmo para Compras sem Pressa (98 BPM)",
+          "category": "tarde_calma",
+          "playlistId": "tarde_calma",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 220,
+          "bpm": 98,
+          "active": true
+        }
+      ],
+      "stores": [
+        {
+          "id": "store-matriz",
+          "name": "Infor Artes — Loja Matriz",
+          "city": "Centro",
+          "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+          "createdAt": "2026-11-07T03:35:36.272Z"
+        }
+      ]
+    },
+    "user-1794019093294": {
+      "stationName": "Rádio Super Fort FM",
+      "storeName": "Super Fort",
+      "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
+      "isOnAir": false,
+      "mode": "intervalo_tempo",
+      "spotsEveryNTracks": 1,
+      "spotsIntervalSeconds": 45,
+      "onlyOffersPauseSeconds": 4,
+      "musicVolume": 0.75,
+      "spotVolume": 1,
+      "duckingLevel": 0.12,
+      "selectedMusicCategory": "todas",
+      "activePlaylistId": "todas",
+      "playlists": [
+        {
+          "id": "pop_varejo",
+          "name": "Pop & Varejo Comercial",
+          "description": "Hits animados e ritmo comercial moderno para compras do dia a dia no supermercado",
+          "icon": "🛒",
+          "color": "orange"
+        },
+        {
+          "id": "acustico_manha",
+          "name": "Manhã, Padaria & Hortifrúti",
+          "description": "Violão acústico suave, frescor matinal e compras aconchegantes",
+          "icon": "🥖",
+          "color": "emerald"
+        },
+        {
+          "id": "energetico_ofertas",
+          "name": "Super Ofertas & Batidão de Preço",
+          "description": "Batida acelerada para promoções relâmpago, queima de estoque e hora do rush",
+          "icon": "⚡",
+          "color": "red"
+        },
+        {
+          "id": "lounge_gourmet",
+          "name": "Lounge Empório & Adega Gourmet",
+          "description": "Smooth lounge e harmonia sofisticada para vinhos, queijos nobres e empório",
+          "icon": "🍷",
+          "color": "purple"
+        },
+        {
+          "id": "brasil_sucessos",
+          "name": "Brasilidades & Sertanejo Suave",
+          "description": "Ritmos populares brasileiros, clima acolhedor de feira e fim de semana",
+          "icon": "🤠",
+          "color": "amber"
+        },
+        {
+          "id": "tarde_calma",
+          "name": "Tarde Tranquila & Clássicos de Loja",
+          "description": "Músicas suaves e relaxantes para compras calmas sem pressa",
+          "icon": "☕",
+          "color": "sky"
+        }
+      ],
+      "autoPublishNewAudios": true,
+      "queue": [],
+      "musicTracks": [
+        {
+          "id": "music-varejo-alegre",
+          "title": "Manhã de Compras & Ofertas",
+          "artist": "Rádio Supermercado Instrumental",
+          "style": "Pop Varejo Alegre & Família (124 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 185,
+          "bpm": 124,
+          "active": true
+        },
+        {
+          "id": "music-batida-comercial",
+          "title": "Pop Comercial Varejo Hit",
+          "artist": "Estúdio Som de Loja",
+          "style": "Batida Pop Comercial Moderna (120 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/batida_comercial/preview.mp3",
+          "durationSeconds": 210,
+          "bpm": 120,
+          "active": true
+        },
+        {
+          "id": "music-radio-sucesso",
+          "title": "Rádio Sucesso do Varejo",
+          "artist": "Varejo FM Mix",
+          "style": "Hit Comercial Contagiante de Loja (122 BPM)",
+          "category": "pop_varejo",
+          "playlistId": "pop_varejo",
+          "audioUrl": "/api/soundtracks/radio_sucesso/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 122,
+          "active": true
+        },
+        {
+          "id": "music-acustico-hortifruti",
+          "title": "Feirinha & Padaria Acústica",
+          "artist": "Violão & Café",
+          "style": "Violão Acústico Suave & Pão Quentinho (105 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 195,
+          "bpm": 105,
+          "active": true
+        },
+        {
+          "id": "music-manha-tropical",
+          "title": "Manhã Tropical & Frutas Frescas",
+          "artist": "Acústico & MPB Instrumental",
+          "style": "Frescor Matinal para Hortifrúti e Padaria (108 BPM)",
+          "category": "acustico_manha",
+          "playlistId": "acustico_manha",
+          "audioUrl": "/api/soundtracks/acustico_hortifruti/preview.mp3",
+          "durationSeconds": 180,
+          "bpm": 108,
+          "active": true
+        },
+        {
+          "id": "music-black-friday",
+          "title": "Ritmo Quente de Superofertas",
+          "artist": "Groove Atacarejo",
+          "style": "Batidão Promocional & Hora do Rush (128 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 175,
+          "bpm": 128,
+          "active": true
+        },
+        {
+          "id": "music-liquidacao-geral",
+          "title": "Liquidação Imbatível & Queima Geral",
+          "artist": "Super Ofertas Bass",
+          "style": "Ritmo Dinâmico de Grande Urgência (130 BPM)",
+          "category": "energetico_ofertas",
+          "playlistId": "energetico_ofertas",
+          "audioUrl": "/api/soundtracks/black_friday_urgente/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 130,
+          "active": true
+        },
+        {
+          "id": "music-institucional-gourmet",
+          "title": "Lounge Empório & Adega",
+          "artist": "Supermercado Premium",
+          "style": "Smooth Piano & Adega de Vinhos Nobres (96 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 240,
+          "bpm": 96,
+          "active": true
+        },
+        {
+          "id": "music-bossa-emporio",
+          "title": "Bossa & Jazz no Empório Nobre",
+          "artist": "Jazz Café Trio",
+          "style": "Lounge Acústico Sofisticado para Queijos e Vinhos (100 BPM)",
+          "category": "lounge_gourmet",
+          "playlistId": "lounge_gourmet",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 215,
+          "bpm": 100,
+          "active": true
+        },
+        {
+          "id": "music-sertanejo-feira",
+          "title": "Sertanejo Acústico de Supermercado",
+          "artist": "Violas do Brasil",
+          "style": "Viola Suave Instrumental & Clima de Feira (112 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/gospel_inspiracional/preview.mp3",
+          "durationSeconds": 200,
+          "bpm": 112,
+          "active": true
+        },
+        {
+          "id": "music-brasilidades-feira",
+          "title": "Brasilidades & MPB de Feira Fresca",
+          "artist": "Ritmos do Brasil",
+          "style": "Percussão Suave & Harmonia Brasileira (110 BPM)",
+          "category": "brasil_sucessos",
+          "playlistId": "brasil_sucessos",
+          "audioUrl": "/api/soundtracks/varejo_alegre/preview.mp3",
+          "durationSeconds": 190,
+          "bpm": 110,
+          "active": true
+        },
+        {
+          "id": "music-tarde-serena",
+          "title": "Tarde Serena de Compras Tranquilas",
+          "artist": "Loja Conforto Ensemble",
+          "style": "Ambiente Calmo para Compras sem Pressa (98 BPM)",
+          "category": "tarde_calma",
+          "playlistId": "tarde_calma",
+          "audioUrl": "/api/soundtracks/institucional_gourmet/preview.mp3",
+          "durationSeconds": 220,
+          "bpm": 98,
+          "active": true
+        }
+      ]
+    },
+    "user-1794019916659": {
+      "stationName": "Rádio Super Fort FM",
+      "storeName": "Super Fort",
       "slogan": "A rádio da economia e das melhores ofertas para a sua família!",
       "isOnAir": false,
       "mode": "intervalo_tempo",

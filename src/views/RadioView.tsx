@@ -48,7 +48,11 @@ import {
   Radio as RadioIcon,
   Bell,
   Calendar,
+  Building2,
+  Lock,
+  Crown,
 } from 'lucide-react';
+import { PlanUpgradeModal } from '../components/PlanUpgradeModal';
 import { useRadio } from '../context/RadioContext';
 import { attachVoiceNormalizer, BroadcastVoiceProcessor } from '../utils/audioNormalizer';
 import {
@@ -58,11 +62,12 @@ import {
   playCashRegister,
   LiveMicrophoneBroadcaster,
 } from '../utils/soundboard';
-import { VoicePreset, SoundtrackOption, SoundtrackId, RadioQueueItem, RadioPlaylist, RadioMusicTrack } from '../types';
+import { VoicePreset, SoundtrackOption, SoundtrackId, RadioQueueItem, RadioPlaylist, RadioMusicTrack, UserProfile } from '../types';
 import { api } from '../services/api';
 import { useFavoriteVoices } from '../services/voiceFavorites';
 
 interface RadioViewProps {
+  user?: UserProfile;
   onCreditsChanged: (newBalance: number) => void;
   onOpenStudio: () => void;
 }
@@ -580,7 +585,7 @@ export const SUPERMARKET_VINHETAS: RadioVinhetaItem[] = [
   },
 ];
 
-export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenStudio }) => {
+export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, onOpenStudio }) => {
   const {
     config,
     availableAudios,
@@ -626,7 +631,29 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
     triggerManualDucking,
     isLiveMicActive,
     setLiveMicActive,
+    sessionConflict,
+    clearSessionConflict,
+    takeoverRadioSession,
+    supersededMessage,
+    clearSupersededMessage,
+    activeStoreId,
+    setActiveStoreId,
+    createRadioStore,
+    updateRadioStore,
+    deleteRadioStore,
   } = useRadio();
+
+  const isGratuito = user?.plan === 'gratuito';
+  const isProVarejo = user?.plan === 'pro_varejo';
+  const isRedesAtacarejo = user?.plan === 'redes_atacarejo' || user?.role === 'admin';
+
+  const [restrictedModal, setRestrictedModal] = useState<{ title: string; message: string } | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState<boolean>(false);
+  const [isStoreManagerOpen, setIsStoreManagerOpen] = useState<boolean>(false);
+  const [newStoreName, setNewStoreName] = useState<string>('');
+  const [newStoreCity, setNewStoreCity] = useState<string>('');
+  const [newStoreSlogan, setNewStoreSlogan] = useState<string>('');
+  const [isCreatingStore, setIsCreatingStore] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<
     'flash_studio' | 'announcements' | 'vinhetas' | 'queue' | 'music' | 'library_import'
@@ -854,6 +881,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
   const [isDeletingMusicTrack, setIsDeletingMusicTrack] = useState<boolean>(false);
 
   const handleMusicFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isGratuito) {
+      if (uploadMusicFileInputRef.current) uploadMusicFileInputRef.current.value = '';
+      setRestrictedModal({
+        title: 'Upload de Músicas MP3 da Loja',
+        message: 'O envio de músicas MP3 próprias do computador para a Rádio Web é exclusivo dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você tem à disposição mais de 6 playlists temáticas com dezenas de músicas comerciais prontas!'
+      });
+      return;
+    }
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
@@ -953,6 +988,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
   };
 
   const handleSpotFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isGratuito) {
+      if (uploadSpotInputRef.current) uploadSpotInputRef.current.value = '';
+      setRestrictedModal({
+        title: 'Upload de Áudio do Computador',
+        message: 'O envio de arquivos de áudio externos do computador para a Rádio Web é exclusivo dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você gera e transmite locuções de ofertas comerciais direto com as vozes de IA!'
+      });
+      return;
+    }
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -1474,6 +1517,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
   };
 
   const handleApplyTemplate = (tpl: QuickRadioTemplate) => {
+    if (isGratuito && (tpl.type === 'comunicado' || tpl.type === 'vinheta')) {
+      setRestrictedModal({
+        title: tpl.type === 'vinheta' ? 'Vinhetas da Loja' : 'Avisos Informativos',
+        message: `A utilização de ${tpl.type === 'vinheta' ? 'vinhetas' : 'avisos informativos'} na Rádio Web é exclusiva dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você tem à disposição as opções de Ofertas Relâmpago e Feirinha do Hortifrúti para testar com 50 créditos!`
+      });
+      return;
+    }
     setFlashTitle(tpl.title);
     setFlashScript(tpl.script);
     setFlashType(tpl.type);
@@ -1613,6 +1663,21 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
       {/* ===================================================================== */}
       {/* TOP BROADCAST CONSOLE HEADER (ON AIR / DUAL-DECK MONITOR)             */}
       {/* ===================================================================== */}
+      {supersededMessage && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 animate-in fade-in shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>{supersededMessage}</span>
+          </div>
+          <button
+            onClick={clearSupersededMessage}
+            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-bold cursor-pointer transition shrink-0"
+          >
+            Entendido
+          </button>
+        </div>
+      )}
+
       <div className="relative overflow-hidden rounded-3xl bg-[#181b24] border border-zinc-700/80 shadow-2xl">
         {/* Ambient Glow when ON AIR */}
         {isOnAir && (
@@ -1660,9 +1725,19 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   {isOnAir ? 'NO AR AO VIVO' : 'ESTÚDIO OFF AIR'}
                 </span>
 
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                  🏪 {config.storeName}
-                </span>
+                {isRedesAtacarejo ? (
+                  <button
+                    onClick={() => setIsStoreManagerOpen(true)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Building2 className="w-3 h-3 text-orange-400" />
+                    <span>Filiais ({config.stores?.length || 1})</span>
+                  </button>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    🏪 {config.storeName}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1685,9 +1760,40 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
                   {isOnAir ? 'NO AR • TRANSMITINDO AO VIVO' : 'ESTÚDIO EM ESPERA (OFF AIR)'}
                 </span>
 
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30">
-                  🏪 {config.storeName}
-                </span>
+                {isRedesAtacarejo ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 text-orange-300 border border-orange-500/30 text-xs">
+                    <Building2 className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span className="font-bold">Filial da Rede:</span>
+                    <select
+                      value={activeStoreId}
+                      onChange={e => setActiveStoreId(e.target.value)}
+                      className="bg-transparent text-white font-bold focus:outline-none cursor-pointer max-w-[170px] truncate"
+                    >
+                      {(config.stores || []).map(st => (
+                        <option key={st.id} value={st.id} className="bg-[#181b24] text-white">
+                          {st.name} {st.city ? `(${st.city})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsStoreManagerOpen(true)}
+                      className="ml-1 px-2 py-0.5 rounded-full bg-orange-500/20 hover:bg-orange-500/30 text-[10px] text-orange-200 font-black cursor-pointer transition"
+                      title="Gerenciar Filiais da Rede"
+                    >
+                      Gerenciar ({config.stores?.length || 1})
+                    </button>
+                  </div>
+                ) : isProVarejo ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30 flex items-center gap-1.5">
+                    <span>🏪 {config.storeName}</span>
+                    <span className="text-[10px] text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-700">1 Computador por vez</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-800/80 text-zinc-300 border border-zinc-700 flex items-center gap-1.5">
+                    <span>🎁 Degustação: {config.storeName}</span>
+                  </span>
+                )}
 
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#141620] text-zinc-300 border border-zinc-700/80">
                   {activeOffersCount} ofertas ativas • {activeMusicCount} trilhas musicais
@@ -2218,13 +2324,15 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               <BellRing className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-amber-400" />
               <span className="sm:hidden">Avisos</span>
               <span className="hidden sm:inline">Avisos & Informativos</span>
-              <span className={`px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
-                activeTab === 'announcements'
-                  ? 'bg-black/20 text-zinc-950 border border-black/10'
-                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                Grátis
-              </span>
+              {isGratuito ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5" /> PRO
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Liberado
+                </span>
+              )}
             </button>
 
             <button
@@ -2238,13 +2346,15 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
               <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-purple-400" />
               <span className="sm:hidden">Vinhetas</span>
               <span className="hidden sm:inline">Vinhetas da Loja</span>
-              <span className={`px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
-                activeTab === 'vinhetas'
-                  ? 'bg-black/20 text-zinc-950 border border-black/10'
-                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                Grátis
-              </span>
+              {isGratuito ? (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5" /> PRO
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Liberado
+                </span>
+              )}
             </button>
 
             <button
@@ -2718,7 +2828,35 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* ================================================================= */}
           {/* TAB 2: CENTRAL DE AVISOS RÁPIDOS, INFORMATIVOS & SOUNDBOARD       */}
           {/* ================================================================= */}
-          {activeTab === 'announcements' && (
+          {activeTab === 'announcements' && isGratuito ? (
+            <div className="rounded-3xl bg-[#181b24] border border-amber-500/30 p-8 sm:p-14 text-center max-w-2xl mx-auto space-y-5 shadow-2xl my-6 animate-in zoom-in-95">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-3xl">
+                <Lock className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-block">
+                  Recurso Exclusivo Pro Varejo & Redes
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Avisos Informativos & Utilidade Pública
+                </h2>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-lg mx-auto">
+                  Avisos de fornada de pão quente, comunicados de estacionamento, avisos de fechamento de loja, chamadas de clientes e avisos operacionais são exclusivos a partir do plano <strong>Pro Varejo</strong>.
+                </p>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#141620] border border-zinc-800 text-xs text-zinc-300 max-w-lg mx-auto">
+                🎁 No seu <strong>Plano Degustação</strong> você tem 50 créditos para testar a geração e transmissão de locuções de ofertas comerciais ao vivo no som da sua loja!
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={() => setActiveTab('flash_studio')}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 hover:from-orange-400 hover:to-amber-400 transition cursor-pointer"
+                >
+                  Voltar para Locuções de Ofertas
+                </button>
+              </div>
+            </div>
+          ) : activeTab === 'announcements' && (
             <div className="space-y-6">
               {/* Feedback Alert */}
               {announcementFeedback && (
@@ -3128,7 +3266,35 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           {/* ================================================================= */}
           {/* TAB 3: CENTRAL DE VINHETAS DA LOJA (IDENTIDADE & SWEEPERS)        */}
           {/* ================================================================= */}
-          {activeTab === 'vinhetas' && (
+          {activeTab === 'vinhetas' && isGratuito ? (
+            <div className="rounded-3xl bg-[#181b24] border border-purple-500/30 p-8 sm:p-14 text-center max-w-2xl mx-auto space-y-5 shadow-2xl my-6 animate-in zoom-in-95">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto text-3xl">
+                <Lock className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30 inline-block">
+                  Recurso Exclusivo Pro Varejo & Redes
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Vinhetas Institucionais da Rádio
+                </h2>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-lg mx-auto">
+                  A criação de vinhetas personalizadas com o nome da sua loja, carimbos sweepers de rádio e mensagens de boas-vindas institucionais são exclusivas dos planos <strong>Pro Varejo</strong> e <strong>Redes & Atacarejo</strong>.
+                </p>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#141620] border border-zinc-800 text-xs text-zinc-300 max-w-lg mx-auto">
+                🎁 No seu <strong>Plano Degustação</strong> você pode gerar e colocar no ar locuções completas de ofertas com nossos locutores de IA!
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={() => setActiveTab('flash_studio')}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 hover:from-orange-400 hover:to-amber-400 transition cursor-pointer"
+                >
+                  Voltar para Locuções de Ofertas
+                </button>
+              </div>
+            </div>
+          ) : activeTab === 'vinhetas' && (
             <div className="space-y-6">
               {/* Feedback Alert */}
               {vinhetaFeedback && (
@@ -5447,6 +5613,319 @@ export const RadioView: React.FC<RadioViewProps> = ({ onCreditsChanged, onOpenSt
           </div>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 1: CONFLITO DE SESSÃO ÚNICA (PLANO PRO VAREJO - 1 COMPUTADOR)  */}
+      {/* ===================================================================== */}
+      {sessionConflict && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181b24] border border-orange-500/40 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/30 text-orange-400 flex items-center justify-center text-3xl">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/30 inline-block">
+                Regra de Transmissão Simultânea (Pro Varejo)
+              </span>
+              <h3 className="text-xl font-black text-white">
+                Rádio Web em Reprodução em Outro Computador
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                {sessionConflict.message}
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#141620] border border-zinc-800 text-xs text-zinc-400 space-y-1">
+              <p className="font-semibold text-zinc-300">
+                💡 Como funciona a regra do plano Pro Varejo:
+              </p>
+              <p>
+                O plano <strong>Pro Varejo</strong> é licenciado para 1 computador ou ponto de áudio transmitindo por vez. Para transmitir em <strong>mais de uma loja ou em múltiplos computadores ao mesmo tempo</strong>, conheça o plano <strong>Redes & Atacarejo</strong>.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={takeoverRadioSession}
+                className="w-full sm:flex-1 px-4 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20 transition"
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                <span>Transferir para este Computador</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={clearSessionConflict}
+                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs cursor-pointer transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 2: RECURSO RESTRITO (PLANO GRÁTIS - VINHETAS / AVISOS / UPLOAD)  */}
+      {/* ===================================================================== */}
+      {restrictedModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181b24] border border-amber-500/40 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-3xl">
+              <Lock className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-block">
+                Recurso Exclusivo Pro Varejo & Redes
+              </span>
+              <h3 className="text-xl font-black text-white">
+                {restrictedModal.title}
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                {restrictedModal.message}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRestrictedModal(null);
+                  setIsUpgradeModalOpen(true);
+                }}
+                className="w-full sm:flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/25 transition"
+              >
+                <Crown className="w-4 h-4 fill-zinc-950" />
+                <span>Fazer Upgrade para o Pro</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRestrictedModal(null)}
+                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs flex items-center justify-center transition cursor-pointer"
+              >
+                <span>Fechar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 3: GERENCIADOR DE FILIAIS E MULTI-LOJAS (REDES & ATACAREJO)     */}
+      {/* ===================================================================== */}
+      {isStoreManagerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181b24] border border-zinc-700 rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 text-orange-400 flex items-center justify-center">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-black text-white">
+                      Filiais & Lojas da Rede
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      Redes & Atacarejo
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Transmita a Rádio Web simultaneamente em cada loja da sua rede, em computadores diferentes e com nomes personalizados.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsStoreManagerOpen(false)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List of Registered Stores */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 block">
+                Lojas e Filiais Cadastradas na sua Rede:
+              </label>
+
+              <div className="space-y-2">
+                {(config.stores || []).map((st) => {
+                  const isCurrent = activeStoreId === st.id;
+                  return (
+                    <div
+                      key={st.id}
+                      className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isCurrent
+                          ? 'bg-orange-500/10 border-orange-500/40 shadow-sm'
+                          : 'bg-[#141620] border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-sm">
+                            {st.name}
+                          </span>
+                          {isCurrent && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-orange-500 text-zinc-950">
+                              Loja deste Computador
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-2">
+                          {st.city && <span>📍 {st.city}</span>}
+                          {st.slogan && <span>• "{st.slogan}"</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isCurrent && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveStoreId(st.id);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 font-bold text-xs cursor-pointer transition shadow-sm"
+                          >
+                            Tocar Esta Loja Aqui
+                          </button>
+                        )}
+                        {(config.stores || []).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Tem certeza que deseja remover a filial "${st.name}"?`)) {
+                                deleteRadioStore(st.id);
+                              }
+                            }}
+                            className="p-2 rounded-xl text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+                            title="Remover Filial"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Add New Branch Form */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#141620] border border-zinc-800 space-y-3.5">
+              <h4 className="text-sm font-black text-white flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-orange-400" />
+                <span>Adicionar Nova Filial à Rede</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                    Nome da Filial *
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreName}
+                    onChange={e => setNewStoreName(e.target.value)}
+                    placeholder="Ex: Loja 02 - Filial Norte"
+                    className="w-full px-3 py-2 bg-[#181b24] border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                    Cidade / Bairro
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreCity}
+                    onChange={e => setNewStoreCity(e.target.value)}
+                    placeholder="Ex: Joinville - SC"
+                    className="w-full px-3 py-2 bg-[#181b24] border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                    Slogan da Loja
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreSlogan}
+                    onChange={e => setNewStoreSlogan(e.target.value)}
+                    placeholder="Ex: O barateiro da cidade"
+                    className="w-full px-3 py-2 bg-[#181b24] border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newStoreName.trim()) {
+                      alert('Digite o nome da nova filial.');
+                      return;
+                    }
+                    try {
+                      setIsCreatingStore(true);
+                      await createRadioStore({
+                        name: newStoreName.trim(),
+                        city: newStoreCity.trim(),
+                        slogan: newStoreSlogan.trim(),
+                      });
+                      setNewStoreName('');
+                      setNewStoreCity('');
+                      setNewStoreSlogan('');
+                    } catch (err: any) {
+                      alert(err.message || 'Erro ao criar filial.');
+                    } finally {
+                      setIsCreatingStore(false);
+                    }
+                  }}
+                  disabled={isCreatingStore || !newStoreName.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-zinc-950 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-orange-500/20 transition"
+                >
+                  {isCreatingStore ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Cadastrando Filial...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Cadastrar Filial na Rede</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsStoreManagerOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs cursor-pointer transition"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PLAN UPGRADE MODAL */}
+      <PlanUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        user={user || null}
+        onPlanUpgraded={(_newPlan, _credits) => {
+          refreshRadioData();
+        }}
+      />
     </div>
   );
 };

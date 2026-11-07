@@ -33,6 +33,7 @@ import {
   RotateCcw,
   VolumeX,
   ArrowUp,
+  Menu,
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
@@ -54,22 +55,27 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [downloadingAudioId, setDownloadingAudioId] = useState<string | null>(null);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
     {
       id: 'degustacao',
-      name: 'Degustação',
+      name: 'Degustação (Grátis)',
       tag: 'Teste Inicial',
       subtitle: 'Perfeito para você experimentar a qualidade na prática na sua loja.',
       price: 0,
       billingPeriod: 'grátis',
       creditsAmount: 50,
       features: [
-        '50 créditos de boas-vindas',
-        'Acesso a todas as 5 vozes de varejo',
-        'Downloads imediatos em MP3',
-        'Acesso à Rádio Web no navegador',
+        '50 créditos de boas-vindas para testes',
+        'Locuções de Ofertas comerciais narradas por IA',
+        '1 Loja / 1 Computador',
+        'Download imediato dos áudios em MP3',
+        'Vinhetas e Sweepers: exclusivo planos Pro',
+        'Avisos e Comunicados: exclusivo planos Pro',
+        'Upload de áudios e músicas do PC: exclusivo Pro',
+        'Transmissão simultânea em vários PCs: não incluso',
       ],
       ctaText: 'Começar Grátis',
       badge: '',
@@ -84,10 +90,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
       billingPeriod: '/mês',
       creditsAmount: 1500,
       features: [
-        '1.500 créditos mensais renovados',
-        'Geração em lote com download em arquivo ZIP',
-        'Rádio Web contínua com Auto-Ducking',
-        '15 vinhetas personalizadas com o nome da loja',
+        '1.500 créditos mensais renovados todo mês',
+        '1 Loja / 1 Computador de Transmissão por vez',
+        'Proteção inteligente contra transmissões simultâneas',
+        'Vinhetas & Sweepers personalizadas 100% liberadas',
+        'Avisos Informativos & Utilidade Pública liberados',
+        'Upload de Áudios e Músicas MP3 do seu PC liberado',
+        'Rádio Web ao Vivo com Auto-Ducking automático',
         'Suporte prioritário via WhatsApp',
       ],
       ctaText: 'Assinar Pro Varejo',
@@ -103,10 +112,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
       billingPeriod: '/mês',
       creditsAmount: 5000,
       features: [
-        '5.000 créditos mensais',
-        'Múltiplas lojas e filiais gerenciadas',
-        'Clonagem de voz personalizada da marca',
-        'Gerente de conta e suporte dedicado',
+        '5.000 créditos mensais renovados todo mês',
+        'Multi-Lojas: Múltiplas Lojas & Filiais Simultâneas',
+        'Transmissão simultânea em vários computadores ao mesmo tempo',
+        'Painel de Gestão de Filiais da Rede em tempo real',
+        'Programação e campanhas independentes por filial',
+        'Vinhetas, Avisos, Uploads e Recursos Pro 100% liberados',
+        'Clonagem de voz personalizada da marca (sob demanda)',
+        'Gerente de contas e atendimento VIP prioritário',
       ],
       ctaText: 'Falar com Consultor',
       badge: '',
@@ -328,47 +341,47 @@ export const LandingView: React.FC<LandingViewProps> = ({
     };
   }, []);
 
-  // Vitrine de Spots de Áudio Individuais
+  // Vitrine de Spots de Áudio Individuais (Vozes e textos exclusivos diferentes da rádio)
   const demoSpots = [
     {
-      id: 'demo-carne',
-      title: 'Quarta da Carne & Açougue',
-      tag: 'Açougue & Carnes',
-      badgeColor: 'bg-red-500/15 text-red-400 border-red-500/30',
-      voice: 'Daniel (Varejo Enérgico)',
-      duration: '28s',
-      url: '/api/audio/aud-demo-1.mp3?v=eleven',
-      text: 'Atenção clientes do Supermercado! Quarta da Carne com Alcatra Friboi por apenas trinta e seis reais e noventa centavos o quilo! Coxa e sobrecoxa Sadia só oito reais e noventa e nove centavos!',
-    },
-    {
-      id: 'demo-fim-semana',
-      title: 'Super Fim de Semana de Ofertas',
-      tag: 'Churrasco & Bebidas',
+      id: 'demo-padaria',
+      title: 'Pão Quentinho & Fornada da Padaria',
+      tag: 'Padaria & Confeitaria',
       badgeColor: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-      voice: 'Rodrigo (Voz de Impacto Grave)',
-      duration: '38s',
-      url: '/api/audio/aud-demo-2.mp3?v=eleven',
-      text: 'O fim de semana chegou com tudo no Supermercado Alvorada! Picanha bovina fatiada grill por só cinquenta e nove reais e noventa centavos o quilo! Cerveja Heineken lata bem gelada, quatro reais e oitenta e nove centavos!',
+      voice: 'Mariana (Voz Jovem & Dinâmica)',
+      duration: '16s',
+      url: '/api/audio/aud-vitrine-padaria.mp3',
+      text: 'Atenção clientes! Tem fornada fresquinha saindo agora na nossa padaria! Pão francês crocante quentinho a toda hora, além de bolos caseiros e salgados com preços especiais. Venha sentir esse aroma irresistível no setor de panificação!',
     },
     {
-      id: 'demo-hortifruti',
-      title: 'Festival de Hortifrúti & Feirinha',
-      tag: 'Hortifrúti Fresco',
-      badgeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-      voice: 'Carolina (Vendedora Amigável)',
-      duration: '25s',
-      url: '/api/audio/aud-demo-3.mp3?v=eleven',
-      text: 'Tem feirinha fresca hoje no nosso supermercado! Banana-caturra selecionada por apenas três reais e noventa e nove centavos o quilo! Tomate italiano fresquinho por quatro reais e quarenta e nove centavos o quilo!',
+      id: 'demo-atacarejo',
+      title: 'Queima de Estoque & Limpeza',
+      tag: 'Mega Queima & Atacarejo',
+      badgeColor: 'bg-red-500/15 text-red-400 border-red-500/30',
+      voice: 'Nassif (Oferta Relâmpago & Varejo Rápido)',
+      duration: '17s',
+      url: '/api/audio/aud-vitrine-atacarejo.mp3',
+      text: 'Atenção: começou a grande queima de estoque em toda a mercearia e limpeza! Arroz cinco quilos, óleo de soja e sabão em pó com preços de atacado para você encher o carrinho e pagar muito menos! É por tempo limitado, aproveite!',
     },
     {
-      id: 'demo-institucional',
-      title: 'Comunicado Clube de Descontos',
-      tag: 'Clube & Fidelidade',
+      id: 'demo-adega',
+      title: 'Especial Adega & Vinhos Nobres',
+      tag: 'Adega & Linha Gourmet',
+      badgeColor: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+      voice: 'Will (Locução Premium & Gourmet)',
+      duration: '16s',
+      url: '/api/audio/aud-vitrine-adega.mp3',
+      text: 'Aprecie os melhores momentos com a nossa seleção exclusiva de vinhos nacionais, importados e queijos nobres. Visite o nosso espaço gourmet e descubra rótulos selecionados com descontos especiais para harmonizar com o seu jantar de hoje.',
+    },
+    {
+      id: 'demo-app',
+      title: 'Baixe o App & Cupons no Caixa',
+      tag: 'App & Clube Digital',
       badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-      voice: 'Marcos (Institucional & Sóbrio)',
-      duration: '22s',
-      url: '/api/audio/voice_marcos-institucional.mp3?v=eleven',
-      text: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
+      voice: 'Roberta (Moderna & Comunicativa)',
+      duration: '15s',
+      url: '/api/audio/aud-vitrine-app.mp3',
+      text: 'Você já baixou o aplicativo da nossa rede? Baixe agora no seu celular, ative os cupons de desconto exclusivos e receba ofertas direto no caixa. Economizar de verdade é simples, rápido e direto na tela do seu celular!',
     },
   ];
 
@@ -431,7 +444,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-[#0e1118] text-zinc-100 selection:bg-orange-500 selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0e1118] text-zinc-100 selection:bg-orange-500 selection:text-white flex flex-col font-sans overflow-x-hidden">
       {/* Audio Engine for Sample Showcase */}
       <audio ref={sampleAudioRef} onEnded={() => setPlayingAudioId(null)} />
 
@@ -454,21 +467,24 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* 1. TOP COMMERCIAL FIXED HEADER                                        */}
       {/* ===================================================================== */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#12141c]/95 backdrop-blur-md border-b border-zinc-800/80 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
           {/* Brand Identity */}
           <div
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2.5 cursor-pointer group shrink-0"
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setMobileMenuOpen(false);
+            }}
+            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group shrink-0"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/25 group-hover:scale-105 transition shrink-0">
-              <Volume2 className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/25 group-hover:scale-105 transition shrink-0">
+              <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="leading-tight">
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg sm:text-xl text-white tracking-tight">
+                <span className="font-black text-base sm:text-xl text-white tracking-tight">
                   Super<span className="text-orange-500">Locução</span>
                 </span>
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-orange-500/15 text-orange-400 border border-orange-500/30">
                   Varejo IA
                 </span>
               </div>
@@ -514,24 +530,142 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
-              onClick={onOpenLogin}
-              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-zinc-300 hover:text-white bg-[#1a1d27] hover:bg-[#232734] border border-zinc-700/80 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenLogin();
+              }}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-zinc-300 hover:text-white bg-[#1a1d27] hover:bg-[#232734] border border-zinc-700/80 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
-              <LogIn className="w-4 h-4 text-orange-400" />
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-400 shrink-0" />
               <span>Entrar</span>
             </button>
 
             <button
-              onClick={onOpenRegister}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black text-zinc-950 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 shadow-md shadow-orange-500/25 transition cursor-pointer flex items-center gap-1.5"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenRegister();
+              }}
+              className="hidden sm:inline-flex px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black text-zinc-950 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 shadow-md shadow-orange-500/25 transition cursor-pointer items-center gap-1.5"
             >
-              <UserPlus className="w-4 h-4 text-zinc-950" />
+              <UserPlus className="w-4 h-4 text-zinc-950 shrink-0" />
               <span>Testar Grátis</span>
+            </button>
+
+            {/* Mobile Hamburger Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+              className="lg:hidden p-2 rounded-xl bg-[#1a1d27] hover:bg-[#232734] text-zinc-300 hover:text-white border border-zinc-700/80 transition cursor-pointer flex items-center justify-center shrink-0"
+            >
+              {mobileMenuOpen ? (
+                <CloseIcon className="w-5 h-5 text-orange-400" />
+              ) : (
+                <Menu className="w-5 h-5 text-zinc-300" />
+              )}
             </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-[#12141c]/98 border-t border-zinc-800/90 shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-2 duration-200 px-4 py-4 space-y-3">
+            <nav className="flex flex-col space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('radioweb');
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-bold text-orange-400 bg-orange-500/10 border border-orange-500/25 transition cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Radio className="w-4 h-4 text-orange-400 animate-pulse shrink-0" />
+                  <span>Ouvir a Rádio Web</span>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-500 text-zinc-950">
+                  Ao Vivo
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('recursos');
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer text-left"
+              >
+                <Sparkles className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Recursos & IA</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('amostras');
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer text-left"
+              >
+                <Volume2 className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Amostras de Voz dos Locutores</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('comparativo');
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer text-left"
+              >
+                <TrendingUp className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Comparativo de Custos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('planos');
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer text-left"
+              >
+                <DollarSign className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Planos & Preços</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToSection('duvidas');
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer text-left"
+              >
+                <HelpCircle className="w-4 h-4 text-orange-400 shrink-0" />
+                <span>Perguntas Frequentes (FAQ)</span>
+              </button>
+            </nav>
+
+            <div className="pt-2 border-t border-zinc-800/80 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenRegister();
+                }}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 transition cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-zinc-950 shrink-0" />
+                <span>Testar Grátis com 50 Créditos</span>
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Fixed Header Spacer */}
@@ -540,21 +674,21 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 2. HERO SECTION                                                       */}
       {/* ===================================================================== */}
-      <section className="relative overflow-hidden pt-12 pb-16 lg:pt-18 lg:pb-24">
+      <section className="relative overflow-hidden pt-8 sm:pt-12 pb-12 sm:pb-16 lg:pt-18 lg:pb-24">
         {/* Ambient atmospheric glows */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="absolute top-1/3 right-10 w-[450px] h-[350px] bg-red-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-6">
+          <div className="text-center max-w-3xl mx-auto space-y-4 sm:space-y-6">
             {/* Top Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-xs font-bold shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-orange-400 animate-pulse" />
-              <span>Tecnologia de Inteligência Artificial para Supermercados & Atacarejos</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[11px] sm:text-xs font-bold shadow-sm max-w-full">
+              <Sparkles className="w-3.5 h-3.5 text-orange-400 animate-pulse shrink-0" />
+              <span className="leading-snug">Tecnologia de Inteligência Artificial para Varejo</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15]">
               Locuções de Ofertas e{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500">
                 Rádio Web Ao Vivo
@@ -563,46 +697,46 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </h1>
 
             {/* Subheadline */}
-            <p className="text-base sm:text-xl text-zinc-300 leading-relaxed font-normal max-w-2xl mx-auto">
+            <p className="text-sm sm:text-xl text-zinc-300 leading-relaxed font-normal max-w-2xl mx-auto">
               Transforme encartes e mensagens do WhatsApp em anúncios profissionais em 15 segundos. Transmita música ambiente contínua na sua loja com vinhetas automáticas e auto-ducking inteligente.
             </p>
 
             {/* Hero CTAs */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <button
                 onClick={onOpenRegister}
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-2xl shadow-xl shadow-orange-500/25 transition flex items-center justify-center gap-2.5 text-base cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-2xl shadow-xl shadow-orange-500/25 transition flex items-center justify-center gap-2.5 text-sm sm:text-base cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Criar Minha Locução Grátis</span>
-                <ArrowRight className="w-5 h-5 text-zinc-950" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-950 shrink-0" />
               </button>
 
               <button
                 onClick={() => scrollToSection('radioweb')}
-                className="w-full sm:w-auto px-7 py-4 bg-[#181b24] hover:bg-[#222633] border border-orange-500/50 text-white font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 text-base cursor-pointer group"
+                className="w-full sm:w-auto px-6 sm:px-7 py-3.5 sm:py-4 bg-[#181b24] hover:bg-[#222633] border border-orange-500/50 text-white font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer group"
               >
-                <Radio className="w-5 h-5 text-orange-400 group-hover:animate-pulse" />
+                <Radio className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 group-hover:animate-pulse shrink-0" />
                 <span>Ouvir Demonstração da Rádio Real</span>
               </button>
             </div>
 
             {/* Quick Metrics Trust Bar */}
-            <div className="pt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-8 text-xs font-bold text-zinc-400">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>50 Créditos de Boas-Vindas</span>
+            <div className="pt-3 sm:pt-6 flex flex-wrap items-center justify-center gap-3 sm:gap-8 text-[11px] sm:text-xs font-bold text-zinc-400">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                <span>50 Créditos Grátis</span>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Pronúncia Correta de Preços & Centavos</span>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                <span>Preços por Extenso</span>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Pronto em 15 Segundos</span>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                <span>Pronto em 15s</span>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Rádio Web com Deck Duplo</span>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                <span>Rádio Web Deck Duplo</span>
               </div>
             </div>
           </div>
@@ -612,7 +746,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* ===================================================================== */}
       {/* 3. SEÇÃO PRINCIPAL: DEMONSTRAÇÃO REAL DA RÁDIO WEB DA LOJA             */}
       {/* ===================================================================== */}
-      <section id="radioweb" className="py-16 sm:py-24 bg-[#111318] border-y border-zinc-800 relative">
+      <section id="radioweb" className="py-16 sm:py-24 bg-[#111318] border-y border-zinc-800 relative overflow-hidden">
         {/* Glow ambient background */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[500px] bg-gradient-to-r from-orange-500/10 via-red-500/10 to-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -635,22 +769,22 @@ export const LandingView: React.FC<LandingViewProps> = ({
           {/* ================================================================= */}
           <div className="max-w-5xl mx-auto bg-[#181b24] rounded-3xl border border-zinc-700/80 shadow-2xl overflow-hidden">
             {/* Top Console Bar */}
-            <div className="p-5 sm:p-7 border-b border-zinc-700/70 bg-[#161822] flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-              <div className="flex items-center gap-4">
+            <div className="p-4 sm:p-7 border-b border-zinc-700/70 bg-[#161822] flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${
                     isRadioOnAir
                       ? 'bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 text-white shadow-xl shadow-red-600/30'
                       : 'bg-[#1f2330] border border-zinc-700 text-zinc-400'
                   }`}
                 >
-                  <Radio className={`w-7 h-7 ${isRadioOnAir ? 'animate-pulse' : ''}`} />
+                  <Radio className={`w-6 h-6 sm:w-7 sm:h-7 ${isRadioOnAir ? 'animate-pulse' : ''}`} />
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border ${
                         isRadioOnAir
                           ? 'bg-red-500/20 text-red-400 border-red-500/40 shadow-xs'
                           : 'bg-[#1f2330] text-zinc-300 border border-zinc-700'
@@ -661,28 +795,28 @@ export const LandingView: React.FC<LandingViewProps> = ({
                           isRadioOnAir ? 'bg-red-500 animate-ping' : 'bg-zinc-500'
                         }`}
                       />
-                      {isRadioOnAir ? 'NO AR • TRANSMITINDO AO VIVO NA LOJA' : 'RÁDIO DESLIGADA (CLIQUE PARA OUVIR)'}
+                      {isRadioOnAir ? 'NO AR • AO VIVO NA LOJA' : 'RÁDIO DESLIGADA'}
                     </span>
 
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30">
-                      🏪 Rádio Supermercado Modelo
+                    <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                      🏪 Supermercado Modelo
                     </span>
                   </div>
 
                   <p className="text-xs text-zinc-400">
                     {isRadioOnAir
-                      ? 'Música ambiente ativa nas caixas de som com intercalação automática de ofertas'
-                      : 'Clique no botão laranja para ligar a transmissão e testar na prática'}
+                      ? 'Música ambiente ativa nas caixas com Auto-Ducking'
+                      : 'Clique no botão abaixo para ligar a transmissão ao vivo'}
                   </p>
                 </div>
               </div>
 
               {/* Main Actions */}
-              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
                 <button
                   type="button"
                   onClick={toggleRadioOnAir}
-                  className={`px-5 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl transition cursor-pointer shrink-0 ${
+                  className={`w-full sm:w-auto px-4 sm:px-5 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl transition cursor-pointer text-center ${
                     isRadioOnAir
                       ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600'
                       : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-orange-500/30 hover:scale-[1.02]'
@@ -690,37 +824,39 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 >
                   {isRadioOnAir ? (
                     <>
-                      <Pause className="w-4 h-4 fill-current" />
+                      <Pause className="w-4 h-4 fill-current shrink-0" />
                       <span>PAUSAR RÁDIO</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 fill-current" />
+                      <Play className="w-4 h-4 fill-current shrink-0" />
                       <span>LIGAR RÁDIO DA LOJA AO VIVO</span>
                     </>
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => triggerRadioSpot()}
-                  disabled={isSpotSpeaking}
-                  className="px-4 py-3 rounded-2xl bg-[#242938] hover:bg-[#2d3447] disabled:opacity-50 text-orange-300 hover:text-white border border-orange-500/40 text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-md shrink-0"
-                  title="Disparar a locução imediatamente e ouvir a música abaixar de volume"
-                >
-                  <Zap className="w-4 h-4 text-orange-400" />
-                  <span>Disparar Oferta Agora</span>
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => triggerRadioSpot()}
+                    disabled={isSpotSpeaking}
+                    className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-3 rounded-2xl bg-[#242938] hover:bg-[#2d3447] disabled:opacity-50 text-orange-300 hover:text-white border border-orange-500/40 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-md text-center"
+                    title="Disparar a locução imediatamente e ouvir a música abaixar de volume"
+                  >
+                    <Zap className="w-4 h-4 text-orange-400 shrink-0" />
+                    <span>Disparar Oferta</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleTriggerChime}
-                  className="px-3.5 py-3 rounded-2xl bg-[#1f2330] hover:bg-[#282f42] text-amber-300 border border-zinc-700/80 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                  title="Tocar gongo clássico de chamada de loja (Ding-Dong)"
-                >
-                  <Bell className="w-4 h-4 text-amber-400" />
-                  <span className="hidden sm:inline">Ding-Dong</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleTriggerChime}
+                    className="px-3.5 py-3 rounded-2xl bg-[#1f2330] hover:bg-[#282f42] text-amber-300 border border-zinc-700/80 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+                    title="Tocar gongo clássico de chamada de loja (Ding-Dong)"
+                  >
+                    <Bell className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Ding-Dong</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1143,41 +1279,45 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
 
           <div className="max-w-4xl mx-auto bg-[#181b24] rounded-3xl border border-zinc-700/80 overflow-hidden shadow-2xl">
-            <div className="grid grid-cols-3 bg-[#141620] p-4 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 text-zinc-400">
-              <div>Critério</div>
-              <div className="text-center text-zinc-400">Locutor Tradicional</div>
-              <div className="text-center text-orange-400 font-black">SuperLocução Varejo IA</div>
-            </div>
+            <div className="overflow-x-auto">
+              <div className="min-w-[500px]">
+                <div className="grid grid-cols-3 bg-[#141620] p-4 text-xs font-bold uppercase tracking-wider border-b border-zinc-800 text-zinc-400">
+                  <div>Critério</div>
+                  <div className="text-center text-zinc-400">Locutor Tradicional</div>
+                  <div className="text-center text-orange-400 font-black">SuperLocução Varejo IA</div>
+                </div>
 
-            <div className="divide-y divide-zinc-800 text-xs sm:text-sm">
-              <div className="grid grid-cols-3 p-4 items-center">
-                <div className="font-bold text-white">Tempo de entrega</div>
-                <div className="text-center text-zinc-400">De 6 a 24 horas</div>
-                <div className="text-center text-emerald-400 font-bold">15 segundos imediato</div>
-              </div>
+                <div className="divide-y divide-zinc-800 text-xs sm:text-sm">
+                  <div className="grid grid-cols-3 p-4 items-center">
+                    <div className="font-bold text-white">Tempo de entrega</div>
+                    <div className="text-center text-zinc-400">De 6 a 24 horas</div>
+                    <div className="text-center text-emerald-400 font-bold">15 segundos imediato</div>
+                  </div>
 
-              <div className="grid grid-cols-3 p-4 items-center bg-[#141620]/40">
-                <div className="font-bold text-white">Custo por locução</div>
-                <div className="text-center text-zinc-400">R$ 40 a R$ 120 por áudio</div>
-                <div className="text-center text-emerald-400 font-bold">Centavos por áudio</div>
-              </div>
+                  <div className="grid grid-cols-3 p-4 items-center bg-[#141620]/40">
+                    <div className="font-bold text-white">Custo por locução</div>
+                    <div className="text-center text-zinc-400">R$ 40 a R$ 120 por áudio</div>
+                    <div className="text-center text-emerald-400 font-bold">Centavos por áudio</div>
+                  </div>
 
-              <div className="grid grid-cols-3 p-4 items-center">
-                <div className="font-bold text-white">Disponibilidade</div>
-                <div className="text-center text-zinc-400">Horário comercial / dias úteis</div>
-                <div className="text-center text-emerald-400 font-bold">24h / 7 dias por semana</div>
-              </div>
+                  <div className="grid grid-cols-3 p-4 items-center">
+                    <div className="font-bold text-white">Disponibilidade</div>
+                    <div className="text-center text-zinc-400">Horário comercial / dias úteis</div>
+                    <div className="text-center text-emerald-400 font-bold">24h / 7 dias por semana</div>
+                  </div>
 
-              <div className="grid grid-cols-3 p-4 items-center bg-[#141620]/40">
-                <div className="font-bold text-white">Rádio Web de Loja Inclusa</div>
-                <div className="text-center text-red-400 font-bold">Não inclusa (contrato à parte)</div>
-                <div className="text-center text-emerald-400 font-bold">Inclusa na plataforma</div>
-              </div>
+                  <div className="grid grid-cols-3 p-4 items-center bg-[#141620]/40">
+                    <div className="font-bold text-white">Rádio Web de Loja Inclusa</div>
+                    <div className="text-center text-red-400 font-bold">Não inclusa (contrato à parte)</div>
+                    <div className="text-center text-emerald-400 font-bold">Inclusa na plataforma</div>
+                  </div>
 
-              <div className="grid grid-cols-3 p-4 items-center">
-                <div className="font-bold text-white">Alteração de preço de última hora</div>
-                <div className="text-center text-zinc-400">Cobrança de nova gravação</div>
-                <div className="text-center text-emerald-400 font-bold">Regeneração em 5 segundos</div>
+                  <div className="grid grid-cols-3 p-4 items-center">
+                    <div className="font-bold text-white">Alteração de preço de última hora</div>
+                    <div className="text-center text-zinc-400">Cobrança de nova gravação</div>
+                    <div className="text-center text-emerald-400 font-bold">Regeneração em 5 segundos</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1209,7 +1349,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   key={plan.id}
                   className={`rounded-3xl p-6 sm:p-8 flex flex-col justify-between space-y-6 relative transition-all duration-300 ${
                     isHigh
-                      ? 'bg-gradient-to-b from-[#1e222e] to-[#181b24] border-2 border-orange-500 shadow-2xl scale-[1.02]'
+                      ? 'bg-gradient-to-b from-[#1e222e] to-[#181b24] border-2 border-orange-500 shadow-2xl md:scale-[1.02]'
                       : 'bg-[#181b24] border border-zinc-700/80 hover:border-zinc-600'
                   }`}
                 >
@@ -1408,23 +1548,23 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
               <button
                 onClick={onOpenLogin}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white bg-[#181b24] hover:bg-zinc-800 border border-zinc-700/80 transition cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-300 hover:text-white bg-[#181b24] hover:bg-zinc-800 border border-zinc-700/80 transition cursor-pointer text-center"
               >
                 Entrar no Painel
               </button>
               <button
                 onClick={onOpenRegister}
-                className="px-5 py-2 rounded-xl text-xs font-black text-zinc-950 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-black text-zinc-950 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 transition cursor-pointer text-center"
               >
                 Criar Conta Grátis
               </button>
             </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4">
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4 text-center sm:text-left">
             <p>© {new Date().getFullYear()} SuperLocução Varejo IA. Todos os direitos reservados.</p>
             <p>Desenvolvido para Supermercados, Hipermercados, Atacarejos e Redes de Varejo.</p>
           </div>
@@ -1436,7 +1576,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
           title="Voltar ao início da página"
           aria-label="Voltar ao topo"
         >

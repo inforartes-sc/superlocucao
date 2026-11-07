@@ -5,7 +5,7 @@ import {
   ProductItem, CampaignType, LocutionStyle, LocutionTone,
   DesiredDuration, PresentationFormat, ProjectNiche, CAMPAIGN_PRESETS, STYLE_PRESETS
 } from '../src/types/index.ts';
-import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
+import { expandUnitsAndMeasuresToWords, spokenCurrency, numberToWordsPT } from '../src/utils/textNormalizer.ts';
 
 function getGeminiClient(): GoogleGenAI | null {
   const key = process.env.GEMINI_API_KEY?.trim();
@@ -53,45 +53,7 @@ export function formatSpokenPriceBR(price: number, unit?: string): string {
   const reais = Math.floor(price);
   const centavos = Math.round((price - reais) * 100);
 
-  const unitsNames: Record<number, string> = {
-    0: 'zero', 1: 'um', 2: 'dois', 3: 'três', 4: 'quatro', 5: 'cinco', 6: 'seis', 7: 'sete', 8: 'oito', 9: 'nove',
-    10: 'dez', 11: 'onze', 12: 'doze', 13: 'treze', 14: 'quatorze', 15: 'quinze', 16: 'dezesseis', 17: 'dezessete',
-    18: 'dezoito', 19: 'dezenove', 20: 'vinte', 30: 'trinta', 40: 'quarenta', 50: 'cinquenta', 60: 'sessenta',
-    70: 'setenta', 80: 'oitenta', 90: 'noventa', 100: 'cem'
-  };
-
-  function numberToWords(n: number): string {
-    if (n <= 20) return unitsNames[n] || String(n);
-    if (n < 100) {
-      const ten = Math.floor(n / 10) * 10;
-      const rest = n % 10;
-      return rest === 0 ? (unitsNames[ten] || String(ten)) : `${unitsNames[ten]} e ${unitsNames[rest]}`;
-    }
-    if (n === 100) return 'cem';
-    if (n < 200) return `cento e ${numberToWords(n - 100)}`;
-    if (n < 1000) {
-      const hundreds: Record<number, string> = {
-        200: 'duzentos', 300: 'trezentos', 400: 'quatrocentos', 500: 'quinhentos',
-        600: 'seiscentos', 700: 'setecentos', 800: 'oitocentos', 900: 'novecentos'
-      };
-      const h = Math.floor(n / 100) * 100;
-      const rest = n % 100;
-      return rest === 0 ? (hundreds[h] || String(h)) : `${hundreds[h]} e ${numberToWords(rest)}`;
-    }
-    return String(n);
-  }
-
-  let text = '';
-  if (reais === 1) {
-    text = 'um real';
-  } else if (reais > 1) {
-    text = `${numberToWords(reais)} reais`;
-  }
-
-  if (centavos > 0) {
-    const centavosText = centavos === 1 ? 'um centavo' : `${numberToWords(centavos)} centavos`;
-    text = text ? `${text} e ${centavosText}` : centavosText;
-  }
+  let text = spokenCurrency(reais, centavos);
 
   if (unit) {
     const u = unit.toLowerCase().trim();
@@ -266,8 +228,16 @@ export async function generateSupermarketScript(params: GenerateScriptParams): P
   const systemPrompt = `Você é o mais premiado roteirista de locuções e spots comerciais de rádio interna de supermercados, atacarejos, açougues, hortifrútis e mercearias do Brasil.
 Sua missão primordial é criar o roteiro comercial de supermercado perfeito, encarnado na campanha "${campaignInfo.label.toUpperCase()}".
 
+REGRA FUNDAMENTAL E ABSOLUTA — TEXTO 100% POR EXTENSO PARA LOCUÇÃO:
+É TERMINANTEMENTE PROIBIDO UTILIZAR ALGARISMOS ARÁBICOS (0 a 9) OU SIGLAS NO TEXTO DO ROTEIRO.
+Tudo deve ser escrito integralmente por extenso em português para facilitar e garantir a pronúncia perfeita em todos os modelos de vozes:
+- Preços: escreva SEMPRE por extenso (ex: "trinta e seis reais e noventa centavos", "quatro reais e cinquenta centavos", "noventa e nove centavos", "um real"). NUNCA use "R$", "36,90" ou "36.90".
+- Pesos e Volumes: escreva SEMPRE por extenso (ex: "cinco quilos", "um quilo e meio", "quinhentos gramas", "trezentos e cinquenta mililitros", "um litro", "dois litros"). NUNCA use "kg", "g", "ml", "L".
+- Unidades e Embalagens: escreva SEMPRE por extenso (ex: "a unidade", "o pacote", "a caixa", "a lata", "a bandeja", "o fardo", "a dúzia"). NUNCA use "un", "pct", "cx", "dz", "bdj".
+- Números e Parcelas: escreva SEMPRE por extenso (ex: "em até três vezes sem juros", "dez ofertas imperdíveis", "vinte por cento de desconto"). NUNCA use "3x" ou "20%".
+
 REGRAS DE VAREJO E SUPERMERCADO:
-1. NÚMEROS, PREÇOS E UNIDADES 100% POR EXTENSO (sem abreviações como kg, g, ml, l, un, pct, cx, R$).
+1. NÚMEROS, PREÇOS E UNIDADES 100% POR EXTENSO (sem números, sem abreviações).
 2. FIDELIDADE AOS PRODUTOS: Apresente todos os produtos fornecidos de forma comercial e convidativa.
 3. CAMPANHA E ESTILO:
    - Campanha: "${campaignInfo.label.toUpperCase()}" (${campaignInfo.badge})
@@ -293,7 +263,7 @@ ${params.freeInstructions ? `- Instruções adicionais do lojista: "${params.fre
 PRODUTOS EM OFERTA:
 ${productsSummary}
 
-LEMBRE-SE: Preços e unidades 100% por extenso! Retorne um JSON com "text", "spokenPhoneticText", "estimatedDurationSeconds", "wordCount".`;
+LEMBRE-SE: Preços, números e unidades 100% POR EXTENSO (zero algarismos e zero abreviações no texto gerado)! Retorne um JSON com "text", "spokenPhoneticText", "estimatedDurationSeconds", "wordCount".`;
 
   try {
     const response = await callGeminiWithFallback({

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Radio, Volume2, Clock, Zap, ArrowRight,
   CheckCircle2, TrendingUp, Lightbulb, Mic2, Play, Pause,
-  Star, Search, Sparkles, Filter, Check
+  Star, Search, Sparkles, Filter, Check, Crown, Lock
 } from 'lucide-react';
 import { Project, UserProfile, VoicePreset } from '../types/index.ts';
 import { AudioPlayer } from '../components/AudioPlayer.tsx';
+import { PlanUpgradeModal } from '../components/PlanUpgradeModal.tsx';
 import { api } from '../services/api.ts';
 import { useFavoriteVoices } from '../services/voiceFavorites.ts';
 
@@ -15,6 +16,7 @@ interface DashboardViewProps {
   onNewVoiceover: () => void;
   onOpenProject: (projectId: string) => void;
   onNavigate: (view: string) => void;
+  onRefreshUser?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -23,7 +25,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNewVoiceover,
   onOpenProject,
   onNavigate,
+  onRefreshUser,
 }) => {
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const allAudios = projects.flatMap((p) => p.audios);
   const latestAudios = allAudios.slice(0, 3);
   const recentProjects = projects.slice(0, 4);
@@ -232,21 +236,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-3">
-            <span>Plano Atual</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-2">
+              <span>Plano Atual</span>
+              <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                <Crown className="w-4 h-4 text-orange-500" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-[#142B4A]">
+              {user?.plan === 'redes_atacarejo'
+                ? 'Redes & Atacarejo'
+                : user?.plan === 'pro_varejo'
+                ? 'Pro Varejo'
+                : 'Degustação (Grátis)'}
+            </div>
+            <div className="mt-1 text-xs text-slate-500 font-medium">
+              {user?.plan === 'redes_atacarejo'
+                ? 'Multi-lojas simultâneas • 5.000 créditos'
+                : user?.plan === 'pro_varejo'
+                ? '1 Computador • 1.500 créditos/mês'
+                : '50 créditos de teste • Recursos básicos'}
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-[#142B4A] capitalize">
-            {user?.plan ? user.plan.replace('_', ' ') : 'Pro Varejo'}
-          </div>
-          <div className="mt-2 text-xs text-purple-700 font-medium">
-            Renovação mensal ativa
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="mt-3.5 w-full py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Alterar Plano / Upgrade</span>
+          </button>
         </div>
       </div>
+
+      {/* Free Plan Upgrade Alert Banner */}
+      {user?.plan === 'gratuito' && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-zinc-950 flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+              <Crown className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-orange-500/20 text-orange-800 border border-orange-500/30 mb-1">
+                SEU PLANO: DEGUSTAÇÃO (GRÁTIS)
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                Desbloqueie Vinhetas Automáticas, Avisos da Loja e Envio de Áudios do seu Computador
+              </h3>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Faça upgrade para o <strong>Pro Varejo</strong> e ganhe 1.500 créditos mensais com suporte prioritário no WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shrink-0 shadow-md shadow-orange-500/25 transition cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>Fazer Upgrade Agora</span>
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* BANCO DE VOZES DISPONÍVEIS & FAVORITAS (PORTUGUÊS BR COM IA)             */}
@@ -597,6 +651,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      <PlanUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        user={user}
+        onPlanUpgraded={(_newPlan, _credits) => {
+          onRefreshUser?.();
+        }}
+      />
     </div>
   );
 };
