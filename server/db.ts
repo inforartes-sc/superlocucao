@@ -388,28 +388,28 @@ export async function getAudioBinaryAsync(id: string): Promise<StoredAudioBinary
 export const DEFAULT_RECHARGE_PACKAGES: RechargePackage[] = [
   {
     id: 'pacote-basico',
-    name: 'Pacote Básico',
+    name: 'Recarga Básica',
     credits: 300,
-    price: 29.9,
+    price: 39.9,
     description: 'Aproximadamente 30 locuções comerciais',
     badge: '',
     highlighted: false,
   },
   {
     id: 'pacote-pro',
-    name: 'Pacote Pro Varejo',
+    name: 'Recarga Pro Varejo',
     credits: 1000,
-    price: 69.9,
+    price: 89.9,
     description: 'Aproximadamente 100 locuções comerciais',
     badge: 'Melhor Custo-Benefício',
     highlighted: true,
   },
   {
     id: 'pacote-atacado',
-    name: 'Pacote Atacarejo',
-    credits: 3000,
-    price: 147.9,
-    description: 'Aproximadamente 300 locuções comerciais',
+    name: 'Recarga Atacarejo',
+    credits: 2500,
+    price: 179.9,
+    description: 'Aproximadamente 250 locuções comerciais',
     badge: '',
     highlighted: false,
   },
@@ -443,7 +443,7 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
     name: 'Pro Varejo',
     tag: 'Supermercados',
     subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
-    price: 89,
+    price: 89.9,
     billingPeriod: '/mês',
     creditsAmount: 1500,
     features: [
@@ -465,7 +465,7 @@ export const DEFAULT_COMMERCIAL_PLANS: CommercialPlan[] = [
     name: 'Redes & Atacarejo',
     tag: 'Redes & Filiais',
     subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
-    price: 199,
+    price: 189.9,
     billingPeriod: '/mês',
     creditsAmount: 5000,
     features: [
@@ -637,6 +637,8 @@ interface DbData {
     initialCredits: number;
     elevenLabsModel: string;
     systemAnnouncement?: string;
+    contactWhatsapp?: string;
+    contactEmail?: string;
     rechargePackages?: RechargePackage[];
     commercialPlans?: CommercialPlan[];
     paymentGateway?: PaymentGatewayConfig;
@@ -970,10 +972,12 @@ class Database {
     if (!this.data.adminSettings) {
       this.data.adminSettings = {
         defaultVoiceId: 'daniel-varejo',
-        creditsPerGeneration: 5,
+        creditsPerGeneration: 10,
         initialCredits: 50,
         elevenLabsModel: 'eleven_multilingual_v2',
         systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!',
+        contactWhatsapp: '5596981248000',
+        contactEmail: 'contato@superlocucao.inforartes.com.br',
         rechargePackages: DEFAULT_RECHARGE_PACKAGES,
         commercialPlans: DEFAULT_COMMERCIAL_PLANS,
         paymentGateway: DEFAULT_PAYMENT_GATEWAY,
@@ -983,6 +987,14 @@ class Database {
       this.save();
     } else {
       let changed = false;
+      if (!this.data.adminSettings.contactWhatsapp) {
+        this.data.adminSettings.contactWhatsapp = '5596981248000';
+        changed = true;
+      }
+      if (!this.data.adminSettings.contactEmail) {
+        this.data.adminSettings.contactEmail = 'contato@superlocucao.inforartes.com.br';
+        changed = true;
+      }
       if (!this.data.adminSettings.rechargePackages || this.data.adminSettings.rechargePackages.length === 0) {
         this.data.adminSettings.rechargePackages = DEFAULT_RECHARGE_PACKAGES;
         changed = true;
@@ -1119,6 +1131,8 @@ class Database {
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payment_gateway JSONB;
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS subscriptions JSONB;
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS contact_whatsapp TEXT DEFAULT '5596981248000';
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS contact_email TEXT DEFAULT 'contato@superlocucao.inforartes.com.br';
 
         CREATE TABLE IF NOT EXISTS radio_config (
           id VARCHAR(64) PRIMARY KEY,
@@ -1278,10 +1292,12 @@ class Database {
 
         this.data.adminSettings = {
           defaultVoiceId: a.default_voice_id || 'daniel-varejo',
-          creditsPerGeneration: a.credits_per_generation ?? 5,
+          creditsPerGeneration: a.credits_per_generation ?? 10,
           initialCredits: a.initial_credits ?? 50,
           elevenLabsModel: a.eleven_labs_model || 'eleven_multilingual_v2',
           systemAnnouncement: a.system_announcement,
+          contactWhatsapp: a.contact_whatsapp || this.data.adminSettings?.contactWhatsapp || '5596981248000',
+          contactEmail: a.contact_email || this.data.adminSettings?.contactEmail || 'contato@superlocucao.inforartes.com.br',
           rechargePackages,
           commercialPlans,
           paymentGateway,
@@ -1478,15 +1494,17 @@ class Database {
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payment_gateway JSONB;
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS subscriptions JSONB;
         ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS payments JSONB;
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS contact_whatsapp TEXT DEFAULT '5596981248000';
+        ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS contact_email TEXT DEFAULT 'contato@superlocucao.inforartes.com.br';
       `).catch(() => {});
 
       await this.pool.query(`
         INSERT INTO admin_settings (
           id, default_voice_id, credits_per_generation, initial_credits,
-          eleven_labs_model, system_announcement, recharge_packages, commercial_plans,
-          payment_gateway, subscriptions, payments, updated_at
+          eleven_labs_model, system_announcement, contact_whatsapp, contact_email,
+          recharge_packages, commercial_plans, payment_gateway, subscriptions, payments, updated_at
         ) VALUES (
-          1, $1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, NOW()
+          1, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           default_voice_id = EXCLUDED.default_voice_id,
@@ -1494,6 +1512,8 @@ class Database {
           initial_credits = EXCLUDED.initial_credits,
           eleven_labs_model = EXCLUDED.eleven_labs_model,
           system_announcement = EXCLUDED.system_announcement,
+          contact_whatsapp = EXCLUDED.contact_whatsapp,
+          contact_email = EXCLUDED.contact_email,
           recharge_packages = EXCLUDED.recharge_packages,
           commercial_plans = EXCLUDED.commercial_plans,
           payment_gateway = EXCLUDED.payment_gateway,
@@ -1506,6 +1526,8 @@ class Database {
         s.initialCredits,
         s.elevenLabsModel,
         s.systemAnnouncement || null,
+        s.contactWhatsapp || '5596981248000',
+        s.contactEmail || 'contato@superlocucao.inforartes.com.br',
         JSON.stringify(s.rechargePackages || DEFAULT_RECHARGE_PACKAGES),
         JSON.stringify(s.commercialPlans || DEFAULT_COMMERCIAL_PLANS),
         JSON.stringify(s.paymentGateway || DEFAULT_PAYMENT_GATEWAY),
@@ -1772,7 +1794,7 @@ class Database {
       radioConfig: buildInitialRadioConfig(DEFAULT_PROJECTS),
       adminSettings: {
         defaultVoiceId: 'daniel-varejo',
-        creditsPerGeneration: 5,
+        creditsPerGeneration: 10,
         initialCredits: 50,
         elevenLabsModel: 'eleven_multilingual_v2',
         systemAnnouncement: 'Rádio Web Supermercado pronta para transmitir suas ofertas ao vivo!',

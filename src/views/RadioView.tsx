@@ -4,6 +4,7 @@ import {
   X,
   Play,
   Pause,
+  RotateCcw,
   SkipForward,
   Volume2,
   Zap,
@@ -604,6 +605,9 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     refreshRadioData,
     updateConfig,
     toggleOnAir,
+    restartRadio,
+    autoplayBlocked,
+    resumeAutoplay,
     playSpotNow,
     stopCurrentSpot,
     skipMusicTrack,
@@ -1678,6 +1682,38 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
         </div>
       )}
 
+      {/* Banner de Desbloqueio de Autoplay do Navegador após Atualização de Página */}
+      {autoplayBlocked && (
+        <div
+          onClick={resumeAutoplay}
+          className="mb-4 p-3.5 sm:p-4 bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-600/90 hover:from-amber-500 hover:to-orange-500 text-white rounded-2xl border border-amber-400/40 shadow-xl shadow-orange-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer animate-pulse transition"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center shrink-0">
+              <Radio className="w-5 h-5 text-amber-200" />
+            </span>
+            <div>
+              <p className="text-xs sm:text-sm font-black flex items-center gap-2">
+                <span>A Rádio Web está NO AR!</span>
+                <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px] font-black uppercase tracking-wider">Clique para ouvir</span>
+              </p>
+              <p className="text-[11px] text-amber-100/90 mt-0.5">
+                O navegador pausou a saída de áudio após a atualização da página. Toque aqui para continuar ouvindo sem interromper a transmissão.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              resumeAutoplay();
+            }}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white text-orange-800 font-extrabold text-xs shrink-0 shadow-md hover:bg-orange-50 cursor-pointer"
+          >
+            Liberar Áudio Agora
+          </button>
+        </div>
+      )}
+
       <div className="relative overflow-hidden rounded-3xl bg-[#181b24] border border-zinc-700/80 shadow-2xl">
         {/* Ambient Glow when ON AIR */}
         {isOnAir && (
@@ -1808,34 +1844,74 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
               </div>
 
               {editingStationInfo ? (
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-2xl">
-                  <input
-                    type="text"
-                    value={stationNameInput}
-                    onChange={e => setStationNameInput(e.target.value)}
-                    placeholder="Nome da Rádio"
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-sm text-white"
-                  />
-                  <input
-                    type="text"
-                    value={storeNameInput}
-                    onChange={e => setStoreNameInput(e.target.value)}
-                    placeholder="Nome do Supermercado"
-                    className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-sm text-white"
-                  />
-                  <div className="flex items-center gap-2">
+                <div className="pt-2 p-3.5 sm:p-4 rounded-2xl bg-[#12141c] border border-orange-500/40 shadow-xl space-y-3 w-full max-w-md sm:max-w-lg animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Personalizar Identidade da Rádio
+                    </span>
+                    <button
+                      onClick={() => setEditingStationInfo(false)}
+                      className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+                      title="Fechar edição"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+                        Nome da Rádio
+                      </label>
+                      <input
+                        type="text"
+                        value={stationNameInput}
+                        onChange={e => setStationNameInput(e.target.value)}
+                        placeholder="Ex: Rádio Alvorada FM"
+                        className="w-full px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs sm:text-sm text-white focus:outline-none focus:border-orange-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+                        Nome do Supermercado
+                      </label>
+                      <input
+                        type="text"
+                        value={storeNameInput}
+                        onChange={e => setStoreNameInput(e.target.value)}
+                        placeholder="Ex: Supermercado Alvorada"
+                        className="w-full px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs sm:text-sm text-white focus:outline-none focus:border-orange-500 transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+                      Slogan / Frase de Impacto
+                    </label>
                     <input
                       type="text"
                       value={sloganInput}
                       onChange={e => setSloganInput(e.target.value)}
-                      placeholder="Slogan da Rádio"
-                      className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-sm text-white flex-1"
+                      placeholder="Ex: A rádio da economia e das melhores ofertas para a sua família!"
+                      className="w-full px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs sm:text-sm text-white focus:outline-none focus:border-orange-500 transition"
                     />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
                     <button
                       onClick={handleSaveStationIdentity}
-                      className="px-3 py-1.5 rounded-xl bg-orange-500 text-zinc-950 font-bold text-xs cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md"
                     >
-                      Salvar
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Salvar</span>
+                    </button>
+                    <button
+                      onClick={() => setEditingStationInfo(false)}
+                      className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition cursor-pointer"
+                    >
+                      Cancelar
                     </button>
                   </div>
                 </div>
@@ -1858,43 +1934,58 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
             </div>
           </div>
 
-          {/* Master Broadcast Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+          {/* Master Broadcast Action Buttons — Em 2 Linhas no Computador para Máxima Organização */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full lg:w-auto lg:min-w-[430px]">
+            {/* Linha 1, Coluna 1: Modo Som de Loja */}
             <button
               onClick={() => setIsStoreMonitorMode(!isStoreMonitorMode)}
-              className="px-3.5 py-2.5 rounded-xl bg-[#1f2330] hover:bg-[#272c3d] text-zinc-200 border border-zinc-700/80 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto shadow-sm"
+              className="h-11 sm:h-12 px-3.5 rounded-2xl bg-[#1f2330] hover:bg-[#272c3d] text-zinc-200 border border-zinc-700/80 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-sm whitespace-nowrap"
               title="Modo Som de Loja simplifica a tela para deixar aberta no computador da loja"
             >
-              {isStoreMonitorMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              {isStoreMonitorMode ? 'Voltar ao Painel Completo' : 'Modo Som de Loja'}
+              {isStoreMonitorMode ? <Minimize2 className="w-4 h-4 text-zinc-400 shrink-0" /> : <Maximize2 className="w-4 h-4 text-zinc-400 shrink-0" />}
+              <span>{isStoreMonitorMode ? 'Painel Completo' : 'Modo Som de Loja'}</span>
             </button>
 
+            {/* Linha 1, Coluna 2: Disparar Oferta Agora */}
             <button
               onClick={() => playSpotNow()}
               disabled={activeOffersCount === 0}
-              className="px-4 py-2.5 sm:py-3 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 disabled:opacity-40 text-orange-300 border border-orange-500/40 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer w-full sm:w-auto shadow-sm"
+              className="h-11 sm:h-12 px-3.5 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 disabled:opacity-40 text-orange-300 border border-orange-500/40 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm whitespace-nowrap"
             >
-              <Zap className="w-4 h-4 text-orange-400" />
-              Disparar Oferta Agora
+              <Zap className="w-4 h-4 text-orange-400 shrink-0" />
+              <span>Disparar Oferta Agora</span>
             </button>
+
+            {/* Linha 2: Se ON AIR -> [Reiniciar Rádio] e [PAUSAR RÁDIO WEB] lado a lado */}
+            {/* Se OFF AIR -> [LIGAR RÁDIO AO VIVO] ocupando as 2 colunas */}
+            {isOnAir && (
+              <button
+                onClick={restartRadio}
+                title="Reiniciar a rádio do início da programação"
+                className="h-11 sm:h-12 px-3.5 rounded-2xl bg-[#1f2330] hover:bg-[#282d3e] text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm active:scale-95 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Reiniciar Rádio</span>
+              </button>
+            )}
 
             <button
               onClick={toggleOnAir}
-              className={`px-5 sm:px-6 py-3 sm:py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg transition transform active:scale-95 cursor-pointer w-full sm:w-auto ${
+              className={`h-11 sm:h-12 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition transform active:scale-95 cursor-pointer whitespace-nowrap ${
                 isOnAir
                   ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
-                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-orange-500/25'
+                  : 'col-span-1 sm:col-span-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-orange-500/25'
               }`}
             >
               {isOnAir ? (
                 <>
-                  <Pause className="w-5 h-5 fill-current" />
-                  PAUSAR RÁDIO WEB
+                  <Pause className="w-4 h-4 fill-current shrink-0" />
+                  <span>PAUSAR RÁDIO WEB</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-5 h-5 fill-current" />
-                  LIGAR RÁDIO AO VIVO
+                  <Play className="w-4 h-4 fill-current shrink-0" />
+                  <span>LIGAR RÁDIO AO VIVO</span>
                 </>
               )}
             </button>
@@ -2656,7 +2747,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                           <Radio className="w-4 h-4 shrink-0" />
                           <span className="text-center">Gerar Locução & Divulgar na Rádio Web</span>
                           <span className="px-2 py-0.5 rounded-full bg-black/20 text-[10px] sm:text-[11px] font-black text-zinc-950 shrink-0 whitespace-nowrap border border-black/10">
-                            5 créditos
+                            10 créditos
                           </span>
                         </>
                       )}

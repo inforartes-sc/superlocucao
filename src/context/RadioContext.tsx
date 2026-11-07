@@ -12,6 +12,9 @@ export interface BroadcastLogEntry {
   detail?: string;
 }
 
+export const RADIO_ON_AIR_STORAGE_KEY = 'superlocucao_radio_is_on_air';
+export const RADIO_PLAYBACK_STATE_KEY = 'superlocucao_radio_playback_state';
+
 export const DEFAULT_RADIO_PLAYLISTS: RadioPlaylist[] = [
   {
     id: 'pop_varejo',
@@ -341,6 +344,9 @@ interface RadioContextValue {
   refreshRadioData: () => Promise<void>;
   updateConfig: (partial: Partial<RadioStationConfig>) => Promise<void>;
   toggleOnAir: () => void;
+  restartRadio: () => void;
+  autoplayBlocked: boolean;
+  resumeAutoplay: () => void;
   playSpotNow: (item?: RadioQueueItem) => void;
   stopCurrentSpot: () => void;
   skipMusicTrack: () => void;
@@ -424,7 +430,14 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     (AudioGenerationItem & { storeName?: string; projectTitle?: string })[]
   >([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isOnAir, setIsOnAir] = useState<boolean>(false);
+  const [isOnAir, setIsOnAir] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(RADIO_ON_AIR_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [autoplayBlocked, setAutoplayBlocked] = useState<boolean>(false);
   const [isDucking, setIsDucking] = useState<boolean>(false);
   const [currentMusic, setCurrentMusic] = useState<RadioMusicTrack | null>(null);
   const [currentSpot, setCurrentSpot] = useState<RadioQueueItem | null>(null);
@@ -472,14 +485,19 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const musicIndexRef = useRef<number>(0);
   const fadeIntervalRef = useRef<number | null>(null);
   const configRef = useRef<RadioStationConfig>(config);
-  const isOnAirRef = useRef<boolean>(false);
+  const isOnAirRef = useRef<boolean>(isOnAir);
   const currentSpotRef = useRef<RadioQueueItem | null>(null);
+  const currentMusicRef = useRef<RadioMusicTrack | null>(null);
   const isLiveMicActiveRef = useRef<boolean>(false);
+  const lastStateSaveRef = useRef<number>(0);
+  const countdownSecondsRef = useRef<number>(30);
 
   configRef.current = config;
   isOnAirRef.current = isOnAir;
   currentSpotRef.current = currentSpot;
+  currentMusicRef.current = currentMusic;
   isLiveMicActiveRef.current = isLiveMicActive;
+  countdownSecondsRef.current = countdownSeconds;
 
   const persistConfigLocally = useCallback((cfg: RadioStationConfig) => {
     try {
@@ -630,7 +648,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
   // Start or switch background music track
   const playMusicTrack = useCallback(
-    (track?: RadioMusicTrack) => {
+    (track?: RadioMusicTrack, initialSeekTime: number = 0) => {
       const cfg = configRef.current;
       if (!cfg || cfg.mode === 'somente_ofertas') {
         if (musicAudioRef.current) {
@@ -655,13 +673,21 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       }
 
       const chosen = track || candidateTracks[musicIndexRef.current % candidateTracks.length];
-      musicIndexRef.current = (musicIndexRef.current + 1) % candidateTracks.length;
+      if (!track) {
+        musicIndexRef.current = (musicIndexRef.current + 1) % candidateTracks.length;
+      }
       setCurrentMusic(chosen);
+      currentMusicRef.current = chosen;
 
       const audio = musicAudioRef.current;
       if (!audio) return;
 
       audio.src = chosen.audioUrl;
+      if (initialSeekTime > 0) {
+        try {
+          audio.currentTime = initialSeekTime;
+        } catch {}
+      }
       const targetVol = currentSpotRef.current ? cfg.duckingLevel : cfg.musicVolume;
       audio.volume = targetVol;
 
@@ -683,14 +709,111 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       audio
         .play()
         .then(() => {
+          setAutoplayBlocked(false);
           appendLog(`Trilha Musical: ${chosen.title}`, 'musica', chosen.style || chosen.artist);
         })
         .catch(err => {
           console.warn('Autoplay bloqueado ou falha na música ambiente:', err);
+          setAutoplayBlocked(true);
+
+          const unlock = () => {
+            if (isOnAirRef.current && musicAudioRef.current && musicAudioRef.current.paused) {
+              musicAudioRef.current.play().then(() => {
+                setAutoplayBlocked(false);
+              }).catch(() => {});
+            }
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('touchstart', unlock);
+            window.removeEventListener('keydown', unlock);
+          };
+          window.addEventListener('click', unlock, { passive: true });
+          window.addEventListener('touchstart', unlock, { passive: true });
+          window.addEventListener('keydown', unlock, { passive: true });
         });
     },
-    [appendLog]
+    [appendLog, isMusicLevelerEnabled]
   );
+
+  // Monitora e persiste o progresso do deck de música para restaurar sem parar em recarregamentos (F5)
+  const handleMusicTimeUpdate = useCallback(() => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+    setMusicCurrentTime(audio.currentTime);
+
+    const now = Date.now();
+    if (isOnAirRef.current && currentMusicRef.current && now - lastStateSaveRef.current > 1500) {
+      lastStateSaveRef.current = now;
+      try {
+        localStorage.setItem(
+          RADIO_PLAYBACK_STATE_KEY,
+          JSON.stringify({
+            trackId: currentMusicRef.current.id,
+            currentTime: audio.currentTime,
+            countdown: countdownSecondsRef.current,
+            updatedAt: now,
+          })
+        );
+      } catch {}
+    }
+  }, []);
+
+  // Restaura automaticamente a transmissão contínua caso o usuário recarregue a página com a rádio no ar
+  const hasRestoredOnAirRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (hasRestoredOnAirRef.current) return;
+    hasRestoredOnAirRef.current = true;
+
+    let wasOnAir = false;
+    try {
+      wasOnAir = localStorage.getItem(RADIO_ON_AIR_STORAGE_KEY) === 'true';
+    } catch {}
+
+    if (!wasOnAir) return;
+
+    setIsOnAir(true);
+    isOnAirRef.current = true;
+
+    let savedTrackId: string | null = null;
+    let savedTime = 0;
+    let savedCountdown = 30;
+
+    try {
+      const rawState = localStorage.getItem(RADIO_PLAYBACK_STATE_KEY);
+      if (rawState) {
+        const parsed = JSON.parse(rawState);
+        savedTrackId = parsed.trackId || null;
+        savedTime = Number(parsed.currentTime) || 0;
+        if (typeof parsed.countdown === 'number' && parsed.countdown > 0) {
+          savedCountdown = parsed.countdown;
+        }
+      }
+    } catch {}
+
+    setCountdownSeconds(savedCountdown);
+
+    const cfg = configRef.current;
+    if (cfg && cfg.mode !== 'somente_ofertas') {
+      const tracks = (cfg.musicTracks || []).filter(t => t.active);
+      let candidateTracks = tracks;
+      if (cfg.activePlaylistId && cfg.activePlaylistId !== 'todas') {
+        const filtered = tracks.filter(
+          t => t.playlistId === cfg.activePlaylistId || t.category === cfg.activePlaylistId
+        );
+        if (filtered.length > 0) candidateTracks = filtered;
+      }
+
+      let chosenTrack = candidateTracks.find(t => t.id === savedTrackId);
+      if (!chosenTrack && candidateTracks.length > 0) {
+        chosenTrack = candidateTracks[0];
+        savedTime = 0;
+      }
+
+      if (chosenTrack) {
+        playMusicTrack(chosenTrack, savedTime);
+        appendLog('Rádio Web mantida NO AR após atualização da página', 'sistema', chosenTrack.title);
+      }
+    }
+  }, [appendLog, playMusicTrack]);
 
   // Trigger an offer voiceover spot with Auto-Ducking
   const playSpotNow = useCallback(
@@ -889,7 +1012,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     playMusicTrack();
   }, [playMusicTrack]);
 
-  // Toggle Radio On Air / Off Air
+  // Toggle Radio On Air / Off Air (Somente para quando o usuário clicar explicitamente para parar)
   const toggleOnAir = useCallback(() => {
     const cfg = configRef.current;
     if (!cfg) return;
@@ -897,15 +1020,40 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     if (isOnAirRef.current) {
       setIsOnAir(false);
       isOnAirRef.current = false;
+      try {
+        localStorage.setItem(RADIO_ON_AIR_STORAGE_KEY, 'false');
+        localStorage.removeItem(RADIO_PLAYBACK_STATE_KEY);
+      } catch {}
+      setAutoplayBlocked(false);
       setIsDucking(false);
       setCurrentSpot(null);
       currentSpotRef.current = null;
       if (musicAudioRef.current) musicAudioRef.current.pause();
       if (spotAudioRef.current) spotAudioRef.current.pause();
-      appendLog('Transmissão da Rádio Web pausada', 'sistema');
+      appendLog('Transmissão da Rádio Web pausada pelo usuário', 'sistema');
+
+      // Notifica o backend imediatamente da pausa solicitada pelo usuário
+      api.sendRadioHeartbeat({
+        isOnAir: false,
+        storeName: cfg.storeName,
+        stationName: cfg.stationName,
+        slogan: cfg.slogan,
+        currentMusicTitle: null,
+        currentSpotTitle: null,
+        isDucking: false,
+        spotsQueueCount: (cfg.queue || []).filter(q => q.active).length,
+        mode: cfg.mode,
+        sessionId: getRadioSessionId(),
+        deviceName: getRadioDeviceName(),
+        storeId: activeStoreId,
+      }).catch(() => {});
     } else {
       setIsOnAir(true);
       isOnAirRef.current = true;
+      try {
+        localStorage.setItem(RADIO_ON_AIR_STORAGE_KEY, 'true');
+      } catch {}
+      setAutoplayBlocked(false);
       appendLog(`Rádio Web NO AR — ${cfg.stationName}`, 'sistema', cfg.slogan);
 
       // A primeira locução só inicia após 30 segundos que a rádio estiver no ar
@@ -915,7 +1063,64 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         playMusicTrack();
       }
     }
-  }, [appendLog, playMusicTrack, playSpotNow]);
+  }, [appendLog, playMusicTrack, getRadioSessionId, getRadioDeviceName, activeStoreId]);
+
+  // Reiniciar a programação da rádio a qualquer momento
+  const restartRadio = useCallback(() => {
+    const cfg = configRef.current;
+    if (!cfg) return;
+
+    if (spotAudioRef.current) {
+      spotAudioRef.current.pause();
+      spotAudioRef.current.currentTime = 0;
+    }
+    setCurrentSpot(null);
+    currentSpotRef.current = null;
+    setIsDucking(false);
+
+    setIsOnAir(true);
+    isOnAirRef.current = true;
+    try {
+      localStorage.setItem(RADIO_ON_AIR_STORAGE_KEY, 'true');
+    } catch {}
+    setAutoplayBlocked(false);
+
+    spotIndexRef.current = 0;
+    musicIndexRef.current = 0;
+    setSongsSinceLastSpot(0);
+    setCountdownSeconds(30);
+
+    if (cfg.mode !== 'somente_ofertas') {
+      const tracks = (cfg.musicTracks || []).filter(t => t.active);
+      let candidateTracks = tracks;
+      if (cfg.activePlaylistId && cfg.activePlaylistId !== 'todas') {
+        const filtered = tracks.filter(
+          t => t.playlistId === cfg.activePlaylistId || t.category === cfg.activePlaylistId
+        );
+        if (filtered.length > 0) candidateTracks = filtered;
+      }
+
+      if (candidateTracks.length > 0) {
+        const chosen = candidateTracks[0];
+        playMusicTrack(chosen, 0);
+      }
+    }
+
+    appendLog('Rádio Web reiniciada do início da programação', 'sistema', cfg.stationName);
+  }, [appendLog, playMusicTrack]);
+
+  // Desbloqueio de autoplay no primeiro toque/clique caso o navegador tenha pausado
+  const resumeAutoplay = useCallback(() => {
+    if (musicAudioRef.current) {
+      musicAudioRef.current.play().then(() => {
+        setAutoplayBlocked(false);
+      }).catch(err => {
+        console.warn('Erro ao liberar som da rádio:', err);
+      });
+    } else {
+      setAutoplayBlocked(false);
+    }
+  }, []);
 
   // Countdown timer for automatic offer scheduling
   useEffect(() => {
@@ -1004,17 +1209,10 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         sendPing(true);
       }, 6000);
 
-      const handleBeforeUnload = () => {
-        sendPing(false);
-      };
-
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      window.addEventListener('pagehide', handleBeforeUnload);
-
+      // Não enviamos sendPing(false) no beforeunload/pagehide para que atualizações de página (F5 / reload)
+      // não interrompam a rádio. A rádio só para quando o usuário clicar para parar no botão.
       return () => {
         window.clearInterval(intervalId);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        window.removeEventListener('pagehide', handleBeforeUnload);
       };
     } else {
       sendPing(false);
@@ -1520,6 +1718,9 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         refreshRadioData,
         updateConfig,
         toggleOnAir,
+        restartRadio,
+        autoplayBlocked,
+        resumeAutoplay,
         playSpotNow,
         stopCurrentSpot,
         skipMusicTrack,
@@ -1578,7 +1779,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
       {/* Hidden Dual-Deck Audio Engines */}
       <audio
         ref={musicAudioRef}
-        onTimeUpdate={() => setMusicCurrentTime(musicAudioRef.current?.currentTime || 0)}
+        onTimeUpdate={handleMusicTimeUpdate}
         onLoadedMetadata={() => setMusicDuration(musicAudioRef.current?.duration || 0)}
         onEnded={handleMusicEnded}
         preload="auto"

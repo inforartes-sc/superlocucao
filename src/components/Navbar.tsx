@@ -16,9 +16,11 @@ import {
   Pause,
   Megaphone,
   ArrowUpRight,
+  MessageSquare,
 } from 'lucide-react';
 import { User } from '../types';
 import { useRadio } from '../context/RadioContext';
+import { ContactModal } from './ContactModal';
 
 export type ActiveView = 'landing' | 'dashboard' | 'studio' | 'radio' | 'library' | 'credits' | 'admin';
 
@@ -38,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   let radioCtx: ReturnType<typeof useRadio> | null = null;
@@ -93,14 +96,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Varejo IA
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 hidden xl:block whitespace-nowrap">
-                Locução & Rádio Web para Supermercados
+              <p className="text-[11px] text-zinc-400 hidden xl:block max-w-[205px] truncate">
+                Locução Comercial & Rádio Web
               </p>
             </div>
           </div>
 
           {/* Center: Clean Single-Line Navigation Pills (Desktop Only) */}
-          <nav className="hidden md:flex items-center gap-1 bg-[#1a1d27]/90 p-1 rounded-2xl border border-zinc-700/80 shrink-0">
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#1a1d27]/90 p-1.5 rounded-2xl border border-zinc-700/80 shrink-0">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
@@ -110,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     key={item.id}
                     onClick={() => onNavigate(item.id)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
                       isActive
                         ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-md shadow-red-600/25'
                         : isRadioOnAir
@@ -126,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>{item.label}</span>
                     {isRadioOnAir && (
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                           isActive ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
                         }`}
                       >
@@ -142,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
                       ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
                       : 'text-zinc-300 hover:text-white hover:bg-zinc-800/70'
@@ -156,11 +159,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right: Action Toolbar */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Primary CTA (Desktop) */}
             <button
               onClick={onNewCampaign}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white text-xs font-bold whitespace-nowrap shadow-md shadow-orange-500/20 transition cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-2 px-4 h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white text-sm font-bold whitespace-nowrap shadow-md shadow-orange-500/20 transition cursor-pointer"
             >
               <Plus className="w-4 h-4 shrink-0" />
               <span>Nova Locução</span>
@@ -170,16 +173,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             {user && (
               <button
                 onClick={() => onNavigate('credits')}
-                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 h-8 sm:h-9 rounded-xl border whitespace-nowrap transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 h-8 sm:h-10 rounded-xl border whitespace-nowrap transition cursor-pointer ${
                   activeView === 'credits'
                     ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-md shadow-amber-500/20'
                     : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 hover:border-amber-500/40 text-white'
                 }`}
                 title="Saldo de créditos disponível — clique para recarregar ou ver planos"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-xs font-extrabold">{user.creditsBalance}</span>
-                <span className="text-[11px] font-semibold text-amber-400 hidden lg:inline">créditos</span>
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-extrabold">{user.creditsBalance}</span>
+                <span className="text-[11px] sm:text-xs font-semibold text-amber-400 hidden lg:inline">créditos</span>
               </button>
             )}
 
@@ -188,7 +191,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div ref={menuRef} className="relative">
                 <button
                   onClick={() => setMenuOpen(prev => !prev)}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 pr-2 sm:pr-2.5 h-8 sm:h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-200 whitespace-nowrap transition cursor-pointer"
+                  className="inline-flex items-center gap-2 pl-2 pr-2.5 h-8 sm:h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-zinc-200 whitespace-nowrap transition cursor-pointer"
                 >
                   <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-bold text-[10px] sm:text-[11px] shrink-0">
                     {(user.companyName || user.name).charAt(0).toUpperCase()}
@@ -196,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="hidden lg:inline font-semibold max-w-[150px] truncate">
                     {user.companyName || user.name}
                   </span>
-                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-400 shrink-0" />
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 </button>
 
                 {menuOpen && (
@@ -227,6 +230,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <Coins className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                       Recarregar Créditos ({user.creditsBalance})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setIsContactModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-2 cursor-pointer mt-0.5 font-medium transition"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                      Fale Conosco / Suporte
                     </button>
                     <button
                       onClick={() => {
@@ -402,6 +415,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="text-[10px]">Áudios</span>
         </button>
       </nav>
+
+      {/* Modal de Contato & Suporte */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        defaultStoreName={user?.companyName}
+        defaultSubject="Suporte ao Cliente / Dúvidas"
+      />
     </>
   );
 };

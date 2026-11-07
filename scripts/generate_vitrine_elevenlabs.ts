@@ -18,8 +18,8 @@ const SPOTS = [
   },
   {
     id: 'aud-vitrine-atacarejo',
-    voiceName: 'Nassif (Oferta Relâmpago & Varejo Rápido)',
-    voiceId: 'Fjiik8aKXNDjmxd1Q2jF', // Nassif
+    voiceName: 'Rodrigo (Voz de Impacto & Atacarejo)',
+    voiceId: 'wHnxjlY53t8X9Oi14Awz', // Rodrigo (Voz de Impacto Grave & Atacarejo)
     soundtrackId: 'black_friday_urgente' as const,
     soundtrackVol: 0.18,
     text: 'Atenção: começou a grande queima de estoque em toda a mercearia e limpeza! Arroz cinco quilos, óleo de soja e sabão em pó com preços de atacado para você encher o carrinho e pagar muito menos! É por tempo limitado, aproveite!',

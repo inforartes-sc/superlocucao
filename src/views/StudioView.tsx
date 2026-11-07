@@ -478,9 +478,9 @@ export const StudioView: React.FC<StudioViewProps> = ({
       return;
     }
 
-    const totalCost = calculateCreditCost(project.products.length);
+    const totalCost = calculateCreditCost(project.products.length, true);
     if (user && user.creditsBalance < totalCost) {
-      alert(`Saldo de créditos insuficiente (${user.creditsBalance} disponíveis). São necessários ${totalCost} créditos para gerar o lote.`);
+      alert(`Saldo de créditos insuficiente (${user.creditsBalance} disponíveis). São necessários ${totalCost} créditos (${project.products.length} produtos x 10 créditos) para gerar o lote.`);
       return;
     }
 
@@ -1944,19 +1944,19 @@ export const StudioView: React.FC<StudioViewProps> = ({
                   <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1 font-semibold text-slate-700">
                       <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      Custo: {calculateCreditCost(project.products.length)} créditos
+                      Custo do lote: {calculateCreditCost(project.products.length, true)} créditos ({project.products.length} áudios x 10 créditos)
                     </span>
                     {user && (
                       <>
                         <span>•</span>
-                        <span className={`font-semibold flex items-center gap-1 ${user.creditsBalance < calculateCreditCost(project.products.length) ? 'text-red-600' : 'text-emerald-700'}`}>
+                        <span className={`font-semibold flex items-center gap-1 ${user.creditsBalance < calculateCreditCost(project.products.length, true) ? 'text-red-600' : 'text-emerald-700'}`}>
                           <span>Saldo disponível:</span>
                           <strong>{user.creditsBalance} créditos</strong>
                         </span>
                       </>
                     )}
                     <span>•</span>
-                    <span className="text-slate-400">1 a 5 produtos = 5 créditos (+1 por produto extra)</span>
+                    <span className="text-slate-400">10 créditos por áudio gerado</span>
                     <span>•</span>
                     <span>Com trilha inclusa</span>
                   </div>

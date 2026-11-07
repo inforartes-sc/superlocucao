@@ -226,7 +226,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {user?.creditsBalance ?? 0}
           </div>
           <div className="mt-2 text-xs text-slate-500 flex items-center justify-between">
-            <span>A partir de 5 créditos / áudio</span>
+            <span>A partir de 10 créditos / áudio</span>
             <button
               onClick={() => onNavigate('credits')}
               className="text-blue-600 hover:underline font-semibold cursor-pointer"

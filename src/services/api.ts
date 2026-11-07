@@ -377,6 +377,8 @@ export const api = {
       creditsPerGeneration: number;
       initialCredits: number;
       defaultVoiceId: string;
+      contactWhatsapp?: string;
+      contactEmail?: string;
       rechargePackages?: RechargePackage[];
       commercialPlans?: CommercialPlan[];
     }>('/settings'),

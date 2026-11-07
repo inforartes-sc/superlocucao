@@ -92,8 +92,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
 
   // Settings
   const [systemNotice, setSystemNotice] = useState('');
-  const [costPerGeneration, setCostPerGeneration] = useState<number>(5);
+  const [costPerGeneration, setCostPerGeneration] = useState<number>(10);
   const [newClientBonus, setNewClientBonus] = useState<number>(50);
+  const [contactWhatsapp, setContactWhatsapp] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -101,28 +103,28 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [rechargePackages, setRechargePackages] = useState<RechargePackage[]>([
     {
       id: 'pacote-basico',
-      name: 'Pacote Básico',
+      name: 'Recarga Básica',
       credits: 300,
-      price: 29.9,
+      price: 39.9,
       description: 'Aproximadamente 30 locuções comerciais',
       badge: '',
       highlighted: false,
     },
     {
       id: 'pacote-pro',
-      name: 'Pacote Pro Varejo',
+      name: 'Recarga Pro Varejo',
       credits: 1000,
-      price: 69.9,
+      price: 89.9,
       description: 'Aproximadamente 100 locuções comerciais',
       badge: 'Melhor Custo-Benefício',
       highlighted: true,
     },
     {
       id: 'pacote-atacado',
-      name: 'Pacote Atacarejo',
-      credits: 3000,
-      price: 147.9,
-      description: 'Aproximadamente 300 locuções comerciais',
+      name: 'Recarga Atacarejo',
+      credits: 2500,
+      price: 179.9,
+      description: 'Aproximadamente 250 locuções comerciais',
       badge: '',
       highlighted: false,
     },
@@ -152,7 +154,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       name: 'Pro Varejo',
       tag: 'Supermercados',
       subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
-      price: 89,
+      price: 89.9,
       billingPeriod: '/mês',
       creditsAmount: 1500,
       features: [
@@ -171,7 +173,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       name: 'Redes & Atacarejo',
       tag: 'Redes & Filiais',
       subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
-      price: 199,
+      price: 189.9,
       billingPeriod: '/mês',
       creditsAmount: 5000,
       features: [
@@ -274,8 +276,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
           setOnlineRadioStations(metricsRes.radioStats.onlineStations);
         }
         setSystemNotice(metricsRes.settings?.systemAnnouncement || '');
-        setCostPerGeneration(metricsRes.settings?.creditsPerGeneration ?? 5);
+        setCostPerGeneration(metricsRes.settings?.creditsPerGeneration ?? 10);
         setNewClientBonus(metricsRes.settings?.initialCredits ?? 50);
+        setContactWhatsapp(metricsRes.settings?.contactWhatsapp || '5596981248000');
+        setContactEmail(metricsRes.settings?.contactEmail || 'contato@superlocucao.inforartes.com.br');
         setInputKey(metricsRes.elevenLabsApiKey || '');
         setInputGeminiKey(metricsRes.geminiApiKey || '');
 
@@ -672,8 +676,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
     try {
       await api.updateAdminSettings({
         systemAnnouncement: systemNotice.trim(),
-        creditsPerGeneration: Number(costPerGeneration) || 5,
+        creditsPerGeneration: Number(costPerGeneration) || 10,
         initialCredits: Number(newClientBonus) || 50,
+        contactWhatsapp: contactWhatsapp.trim(),
+        contactEmail: contactEmail.trim(),
       });
       setSavedSuccess(true);
       await loadData();
@@ -2972,8 +2978,64 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 className="w-full px-4 py-3 rounded-2xl border border-zinc-700/80 bg-[#10121a] text-white text-sm focus:outline-none focus:border-orange-500 transition"
               />
               <p className="text-[11px] text-zinc-500">
-                Regra ativa: <strong>5 créditos</strong> de 1 a 5 produtos (+1 por produto adicional).
+                Regra ativa: <strong>10 créditos</strong> de 1 a 5 produtos (+2 por produto adicional).
               </p>
+            </div>
+          </div>
+
+          {/* Configuração de Canais de Contato (WhatsApp & E-mail) */}
+          <div className="pt-4 border-t border-zinc-800/80 space-y-4">
+            <div>
+              <h4 className="text-sm font-black text-white flex items-center gap-2">
+                <Phone className="w-4 h-4 text-emerald-400" />
+                <span>Canais Oficiais de Atendimento & Contato</span>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  Público / Lojistas
+                </span>
+              </h4>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Configure o WhatsApp e o E-mail oficial utilizados no botão flutuante "Fale Conosco", no rodapé e no modal de atendimento comercial.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300">
+                  WhatsApp de Atendimento & Suporte
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-emerald-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={contactWhatsapp}
+                    onChange={(e) => setContactWhatsapp(e.target.value)}
+                    placeholder="Ex: 5596981248000 ou (96) 98124-8000"
+                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-zinc-700/80 bg-[#10121a] text-white text-sm focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                  Pode digitar com ou sem máscara. O sistema converte automaticamente para o link do WhatsApp.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-300">
+                  E-mail Oficial para Contato
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-orange-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Ex: contato@superlocucao.inforartes.com.br"
+                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-zinc-700/80 bg-[#10121a] text-white text-sm focus:outline-none focus:border-orange-500 transition"
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                  E-mail institucional exibido para envio de dúvidas e propostas de grandes redes.
+                </p>
+              </div>
             </div>
           </div>
 

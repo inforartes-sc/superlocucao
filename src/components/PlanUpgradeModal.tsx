@@ -65,7 +65,7 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
       name: 'Pro Varejo',
       tag: 'Supermercados',
       subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
-      price: 89,
+      price: 89.9,
       billingPeriod: '/mês',
       creditsAmount: 1500,
       features: [
@@ -87,7 +87,7 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
       name: 'Redes & Atacarejo',
       tag: 'Redes & Filiais',
       subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
-      price: 199,
+      price: 189.9,
       billingPeriod: '/mês',
       creditsAmount: 5000,
       features: [
@@ -308,7 +308,7 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
                           <>
                             <span className="text-xs font-semibold text-zinc-400">R$</span>
                             <span className="text-3xl sm:text-4xl font-black text-white">
-                              {Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                              {Number(p.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <span className="text-xs text-zinc-400 font-medium">{p.billingPeriod || '/mês'}</span>
                           </>

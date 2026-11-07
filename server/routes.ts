@@ -13,15 +13,18 @@ import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 
 /**
  * Regra oficial de consumo de créditos para locução de ofertas:
- * - De 1 a 5 produtos: consumo fixo de 5 créditos
- * - A partir do 5º produto: 1 crédito adicional por produto a mais
+ * - Locução Simples: 10 créditos iniciais (cobre de 1 a 5 produtos no mesmo anúncio; +2 créditos por produto adicional)
+ * - Geração em Lote (Estúdio): 10 créditos por produto (cada produto gera um áudio completo independente com vinheta e trilha)
  */
-export function calculateCreditCost(productCount: number = 1): number {
+export function calculateCreditCost(productCount: number = 1, isBatch: boolean = false): number {
   const count = Math.max(1, Math.floor(productCount || 1));
-  if (count <= 5) {
-    return 5;
+  if (isBatch) {
+    return count * 10;
   }
-  return 5 + (count - 5);
+  if (count <= 5) {
+    return 10;
+  }
+  return 10 + (count - 5) * 2;
 }
 
 export const apiRouter = Router();
@@ -412,7 +415,7 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'O roteiro não pode estar vazio' });
   }
 
-  // Regra de consumo de créditos: de 1 a 5 produtos = 5 créditos. A partir do 5º produto = +1 crédito por produto adicional
+  // Regra de consumo de créditos: de 1 a 5 produtos = 10 créditos. A partir do 5º produto = +2 créditos por produto adicional
   let productCount = 1;
   if (req.body.productCount !== undefined && req.body.productCount !== null) {
     productCount = Number(req.body.productCount);
@@ -524,21 +527,21 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Nenhum produto fornecido para lote' });
   }
 
-  // Regra de consumo de créditos: de 1 a 5 produtos = 5 créditos. A partir do 5º produto = +1 crédito por produto adicional
-  const totalCost = calculateCreditCost(products.length);
+  // Regra de consumo de créditos no Lote: cada produto gera 1 áudio individual independente = 10 créditos por produto
+  const totalCost = calculateCreditCost(products.length, true);
   if (user.creditsBalance < totalCost) {
     return res.status(402).json({
-      error: `Créditos insuficientes para gerar lote (${products.length} produto${products.length > 1 ? 's' : ''} = ${totalCost} créditos). Saldo atual: ${user.creditsBalance}`,
+      error: `Créditos insuficientes para gerar lote (${products.length} produto${products.length > 1 ? 's' : ''} x 10 créditos = ${totalCost} créditos). Saldo atual: ${user.creditsBalance}`,
       required: totalCost,
       current: user.creditsBalance,
     });
   }
 
-  // Debita o custo do lote de acordo com a regra de 1 a 5 produtos = 5 créditos, +1 por produto adicional
+  // Debita o custo do lote (10 créditos por áudio gerado)
   db.updateUserCredits(
     userId,
     -totalCost,
-    `Geração de Lote (${products.length} produtos)`
+    `Geração de Lote (${products.length} áudios gerados - ${totalCost} créditos)`
   );
 
   const generatedAudios: AudioGenerationItem[] = [];
@@ -1171,7 +1174,7 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
   }
 
   // Regra de Consumo de Créditos na Rádio Web:
-  // Toda locução sintetizada consome créditos do usuário (de 1 a 5 produtos/itens = 5 créditos)
+  // Toda locução sintetizada consome créditos do usuário (de 1 a 5 produtos/itens = 10 créditos; +2 por produto extra)
   const productCount = req.body.productCount ? Number(req.body.productCount) : 1;
   const creditCost = calculateCreditCost(productCount);
 
@@ -1477,8 +1480,10 @@ apiRouter.get('/settings', (_req: Request, res: Response) => {
   const settings = db.getAdminSettings();
   res.json({
     systemAnnouncement: settings?.systemAnnouncement || '',
-    creditsPerGeneration: settings?.creditsPerGeneration ?? 5,
+    creditsPerGeneration: settings?.creditsPerGeneration ?? 10,
     initialCredits: settings?.initialCredits ?? 50,
+    contactWhatsapp: settings?.contactWhatsapp || '5596981248000',
+    contactEmail: settings?.contactEmail || 'contato@superlocucao.inforartes.com.br',
     defaultVoiceId: settings?.defaultVoiceId || 'daniel-varejo',
     rechargePackages: (settings?.rechargePackages && settings.rechargePackages.length > 0) ? settings.rechargePackages : DEFAULT_RECHARGE_PACKAGES,
     commercialPlans: (settings?.commercialPlans && settings.commercialPlans.length > 0) ? settings.commercialPlans : DEFAULT_COMMERCIAL_PLANS,

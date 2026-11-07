@@ -58,7 +58,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       name: 'Pro Varejo',
       tag: 'Supermercados',
       subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
-      price: 89,
+      price: 89.9,
       billingPeriod: '/mês',
       creditsAmount: 1500,
       features: [
@@ -80,7 +80,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
       name: 'Redes & Atacarejo',
       tag: 'Redes & Filiais',
       subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
-      price: 199,
+      price: 189.9,
       billingPeriod: '/mês',
       creditsAmount: 5000,
       features: [
@@ -102,28 +102,28 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
   const [packages, setPackages] = useState<RechargePackage[]>([
     {
       id: 'pacote-basico',
-      name: 'Pacote Básico',
+      name: 'Recarga Básica',
       credits: 300,
-      price: 29.9,
+      price: 39.9,
       description: 'Aproximadamente 30 locuções comerciais',
       badge: '',
       highlighted: false,
     },
     {
       id: 'pacote-pro',
-      name: 'Pacote Pro Varejo',
+      name: 'Recarga Pro Varejo',
       credits: 1000,
-      price: 69.9,
+      price: 89.9,
       description: 'Aproximadamente 100 locuções comerciais',
       badge: 'Melhor Custo-Benefício',
       highlighted: true,
     },
     {
       id: 'pacote-atacado',
-      name: 'Pacote Atacarejo',
-      credits: 3000,
-      price: 147.9,
-      description: 'Aproximadamente 300 locuções comerciais',
+      name: 'Recarga Atacarejo',
+      credits: 2500,
+      price: 179.9,
+      description: 'Aproximadamente 250 locuções comerciais',
       badge: '',
       highlighted: false,
     },
@@ -305,7 +305,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
           Planos e Saldo de Créditos
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          De 1 a 5 produtos o consumo é de 5 créditos (a partir do 5º produto, +1 crédito por produto adicional). Adicione créditos avulsos com liberação instantânea via Pix ou Cartão.
+          De 1 a 5 produtos o consumo é de 10 créditos (a partir do 5º produto, +2 créditos por produto adicional). Adicione créditos avulsos com liberação instantânea via Pix ou Cartão.
         </p>
       </div>
 
@@ -457,7 +457,7 @@ export const CreditsView: React.FC<CreditsViewProps> = ({ user, onRefreshUser })
                       ) : (
                         <>
                           <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-                            R$ {Number(plan.price).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                            R$ {Number(plan.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span className="text-xs text-slate-400 font-medium">{plan.billingPeriod || '/mês'}</span>
                         </>

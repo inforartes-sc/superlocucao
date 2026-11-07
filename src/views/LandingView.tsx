@@ -34,11 +34,13 @@ import {
   VolumeX,
   ArrowUp,
   Menu,
+  MessageSquare,
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
 import { api } from '../services/api.ts';
 import { CommercialPlan } from '../types/index.ts';
+import { ContactModal } from '../components/ContactModal.tsx';
 
 interface LandingViewProps {
   onStartCreating: () => void;
@@ -56,6 +58,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactSubject, setContactSubject] = useState('Dúvidas sobre os Planos & Rádio Web');
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
@@ -86,7 +90,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       name: 'Pro Varejo',
       tag: 'Supermercados',
       subtitle: 'Ideal para mercados que trocam encartes e ofertas de açougue e hortifrúti todo dia.',
-      price: 89,
+      price: 89.9,
       billingPeriod: '/mês',
       creditsAmount: 1500,
       features: [
@@ -108,7 +112,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       name: 'Redes & Atacarejo',
       tag: 'Redes & Filiais',
       subtitle: 'Para redes com múltiplas filiais ou grande volume diário de queimas de estoque.',
-      price: 199,
+      price: 189.9,
       billingPeriod: '/mês',
       creditsAmount: 5000,
       features: [
@@ -127,10 +131,19 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
   ]);
 
+  const [publicWhatsapp, setPublicWhatsapp] = useState('');
+  const [publicEmail, setPublicEmail] = useState('');
+
   useEffect(() => {
     api.getPublicSettings().then((res) => {
       if (res && res.commercialPlans && res.commercialPlans.length > 0) {
         setCommercialPlans(res.commercialPlans);
+      }
+      if (res && res.contactWhatsapp) {
+        setPublicWhatsapp(res.contactWhatsapp);
+      }
+      if (res && res.contactEmail) {
+        setPublicEmail(res.contactEmail);
       }
     }).catch(console.warn);
   }, []);
@@ -358,8 +371,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
       title: 'Queima de Estoque & Limpeza',
       tag: 'Mega Queima & Atacarejo',
       badgeColor: 'bg-red-500/15 text-red-400 border-red-500/30',
-      voice: 'Nassif (Oferta Relâmpago & Varejo Rápido)',
-      duration: '17s',
+      voice: 'Rodrigo (Voz de Impacto & Atacarejo)',
+      duration: '20s',
       url: '/api/audio/aud-vitrine-atacarejo.mp3',
       text: 'Atenção: começou a grande queima de estoque em toda a mercearia e limpeza! Arroz cinco quilos, óleo de soja e sabão em pó com preços de atacado para você encher o carrinho e pagar muito menos! É por tempo limitado, aproveite!',
     },
@@ -488,19 +501,19 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   Varejo IA
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">
-                Locução Comercial & Rádio Web para Supermercados
+              <p className="text-[11px] text-zinc-400 hidden sm:block max-w-[205px] truncate">
+                Locução Comercial & Rádio Web
               </p>
             </div>
           </div>
 
           {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-zinc-300">
+          <nav className="hidden lg:flex items-center gap-7 text-sm font-bold text-zinc-300">
             <button
               onClick={() => scrollToSection('radioweb')}
-              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-1.5 text-orange-400 bg-orange-500/10 border border-orange-500/25 px-3 py-1.5 rounded-full"
+              className="hover:text-orange-400 transition cursor-pointer flex items-center gap-2 text-orange-400 bg-orange-500/10 border border-orange-500/25 px-3.5 py-1.5 rounded-full text-sm font-bold"
             >
-              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <Radio className="w-4 h-4 animate-pulse" />
               <span>Ouvir a Rádio</span>
             </button>
             <button
@@ -648,6 +661,19 @@ export const LandingView: React.FC<LandingViewProps> = ({
               >
                 <HelpCircle className="w-5 h-5 text-orange-400 shrink-0" />
                 <span>Perguntas Frequentes (FAQ)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setContactSubject('Dúvidas sobre os Planos & Rádio Web');
+                  setIsContactModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition cursor-pointer text-left"
+              >
+                <MessageSquare className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>Fale Conosco / Contato</span>
               </button>
             </nav>
 
@@ -1251,19 +1277,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                       </>
                     )}
                   </button>
-
-                  <button
-                    onClick={() => handleDownloadDemo(spot.url, spot.id, `locucao-${spot.id}`)}
-                    disabled={downloadingAudioId === spot.id}
-                    className="p-2 text-zinc-400 hover:text-white bg-[#12141c] hover:bg-zinc-800 border border-zinc-700/70 rounded-xl transition cursor-pointer"
-                    title="Baixar MP3 de demonstração"
-                  >
-                    {downloadingAudioId === spot.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
-                  </button>
                 </div>
               </div>
             ))}
@@ -1560,6 +1573,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
               <button
+                onClick={() => {
+                  setContactSubject('Contato pelo Rodapé do Site');
+                  setIsContactModalOpen(true);
+                }}
+                className="w-full sm:w-auto px-4 py-3 rounded-xl text-sm font-bold text-zinc-300 hover:text-white bg-[#181b24] hover:bg-zinc-800 border border-zinc-700/80 transition cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Fale Conosco</span>
+              </button>
+              <button
                 onClick={onOpenLogin}
                 className="w-full sm:w-auto px-4 py-3 rounded-xl text-sm font-bold text-zinc-300 hover:text-white bg-[#181b24] hover:bg-zinc-800 border border-zinc-700/80 transition cursor-pointer text-center"
               >
@@ -1581,18 +1604,46 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </footer>
 
-      {/* Floating Scroll to Top Button */}
+      {/* Floating WhatsApp / Contact Button */}
+      <button
+        type="button"
+        onClick={() => {
+          setContactSubject('Contato via Botão Flutuante do Site');
+          setIsContactModalOpen(true);
+        }}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs sm:text-sm shadow-2xl shadow-emerald-500/40 border border-emerald-300/40 flex items-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
+        title="Fale Conosco no WhatsApp"
+        aria-label="Fale Conosco"
+      >
+        <div className="relative flex items-center justify-center">
+          <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-950 fill-current" />
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-ping" />
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+        </div>
+        <span className="tracking-tight">Fale Conosco</span>
+      </button>
+
+      {/* Floating Scroll to Top Button (Stacked above contact button) */}
       {showScrollTop && (
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 shadow-2xl shadow-orange-500/40 border border-amber-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-18 sm:bottom-22 right-4 sm:right-6 z-40 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-zinc-900/95 hover:bg-zinc-800 text-orange-400 border border-zinc-700 shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
           title="Voltar ao início da página"
           aria-label="Voltar ao topo"
         >
-          <ArrowUp className="w-5 h-5 text-zinc-950 stroke-[3]" />
+          <ArrowUp className="w-4 h-4 text-orange-400 stroke-[3]" />
         </button>
       )}
+
+      {/* Contact Modal */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        defaultSubject={contactSubject}
+        configuredWhatsapp={publicWhatsapp}
+        configuredEmail={publicEmail}
+      />
     </div>
   );
 };
