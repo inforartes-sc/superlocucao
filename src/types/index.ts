@@ -410,7 +410,7 @@ export interface RadioStationConfig {
   playlists?: RadioPlaylist[];
   autoPublishNewAudios: boolean;
   timeAnnouncementEnabled?: boolean;
-  timeAnnouncementInterval?: '15min' | '30min' | '60min' | 'manual_only';
+  timeAnnouncementInterval?: '2min' | '5min' | '10min' | '15min' | '30min' | '60min' | 'manual_only';
   timeAnnouncementChime?: boolean;
   timeAnnouncementStyle?: 'comercial' | 'padrao' | 'curto';
   timeAnnouncementVoiceId?: string;

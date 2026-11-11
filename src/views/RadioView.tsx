@@ -22,6 +22,7 @@ import {
   Upload,
   Flame,
   RefreshCw,
+  Loader2,
   Download,
   Maximize2,
   Minimize2,
@@ -648,6 +649,9 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     deleteRadioStore,
     speakCurrentTimeNow,
     isAnnouncingTime,
+    timeCountdownSeconds,
+    isTimeAnnouncementPending,
+    nextTimeAnnouncementFormatted,
   } = useRadio();
 
   const isGratuito = user?.plan === 'gratuito';
@@ -3253,6 +3257,89 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                   </div>
                 </div>
 
+                {/* Status em Tempo Real da Programação Automática */}
+                {config.timeAnnouncementEnabled && config.timeAnnouncementInterval !== 'manual_only' && (
+                  <div className="rounded-xl bg-[#10121a] border border-amber-500/30 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      {!isOnAir ? (
+                        <>
+                          <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-amber-300 block">
+                              Rádio Web Pausada (Off Air)
+                            </span>
+                            <span className="text-[11px] text-zinc-400">
+                              Ligue a Rádio Web ao Vivo para iniciar as transmissões automáticas da hora certa.
+                            </span>
+                          </div>
+                        </>
+                      ) : isTimeAnnouncementPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-amber-300 block">
+                              Hora Certa Agendada no Ar!
+                            </span>
+                            <span className="text-[11px] text-zinc-400">
+                              Entrando no ar imediatamente assim que a locução comercial atual terminar...
+                            </span>
+                          </div>
+                        </>
+                      ) : isAnnouncingTime ? (
+                        <>
+                          <Volume2 className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-amber-300 block">
+                              Falando Hora Certa no Ar Agora
+                            </span>
+                            <span className="text-[11px] text-zinc-400">
+                              Sinal horário de bips e locução neural com o nome da sua loja tocando ao vivo.
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-emerald-300">
+                                Programação Automática Ativa no Ar
+                              </span>
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                {config.timeAnnouncementInterval === '2min' ? 'A cada 2 min' :
+                                 config.timeAnnouncementInterval === '5min' ? 'A cada 5 min' :
+                                 config.timeAnnouncementInterval === '10min' ? 'A cada 10 min' :
+                                 config.timeAnnouncementInterval === '15min' ? 'A cada 15 min' :
+                                 config.timeAnnouncementInterval === '60min' ? 'A cada 60 min' : 'A cada 30 min'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-zinc-400">
+                              Próximo anúncio automático programado para as{' '}
+                              <strong className="text-white font-mono">{nextTimeAnnouncementFormatted || '--:--'}</strong>{' '}
+                              {timeCountdownSeconds > 0 && (
+                                <span className="text-amber-400 font-mono font-bold">
+                                  (em {Math.floor(timeCountdownSeconds / 60)}:{(timeCountdownSeconds % 60).toString().padStart(2, '0')})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {!isOnAir && (
+                      <button
+                        type="button"
+                        onClick={toggleOnAir}
+                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 text-xs font-black flex items-center gap-1.5 shrink-0 transition shadow-lg cursor-pointer"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Ligar Rádio ao Vivo Agora</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-zinc-800">
                   {/* 1. Ativação Automática */}
                   <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1.5">
@@ -3263,7 +3350,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       <input
                         type="checkbox"
                         checked={Boolean(config.timeAnnouncementEnabled)}
-                        onChange={e => updateConfig({ timeAnnouncementEnabled: e.target.checked })}
+                        onChange={e => {
+                          const willEnable = e.target.checked;
+                          updateConfig({ timeAnnouncementEnabled: willEnable });
+                          if (willEnable && !isOnAir) {
+                            toggleOnAir();
+                          }
+                        }}
                         className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
                       />
                       <span className="text-xs font-semibold text-white">
@@ -3286,13 +3379,16 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       disabled={!config.timeAnnouncementEnabled}
                       className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white cursor-pointer disabled:opacity-40"
                     >
+                      <option value="2min">A cada 2 min (Modo Teste / Demonstração Rápida)</option>
+                      <option value="5min">A cada 5 min (:00, :05, :10, :15, :20...)</option>
+                      <option value="10min">A cada 10 min (:00, :10, :20, :30, :40, :50)</option>
                       <option value="15min">A cada 15 min (:00, :15, :30, :45)</option>
                       <option value="30min">A cada 30 min (:00 e :30) — Recomendado</option>
                       <option value="60min">A cada 60 min (Na virada da hora)</option>
                       <option value="manual_only">Somente Disparo Manual</option>
                     </select>
                     <p className="text-[10px] text-zinc-500">
-                      Minutos exatos em que a hora será anunciada
+                      Intervalo ou minutos exatos em que a hora será anunciada
                     </p>
                   </div>
 
@@ -4082,7 +4178,14 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                           : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                       }`}>
                         {config.timeAnnouncementEnabled
-                          ? `Ativa (${config.timeAnnouncementInterval === '15min' ? 'a cada 15 min' : config.timeAnnouncementInterval === '60min' ? 'a cada 60 min' : 'a cada 30 min'})`
+                          ? `Ativa (${
+                              config.timeAnnouncementInterval === '2min' ? 'a cada 2 min' :
+                              config.timeAnnouncementInterval === '5min' ? 'a cada 5 min' :
+                              config.timeAnnouncementInterval === '10min' ? 'a cada 10 min' :
+                              config.timeAnnouncementInterval === '15min' ? 'a cada 15 min' :
+                              config.timeAnnouncementInterval === '60min' ? 'a cada 60 min' :
+                              'a cada 30 min'
+                            }${isOnAir && timeCountdownSeconds > 0 ? ` • Próxima em ${Math.floor(timeCountdownSeconds / 60)}:${(timeCountdownSeconds % 60).toString().padStart(2, '0')}` : !isOnAir ? ' • Rádio Off Air' : ''})`
                           : 'Desativada (Disparo Manual)'}
                       </span>
                     </div>

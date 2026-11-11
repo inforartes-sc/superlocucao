@@ -483,6 +483,46 @@ interface RadioContextValue {
   deleteRadioStore: (id: string) => Promise<void>;
   speakCurrentTimeNow: (options?: { style?: 'comercial' | 'padrao' | 'curto'; chime?: boolean }) => Promise<void>;
   isAnnouncingTime: boolean;
+  timeCountdownSeconds: number;
+  isTimeAnnouncementPending: boolean;
+  nextTimeAnnouncementFormatted: string;
+}
+
+function getSecondsUntilNextTimeAnnouncement(interval: string): { secondsRemaining: number; targetTimeFormatted: string } {
+  const now = new Date();
+  const currentMinutes = now.getMinutes();
+
+  let stepMinutes = 15;
+  if (interval === '2min') stepMinutes = 2;
+  else if (interval === '5min') stepMinutes = 5;
+  else if (interval === '10min') stepMinutes = 10;
+  else if (interval === '15min') stepMinutes = 15;
+  else if (interval === '30min') stepMinutes = 30;
+  else if (interval === '60min') stepMinutes = 60;
+
+  // Próximo minuto múltiplo
+  let targetMinute = Math.floor(currentMinutes / stepMinutes) * stepMinutes + stepMinutes;
+  let targetHour = now.getHours();
+
+  if (targetMinute >= 60) {
+    targetHour = (targetHour + Math.floor(targetMinute / 60)) % 24;
+    targetMinute = targetMinute % 60;
+  }
+
+  const targetDate = new Date(now);
+  targetDate.setHours(targetHour, targetMinute, 0, 0);
+
+  let diffMs = targetDate.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    targetDate.setTime(targetDate.getTime() + stepMinutes * 60 * 1000);
+    diffMs = targetDate.getTime() - now.getTime();
+  }
+
+  const secondsRemaining = Math.max(0, Math.round(diffMs / 1000));
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const targetTimeFormatted = `${pad(targetDate.getHours())}:${pad(targetDate.getMinutes())}`;
+
+  return { secondsRemaining, targetTimeFormatted };
 }
 
 const RadioContext = createContext<RadioContextValue | undefined>(undefined);
@@ -535,6 +575,9 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const [isMusicLevelerEnabled, setIsMusicLevelerEnabled] = useState<boolean>(true);
   const [isLiveMicActive, setIsLiveMicActive] = useState<boolean>(false);
   const [isAnnouncingTime, setIsAnnouncingTime] = useState<boolean>(false);
+  const [timeCountdownSeconds, setTimeCountdownSeconds] = useState<number>(0);
+  const [isTimeAnnouncementPending, setIsTimeAnnouncementPending] = useState<boolean>(false);
+  const [nextTimeAnnouncementFormatted, setNextTimeAnnouncementFormatted] = useState<string>('');
   const [sessionConflict, setSessionConflict] = useState<{ message: string; activeDevice?: string } | null>(null);
   const [supersededMessage, setSupersededMessage] = useState<string | null>(null);
   const [activeStoreId, setActiveStoreIdState] = useState<string>(() => {
@@ -572,6 +615,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const currentMusicRef = useRef<RadioMusicTrack | null>(null);
   const isLiveMicActiveRef = useRef<boolean>(false);
   const isAnnouncingTimeRef = useRef<boolean>(false);
+  const isTimePendingRef = useRef<boolean>(false);
   const lastAnnouncedMinuteRef = useRef<string>('');
   const lastStateSaveRef = useRef<number>(0);
   const countdownSecondsRef = useRef<number>(30);
@@ -1129,6 +1173,8 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
       isAnnouncingTimeRef.current = true;
       setIsAnnouncingTime(true);
+      isTimePendingRef.current = false;
+      setIsTimeAnnouncementPending(false);
 
       // Garante que a rádio seja iniciada se não estiver tocando
       if (!isOnAirRef.current) {
@@ -1147,25 +1193,22 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         const style = options?.style || cfg.timeAnnouncementStyle || 'comercial';
         const useChime = options?.chime !== undefined ? options.chime : (cfg.timeAnnouncementChime ?? true);
 
-        // 2. Tocar o tradicional sinal horário de rádio (3 bips curtos e 1 longo)
-        if (useChime) {
-          await playRadioTimePips(0.8);
-        } else {
-          await new Promise(r => setTimeout(r, 250));
-        }
-
-        // 3. Obter áudio neural da hora certa
+        // 2 & 3: Toca o sinal horário de rádio e solicita a síntese neural em paralelo
+        // Enquanto os bips tocam no ar (~2.4s), o áudio neural já é gerado, eliminando atrasos
         const now = new Date();
-        const res = await api.requestTimeAnnouncement({
-          style,
-          voiceId: cfg.timeAnnouncementVoiceId,
-          storeName: cfg.storeName,
-          stationName: cfg.stationName,
-          hours: now.getHours(),
-          minutes: now.getMinutes(),
-        });
+        const [_, res] = await Promise.all([
+          useChime ? playRadioTimePips(0.8) : new Promise(r => setTimeout(r, 200)),
+          api.requestTimeAnnouncement({
+            style,
+            voiceId: cfg.timeAnnouncementVoiceId,
+            storeName: cfg.storeName,
+            stationName: cfg.stationName,
+            hours: now.getHours(),
+            minutes: now.getMinutes(),
+          }),
+        ]);
 
-        if (!res.audioUrl) {
+        if (!res || !res.audioUrl) {
           throw new Error('Falha ao obter áudio da hora certa');
         }
 
@@ -1190,10 +1233,10 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         currentSpotRef.current = timeSpotItem;
 
         spotAudio.src = res.audioUrl;
-        // Ajusta volume do spot de acordo com o configurado
-        spotAudio.volume = 1.0;
+        spotAudio.volume = Math.max(0, Math.min(1, cfg.voiceVolume ?? cfg.spotVolume ?? 1.0));
         await spotAudio.play();
 
+        lastAnnouncedMinuteRef.current = `${now.getHours()}:${now.getMinutes()}`;
         appendLog(`⏰ Hora Certa anunciada no ar: ${res.formattedTime}`, 'sistema', res.scriptText);
       } catch (err) {
         console.error('Erro ao anunciar hora certa na rádio:', err);
@@ -1354,42 +1397,50 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     return () => window.clearInterval(timer);
   }, [isOnAir, config, playSpotNow]);
 
-  // Agendamento automático da Hora Certa na Rádio Web
+  // Agendamento e contagem regressiva da Hora Certa na Rádio Web
   useEffect(() => {
-    if (!isOnAir) return;
+    if (!isOnAir) {
+      setTimeCountdownSeconds(0);
+      setNextTimeAnnouncementFormatted('');
+      return;
+    }
 
     const intervalId = window.setInterval(() => {
       const cfg = configRef.current;
       if (!cfg || !cfg.timeAnnouncementEnabled || cfg.timeAnnouncementInterval === 'manual_only') {
+        setTimeCountdownSeconds(0);
+        setNextTimeAnnouncementFormatted('');
         return;
       }
 
-      if (isLiveMicActiveRef.current || isAnnouncingTimeRef.current || currentSpotRef.current) {
-        return;
-      }
+      const { secondsRemaining, targetTimeFormatted } = getSecondsUntilNextTimeAnnouncement(cfg.timeAnnouncementInterval || '30min');
+      setTimeCountdownSeconds(secondsRemaining);
+      setNextTimeAnnouncementFormatted(targetTimeFormatted);
 
-      const now = new Date();
-      const minutes = now.getMinutes();
-      const timeKey = `${now.getHours()}:${minutes}`;
+      // Quando o cronômetro atinge o momento do anúncio (<= 1 segundo restante)
+      if (secondsRemaining <= 1) {
+        const now = new Date();
+        const timeKey = `${now.getHours()}:${now.getMinutes()}`;
 
-      if (lastAnnouncedMinuteRef.current === timeKey) {
-        return;
-      }
+        // Evita disparos duplicados no mesmo minuto
+        if (lastAnnouncedMinuteRef.current === timeKey) {
+          return;
+        }
 
-      let shouldAnnounce = false;
-      if (cfg.timeAnnouncementInterval === '15min') {
-        shouldAnnounce = minutes === 0 || minutes === 15 || minutes === 30 || minutes === 45;
-      } else if (cfg.timeAnnouncementInterval === '30min') {
-        shouldAnnounce = minutes === 0 || minutes === 30;
-      } else if (cfg.timeAnnouncementInterval === '60min') {
-        shouldAnnounce = minutes === 0;
-      }
+        // Se uma locução comercial ou microfone ao vivo estiver no ar, marca como pendente para entrar a seguir
+        if (isLiveMicActiveRef.current || isAnnouncingTimeRef.current || currentSpotRef.current) {
+          if (!isTimePendingRef.current) {
+            isTimePendingRef.current = true;
+            setIsTimeAnnouncementPending(true);
+            lastAnnouncedMinuteRef.current = timeKey;
+          }
+          return;
+        }
 
-      if (shouldAnnounce) {
         lastAnnouncedMinuteRef.current = timeKey;
         speakCurrentTimeNow();
       }
-    }, 5000);
+    }, 1000);
 
     return () => window.clearInterval(intervalId);
   }, [isOnAir, speakCurrentTimeNow]);
@@ -1939,6 +1990,15 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     setCurrentSpot(null);
     currentSpotRef.current = null;
     setSpotCurrentTime(0);
+
+    // Se havia uma Hora Certa agendada aguardando o término desta locução comercial, ela entra no ar imediatamente!
+    if (isTimePendingRef.current) {
+      isTimePendingRef.current = false;
+      setIsTimeAnnouncementPending(false);
+      speakCurrentTimeNow();
+      return;
+    }
+
     setIsDucking(false);
 
     if (cfg) {
@@ -2028,6 +2088,9 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         deleteRadioStore,
         speakCurrentTimeNow,
         isAnnouncingTime,
+        timeCountdownSeconds,
+        isTimeAnnouncementPending,
+        nextTimeAnnouncementFormatted,
         vocalBoostDb,
         isVocalLevelerEnabled,
         triggerManualDucking,
