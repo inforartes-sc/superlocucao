@@ -3549,12 +3549,13 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-zinc-700/70 text-xs">
-                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center justify-between gap-2.5">
+                  {/* Card 1: Nome da Loja */}
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center justify-between gap-2.5 min-h-[66px]">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-lg">🏪</span>
+                      <span className="text-lg shrink-0">🏪</span>
                       <div className="min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-zinc-500 block">Nome da Loja nas Vinhetas</span>
-                        <strong className="text-white truncate block">{resolvedVinhetaStoreName}</strong>
+                        <span className="text-[10px] uppercase font-bold text-zinc-500 block mb-1 leading-none">Nome da Loja nas Vinhetas</span>
+                        <strong className="text-white truncate block text-xs leading-tight">{resolvedVinhetaStoreName}</strong>
                       </div>
                     </div>
                     <button
@@ -3567,33 +3568,39 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       <span>Sincronizar</span>
                     </button>
                   </div>
-                  <div className="bg-zinc-950/80 p-2.5 sm:p-3 rounded-xl border border-purple-500/30 flex items-center justify-between gap-2.5 min-w-0">
+
+                  {/* Card 2: Voz Selecionada com Troca e Prévia Perfeitamente Harmonizados */}
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center justify-between gap-2.5 min-w-0 min-h-[66px]">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span className="text-lg shrink-0">🎙️</span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-[10px] uppercase font-bold text-purple-400 block truncate">Voz das Vinhetas</span>
+                        <div className="flex items-center gap-1.5 leading-none mb-1">
+                          <span className="text-[10px] uppercase font-bold text-zinc-500 block truncate">Voz das Vinhetas</span>
                           {(() => {
                             const v = voices.find(voice => voice.id === selectedVoiceId);
-                            return (v?.styleTag || v?.tone) ? (
-                              <span className="text-[9px] text-zinc-400 font-medium truncate max-w-[100px]">
-                                {v.styleTag || v.tone}
+                            const tag = v?.styleTag || v?.tone;
+                            return tag ? (
+                              <span className="text-[9px] text-purple-300 font-medium truncate">
+                                • {tag}
                               </span>
                             ) : null;
                           })()}
                         </div>
-                        <select
-                          value={selectedVoiceId}
-                          onChange={e => setSelectedVoiceId(e.target.value)}
-                          className="bg-zinc-900/90 text-white font-bold text-xs rounded-lg px-2 py-1 border border-zinc-700/80 focus:border-purple-500 focus:outline-none cursor-pointer w-full truncate"
-                          title="Alterar voz do narrador das vinhetas"
-                        >
-                          {voices.map(v => (
-                            <option key={v.id} value={v.id} className="bg-zinc-900 text-white text-xs">
-                              {v.name} ({v.styleTag || v.tone || (v.gender === 'feminino' ? 'Feminina' : 'Masculina')})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative flex items-center">
+                          <select
+                            value={selectedVoiceId}
+                            onChange={e => setSelectedVoiceId(e.target.value)}
+                            className="w-full bg-transparent text-white font-bold text-xs cursor-pointer focus:outline-none hover:text-purple-300 transition truncate pr-4 appearance-none leading-tight"
+                            title="Clique para trocar a voz do narrador das vinhetas"
+                          >
+                            {voices.map(v => (
+                              <option key={v.id} value={v.id} className="bg-zinc-900 text-white text-xs">
+                                {v.name} ({v.styleTag || v.tone || (v.gender === 'feminino' ? 'Feminina' : 'Masculina')})
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-0 pointer-events-none" />
+                        </div>
                       </div>
                     </div>
 
@@ -3603,31 +3610,33 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                         const v = voices.find(voice => voice.id === selectedVoiceId);
                         handleTogglePreview(`voice-${selectedVoiceId}`, getVoicePreviewUrl(v, selectedVoiceId));
                       }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer shrink-0 ${
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer shrink-0 border ${
                         previewItemId === `voice-${selectedVoiceId}` && isPreviewPlaying
                           ? 'bg-purple-600 text-white border-purple-400 shadow-sm shadow-purple-600/30'
-                          : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-700'
+                          : 'bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border-purple-500/30'
                       }`}
                       title="Ouvir amostra da voz selecionada antes de escolher"
                     >
                       {previewItemId === `voice-${selectedVoiceId}` && isPreviewPlaying ? (
                         <>
-                          <Pause className="w-3.5 h-3.5 fill-current animate-pulse" />
-                          <span className="hidden sm:inline">Pausar</span>
+                          <Pause className="w-3 h-3 fill-current animate-pulse" />
+                          <span>Pausar</span>
                         </>
                       ) : (
                         <>
-                          <Play className="w-3.5 h-3.5 fill-current text-purple-400" />
-                          <span className="hidden sm:inline">Ouvir</span>
+                          <Play className="w-3 h-3 fill-current text-purple-300" />
+                          <span>Ouvir</span>
                         </>
                       )}
                     </button>
                   </div>
-                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center gap-2.5">
-                    <span className="text-lg">🎵</span>
+
+                  {/* Card 3: Vinhetas na Grade */}
+                  <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-700/70 flex items-center gap-2.5 min-h-[66px]">
+                    <span className="text-lg shrink-0">🎵</span>
                     <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">Vinhetas na Grade</span>
-                      <strong className="text-purple-300 font-mono">
+                      <span className="text-[10px] uppercase font-bold text-zinc-500 block mb-1 leading-none">Vinhetas na Grade</span>
+                      <strong className="text-purple-300 font-mono text-xs block leading-tight">
                         {(config.queue || []).filter(q => q.type === 'vinheta' && q.active).length} ativas na programação
                       </strong>
                     </div>
