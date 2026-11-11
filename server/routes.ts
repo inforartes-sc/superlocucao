@@ -10,6 +10,7 @@ import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateS
 import { fetchRealBrazilianTTS } from './tts.ts';
 import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage, CommercialPlan } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
+import { buildTimeAnnouncementScript, formatTimeInSpokenWords } from '../src/utils/timeAnnouncement.ts';
 
 /**
  * Regra oficial de consumo de créditos para locução de ofertas:
@@ -1303,6 +1304,59 @@ apiRouter.post('/radio/flash', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Radio flash spot generation failed:', err);
     res.status(500).json({ error: err.message || 'Erro ao gerar locução para a Rádio Web' });
+  }
+});
+
+// Sintetizar Anúncio de Hora Certa com voz neural sob demanda
+apiRouter.post('/radio/time-announcement', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  const config = db.getRadioConfig(userId);
+
+  const {
+    style = 'comercial',
+    voiceId,
+    storeName,
+    stationName,
+    hours,
+    minutes,
+  } = req.body;
+
+  let dateToUse = new Date();
+  if (typeof hours === 'number' && typeof minutes === 'number') {
+    dateToUse = new Date();
+    dateToUse.setHours(hours, minutes, 0, 0);
+  }
+
+  const effectiveStore = storeName || config.storeName || (user ? user.companyName : '') || 'Supermercado';
+  const effectiveStation = stationName || config.stationName || `Rádio ${effectiveStore}`;
+  const effectiveVoice = voiceId || config.timeAnnouncementVoiceId || 'daniel-varejo';
+
+  const announcement = buildTimeAnnouncementScript({
+    date: dateToUse,
+    style: style as any,
+    storeName: effectiveStore,
+    stationName: effectiveStation,
+  });
+
+  try {
+    const ttsResult = await synthesizeSpeech({
+      text: announcement.script,
+      voiceId: effectiveVoice,
+      soundtrackId: 'sem_trilha',
+      soundtrackVolume: 0,
+    });
+
+    res.json({
+      success: true,
+      audioUrl: ttsResult.audioUrl,
+      durationSeconds: ttsResult.durationSeconds,
+      scriptText: announcement.script,
+      formattedTime: announcement.formattedTime,
+    });
+  } catch (err: any) {
+    console.error('Time announcement generation error:', err);
+    res.status(500).json({ error: err.message || 'Erro ao sintetizar anúncio de hora certa' });
   }
 });
 

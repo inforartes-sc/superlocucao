@@ -288,6 +288,24 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+  requestTimeAnnouncement: (params?: {
+    style?: 'comercial' | 'padrao' | 'curto';
+    voiceId?: string;
+    storeName?: string;
+    stationName?: string;
+    hours?: number;
+    minutes?: number;
+  }) =>
+    request<{
+      success: boolean;
+      audioUrl: string;
+      durationSeconds: number;
+      scriptText: string;
+      formattedTime: string;
+    }>('/radio/time-announcement', {
+      method: 'POST',
+      body: JSON.stringify(params || {}),
+    }),
   sendRadioHeartbeat: (params: {
     isOnAir: boolean;
     storeName?: string;

@@ -254,3 +254,64 @@ export class LiveMicrophoneBroadcaster {
   }
 }
 
+/**
+ * Sinal Horário Tradicional de Rádio (Pips de Hora Certa)
+ * 3 bips curtos de 1000Hz seguidos de 1 bip longo de 1500Hz que marca a hora exata.
+ * Retorna uma Promise que resolve quando a sequência de bips termina (~2.4s).
+ */
+export function playRadioTimePips(volume: number = 0.75): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(volume, now);
+      master.connect(ctx.destination);
+
+      // Três bips curtos a cada 600ms
+      const shortPips = [0, 0.6, 1.2];
+      shortPips.forEach((startTime) => {
+        const t = now + startTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1000, t);
+
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.5, t + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(t);
+        osc.stop(t + 0.13);
+      });
+
+      // Bip longo final de confirmação de hora exata (1.8s -> 2.4s)
+      const finalPipTime = now + 1.8;
+      const oscFinal = ctx.createOscillator();
+      const gainFinal = ctx.createGain();
+      oscFinal.type = 'sine';
+      oscFinal.frequency.setValueAtTime(1500, finalPipTime);
+
+      gainFinal.gain.setValueAtTime(0, finalPipTime);
+      gainFinal.gain.linearRampToValueAtTime(0.65, finalPipTime + 0.02);
+      gainFinal.gain.exponentialRampToValueAtTime(0.001, finalPipTime + 0.55);
+
+      oscFinal.connect(gainFinal);
+      gainFinal.connect(master);
+      oscFinal.start(finalPipTime);
+      oscFinal.stop(finalPipTime + 0.58);
+
+      // Resolução quando o sinal horário terminar
+      setTimeout(() => {
+        resolve();
+      }, 2400);
+    } catch (e) {
+      console.warn('Erro ao reproduzir sinal horário:', e);
+      resolve();
+    }
+  });
+}
+
+

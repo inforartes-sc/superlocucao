@@ -398,6 +398,11 @@ export interface RadioStationConfig {
   excludedPlaylistIds?: string[];
   playlists?: RadioPlaylist[];
   autoPublishNewAudios: boolean;
+  timeAnnouncementEnabled?: boolean;
+  timeAnnouncementInterval?: '15min' | '30min' | '60min' | 'manual_only';
+  timeAnnouncementChime?: boolean;
+  timeAnnouncementStyle?: 'comercial' | 'padrao' | 'curto';
+  timeAnnouncementVoiceId?: string;
   queue: RadioQueueItem[];
   musicTracks: RadioMusicTrack[];
   stores?: RadioStoreBranch[];

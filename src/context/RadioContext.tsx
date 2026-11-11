@@ -3,6 +3,7 @@ import { RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist, Aud
 import { api } from '../services/api';
 import { Radio, Zap, Pause, SkipForward, Megaphone, ArrowUpRight, Gauge } from 'lucide-react';
 import { attachVoiceNormalizer, attachMusicNormalizer, BroadcastVoiceProcessor } from '../utils/audioNormalizer';
+import { playRadioTimePips } from '../utils/soundboard';
 
 export interface BroadcastLogEntry {
   id: string;
@@ -87,6 +88,11 @@ export const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   excludedPlaylistIds: [],
   playlists: DEFAULT_RADIO_PLAYLISTS,
   autoPublishNewAudios: false,
+  timeAnnouncementEnabled: false,
+  timeAnnouncementInterval: '30min',
+  timeAnnouncementChime: true,
+  timeAnnouncementStyle: 'comercial',
+  timeAnnouncementVoiceId: 'voice-marcos',
   queue: [
     {
       id: 'rq-default-1',
@@ -475,6 +481,8 @@ interface RadioContextValue {
   createRadioStore: (store: { name: string; city?: string; slogan?: string }) => Promise<void>;
   updateRadioStore: (id: string, updates: Partial<RadioStoreBranch>) => Promise<void>;
   deleteRadioStore: (id: string) => Promise<void>;
+  speakCurrentTimeNow: (options?: { style?: 'comercial' | 'padrao' | 'curto'; chime?: boolean }) => Promise<void>;
+  isAnnouncingTime: boolean;
 }
 
 const RadioContext = createContext<RadioContextValue | undefined>(undefined);
@@ -526,6 +534,7 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const [musicBoostDb, setMusicBoostDb] = useState<number>(0);
   const [isMusicLevelerEnabled, setIsMusicLevelerEnabled] = useState<boolean>(true);
   const [isLiveMicActive, setIsLiveMicActive] = useState<boolean>(false);
+  const [isAnnouncingTime, setIsAnnouncingTime] = useState<boolean>(false);
   const [sessionConflict, setSessionConflict] = useState<{ message: string; activeDevice?: string } | null>(null);
   const [supersededMessage, setSupersededMessage] = useState<string | null>(null);
   const [activeStoreId, setActiveStoreIdState] = useState<string>(() => {
@@ -562,6 +571,8 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
   const currentSpotRef = useRef<RadioQueueItem | null>(null);
   const currentMusicRef = useRef<RadioMusicTrack | null>(null);
   const isLiveMicActiveRef = useRef<boolean>(false);
+  const isAnnouncingTimeRef = useRef<boolean>(false);
+  const lastAnnouncedMinuteRef = useRef<string>('');
   const lastStateSaveRef = useRef<number>(0);
   const countdownSecondsRef = useRef<number>(30);
 
@@ -1110,6 +1121,96 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     }
   }, [fadeMusicVolume]);
 
+  const speakCurrentTimeNow = useCallback(
+    async (options?: { style?: 'comercial' | 'padrao' | 'curto'; chime?: boolean }) => {
+      if (isAnnouncingTimeRef.current || isLiveMicActiveRef.current) return;
+      const cfg = configRef.current;
+      if (!cfg) return;
+
+      isAnnouncingTimeRef.current = true;
+      setIsAnnouncingTime(true);
+
+      // Garante que a rádio seja iniciada se não estiver tocando
+      if (!isOnAirRef.current) {
+        setIsOnAir(true);
+        isOnAirRef.current = true;
+        if (cfg.mode !== 'somente_ofertas' && (!musicAudioRef.current?.src || musicAudioRef.current.paused)) {
+          playMusicTrack();
+        }
+      }
+
+      try {
+        // 1. Inicia Auto-Ducking suave na música ambiente
+        setIsDucking(true);
+        fadeMusicVolume(cfg.duckingLevel ?? 0.12, 500);
+
+        const style = options?.style || cfg.timeAnnouncementStyle || 'comercial';
+        const useChime = options?.chime !== undefined ? options.chime : (cfg.timeAnnouncementChime ?? true);
+
+        // 2. Tocar o tradicional sinal horário de rádio (3 bips curtos e 1 longo)
+        if (useChime) {
+          await playRadioTimePips(0.8);
+        } else {
+          await new Promise(r => setTimeout(r, 250));
+        }
+
+        // 3. Obter áudio neural da hora certa
+        const now = new Date();
+        const res = await api.requestTimeAnnouncement({
+          style,
+          voiceId: cfg.timeAnnouncementVoiceId,
+          storeName: cfg.storeName,
+          stationName: cfg.stationName,
+          hours: now.getHours(),
+          minutes: now.getMinutes(),
+        });
+
+        if (!res.audioUrl) {
+          throw new Error('Falha ao obter áudio da hora certa');
+        }
+
+        const spotAudio = spotAudioRef.current;
+        if (!spotAudio) return;
+
+        const timeSpotItem: RadioQueueItem = {
+          id: `time-spot-${Date.now()}`,
+          audioId: `time-${Date.now()}`,
+          title: `⏰ Hora Certa — ${res.formattedTime}`,
+          audioUrl: res.audioUrl,
+          durationSeconds: res.durationSeconds || 5,
+          voiceName: 'Voz da Hora Certa',
+          storeName: cfg.storeName,
+          type: 'comunicado',
+          active: true,
+          priority: 'alta',
+          addedAt: new Date().toISOString(),
+        };
+
+        setCurrentSpot(timeSpotItem);
+        currentSpotRef.current = timeSpotItem;
+
+        spotAudio.src = res.audioUrl;
+        // Ajusta volume do spot de acordo com o configurado
+        spotAudio.volume = 1.0;
+        await spotAudio.play();
+
+        appendLog(`⏰ Hora Certa anunciada no ar: ${res.formattedTime}`, 'sistema', res.scriptText);
+      } catch (err) {
+        console.error('Erro ao anunciar hora certa na rádio:', err);
+        setIsDucking(false);
+        setCurrentSpot(null);
+        currentSpotRef.current = null;
+        if (cfg) {
+          fadeMusicVolume(cfg.musicVolume, 500);
+        }
+      } finally {
+        isAnnouncingTimeRef.current = false;
+        setIsAnnouncingTime(false);
+      }
+    },
+    [appendLog, fadeMusicVolume, playMusicTrack]
+  );
+
   const skipMusicTrack = useCallback(() => {
     playMusicTrack();
   }, [playMusicTrack]);
@@ -1252,6 +1353,46 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
 
     return () => window.clearInterval(timer);
   }, [isOnAir, config, playSpotNow]);
+
+  // Agendamento automático da Hora Certa na Rádio Web
+  useEffect(() => {
+    if (!isOnAir) return;
+
+    const intervalId = window.setInterval(() => {
+      const cfg = configRef.current;
+      if (!cfg || !cfg.timeAnnouncementEnabled || cfg.timeAnnouncementInterval === 'manual_only') {
+        return;
+      }
+
+      if (isLiveMicActiveRef.current || isAnnouncingTimeRef.current || currentSpotRef.current) {
+        return;
+      }
+
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const timeKey = `${now.getHours()}:${minutes}`;
+
+      if (lastAnnouncedMinuteRef.current === timeKey) {
+        return;
+      }
+
+      let shouldAnnounce = false;
+      if (cfg.timeAnnouncementInterval === '15min') {
+        shouldAnnounce = minutes === 0 || minutes === 15 || minutes === 30 || minutes === 45;
+      } else if (cfg.timeAnnouncementInterval === '30min') {
+        shouldAnnounce = minutes === 0 || minutes === 30;
+      } else if (cfg.timeAnnouncementInterval === '60min') {
+        shouldAnnounce = minutes === 0;
+      }
+
+      if (shouldAnnounce) {
+        lastAnnouncedMinuteRef.current = timeKey;
+        speakCurrentTimeNow();
+      }
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isOnAir, speakCurrentTimeNow]);
 
   // Keep live volume adjustments synced to audio decks
   useEffect(() => {
@@ -1885,6 +2026,8 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         createRadioStore,
         updateRadioStore,
         deleteRadioStore,
+        speakCurrentTimeNow,
+        isAnnouncingTime,
         vocalBoostDb,
         isVocalLevelerEnabled,
         triggerManualDucking,

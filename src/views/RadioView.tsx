@@ -646,6 +646,8 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     createRadioStore,
     updateRadioStore,
     deleteRadioStore,
+    speakCurrentTimeNow,
+    isAnnouncingTime,
   } = useRadio();
 
   const isGratuito = user?.plan === 'gratuito';
@@ -2207,7 +2209,22 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => speakCurrentTimeNow()}
+                  disabled={isAnnouncingTime || isMicActive || isLiveMicActive}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    isAnnouncingTime
+                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md animate-pulse'
+                      : 'bg-[#141620] hover:bg-[#1f2230] text-amber-300 border-amber-500/40 hover:border-amber-400'
+                  }`}
+                  title="Anunciar a hora certa com sinal horário tradicional e voz neural"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{isAnnouncingTime ? 'Falando Hora Certa...' : '⏰ Hora Certa'}</span>
+                </button>
+
                 {currentSpot ? (
                   <button
                     onClick={stopCurrentSpot}
@@ -3039,7 +3056,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
                     {/* Gongo Ding-Dong */}
                     <button
                       type="button"
@@ -3102,6 +3119,25 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       <span className="text-xl">🛒</span>
                       <span className="text-xs font-bold">Cha-Ching</span>
                       <span className="text-[10px] text-zinc-400">Desconto & Venda</span>
+                    </button>
+
+                    {/* Hora Certa Falada */}
+                    <button
+                      type="button"
+                      onClick={() => speakCurrentTimeNow()}
+                      disabled={isAnnouncingTime}
+                      className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1.5 transition cursor-pointer ${
+                        isAnnouncingTime
+                          ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/30 animate-pulse'
+                          : 'bg-[#141620] hover:bg-zinc-800/80 text-white border-zinc-800 hover:border-amber-500/40'
+                      }`}
+                      title="Disparar sinal horário tradicional e locução neural falando as horas"
+                    >
+                      <span className="text-xl">⏰</span>
+                      <span className="text-xs font-bold">Hora Certa</span>
+                      <span className="text-[10px] text-zinc-400">
+                        {isAnnouncingTime ? 'No Ar...' : 'Sinal & Voz'}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -3177,7 +3213,164 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                 </div>
               </div>
 
-              {/* 2. CATÁLOGO DE AVISOS RÁPIDOS & INFORMATIVOS */}
+              {/* 2. RECURSO DE HORA CERTA DA RÁDIO WEB */}
+              <div className="rounded-2xl bg-gradient-to-r from-amber-950/30 via-zinc-900/90 to-zinc-900 border border-amber-500/30 p-5 sm:p-6 space-y-4 shadow-xl">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+                        <Clock className="w-5 h-5 text-amber-400" />
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-lg font-black text-white">Hora Certa da Rádio Web</h2>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Sem Custo de Créditos
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400">
+                          Sinal horário com bips de rádio (3 curtos + 1 longo) e locução neural falando as horas em tempo real.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => speakCurrentTimeNow()}
+                      disabled={isAnnouncingTime || isMicActive || isLiveMicActive}
+                      className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shadow-lg ${
+                        isAnnouncingTime
+                          ? 'bg-amber-500 text-zinc-950 shadow-amber-500/30 animate-pulse'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 shadow-amber-500/20'
+                      }`}
+                      title="Disparar a hora certa com sinal horário e locução neste instante"
+                    >
+                      <Clock className="w-4 h-4 fill-current" />
+                      <span>{isAnnouncingTime ? 'Falando Hora Certa no Ar...' : '⏰ Falar Hora Certa no Ar'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-zinc-800">
+                  {/* 1. Ativação Automática */}
+                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase text-zinc-400 block">
+                      Programação Automática
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer pt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(config.timeAnnouncementEnabled)}
+                        onChange={e => updateConfig({ timeAnnouncementEnabled: e.target.checked })}
+                        className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-white">
+                        {config.timeAnnouncementEnabled ? 'Ativada na Rádio' : 'Desativada (Somente Manual)'}
+                      </span>
+                    </label>
+                    <p className="text-[10px] text-zinc-500">
+                      Fala as horas automaticamente durante o expediente da loja
+                    </p>
+                  </div>
+
+                  {/* 2. Frequência / Intervalo */}
+                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1">
+                    <label className="text-[11px] font-bold uppercase text-zinc-400 block">
+                      Frequência de Horário
+                    </label>
+                    <select
+                      value={config.timeAnnouncementInterval || '30min'}
+                      onChange={e => updateConfig({ timeAnnouncementInterval: e.target.value as any })}
+                      disabled={!config.timeAnnouncementEnabled}
+                      className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white cursor-pointer disabled:opacity-40"
+                    >
+                      <option value="15min">A cada 15 min (:00, :15, :30, :45)</option>
+                      <option value="30min">A cada 30 min (:00 e :30) — Recomendado</option>
+                      <option value="60min">A cada 60 min (Na virada da hora)</option>
+                      <option value="manual_only">Somente Disparo Manual</option>
+                    </select>
+                    <p className="text-[10px] text-zinc-500">
+                      Minutos exatos em que a hora será anunciada
+                    </p>
+                  </div>
+
+                  {/* 3. Estilo da Frase */}
+                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1">
+                    <label className="text-[11px] font-bold uppercase text-zinc-400 block">
+                      Estilo da Locução
+                    </label>
+                    <select
+                      value={config.timeAnnouncementStyle || 'comercial'}
+                      onChange={e => updateConfig({ timeAnnouncementStyle: e.target.value as any })}
+                      className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white cursor-pointer"
+                    >
+                      <option value="comercial">Comercial de Varejo (com ofertas)</option>
+                      <option value="padrao">Identificação Oficial da Rádio</option>
+                      <option value="curto">Direto & Curto (Apenas a hora)</option>
+                    </select>
+                    <p className="text-[10px] text-zinc-500 truncate" title="Ex: Na Rádio Supermercado agora são 16h30. Aproveite nossas ofertas!">
+                      {config.timeAnnouncementStyle === 'curto' ? 'Na Rádio Loja, 16h45' : 'Comercial com convite às compras'}
+                    </p>
+                  </div>
+
+                  {/* 4. Sinal Horário (Bips) & Voz */}
+                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold uppercase text-zinc-400 block">
+                        Sinal de Bips & Voz
+                      </label>
+                      <label className="flex items-center gap-1.5 text-[10px] text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={config.timeAnnouncementChime ?? true}
+                          onChange={e => updateConfig({ timeAnnouncementChime: e.target.checked })}
+                          className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer"
+                        />
+                        <span>Pips sonoros</span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <select
+                        value={config.timeAnnouncementVoiceId || selectedVoiceId}
+                        onChange={e => updateConfig({ timeAnnouncementVoiceId: e.target.value })}
+                        className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2 py-1.5 text-xs font-semibold text-white cursor-pointer truncate"
+                      >
+                        {voices.map(v => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const vId = config.timeAnnouncementVoiceId || selectedVoiceId;
+                          const v = voices.find(voice => voice.id === vId);
+                          handleTogglePreview(`voice-time-${vId}`, getVoicePreviewUrl(v, vId));
+                        }}
+                        className={`px-2 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                          previewItemId === `voice-time-${config.timeAnnouncementVoiceId || selectedVoiceId}` && isPreviewPlaying
+                            ? 'bg-amber-500 text-zinc-950 border-amber-400'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
+                        }`}
+                        title="Ouvir voz da hora certa"
+                      >
+                        {previewItemId === `voice-time-${config.timeAnnouncementVoiceId || selectedVoiceId}` && isPreviewPlaying ? (
+                          <Pause className="w-3 h-3 fill-current animate-pulse" />
+                        ) : (
+                          <Play className="w-3 h-3 fill-current text-amber-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. CATÁLOGO DE AVISOS RÁPIDOS & INFORMATIVOS */}
               <div className="rounded-2xl bg-[#181b24] border border-zinc-700/80 shadow-md p-4 sm:p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -3873,6 +4066,56 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                   <span>{uploadFeedback.message}</span>
                 </div>
               )}
+
+              {/* Banner de Status da Hora Certa na Grade */}
+              <div className="rounded-xl bg-[#141620] border border-amber-500/30 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white">Hora Certa da Rádio Web:</span>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        config.timeAnnouncementEnabled
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                      }`}>
+                        {config.timeAnnouncementEnabled
+                          ? `Ativa (${config.timeAnnouncementInterval === '15min' ? 'a cada 15 min' : config.timeAnnouncementInterval === '60min' ? 'a cada 60 min' : 'a cada 30 min'})`
+                          : 'Desativada (Disparo Manual)'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400">
+                      Sinal horário com bips de rádio e locução neural com o nome da sua loja.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => speakCurrentTimeNow()}
+                    disabled={isAnnouncingTime || isMicActive || isLiveMicActive}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                      isAnnouncingTime
+                        ? 'bg-amber-500 text-zinc-950 border-amber-400 animate-pulse'
+                        : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{isAnnouncingTime ? 'Falando no Ar...' : 'Falar Hora Certa Agora'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('announcements')}
+                    className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-semibold transition cursor-pointer"
+                  >
+                    Configurar
+                  </button>
+                </div>
+              </div>
 
               {/* Programação por Dia da Semana: Filtro e Contadores */}
               {(() => {

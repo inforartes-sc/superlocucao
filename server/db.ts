@@ -1085,6 +1085,11 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     excludedPlaylistIds: [],
     playlists: DEFAULT_RADIO_PLAYLISTS,
     autoPublishNewAudios: false,
+    timeAnnouncementEnabled: false,
+    timeAnnouncementInterval: '30min',
+    timeAnnouncementChime: true,
+    timeAnnouncementStyle: 'comercial',
+    timeAnnouncementVoiceId: 'voice-marcos',
     queue,
     musicTracks: DEFAULT_RADIO_MUSIC_TRACKS,
   };
