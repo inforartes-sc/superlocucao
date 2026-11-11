@@ -18,10 +18,13 @@ import {
   ArrowUpRight,
   MessageSquare,
   FileText,
+  Scale,
+  ShieldCheck,
 } from 'lucide-react';
 import { User } from '../types';
 import { useRadio } from '../context/RadioContext';
 import { ContactModal } from './ContactModal';
+import { LegalModal } from './LegalModal';
 
 export type ActiveView = 'landing' | 'dashboard' | 'studio' | 'radio' | 'library' | 'credits' | 'admin';
 
@@ -42,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'terms' | 'privacy'>('terms');
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   let radioCtx: ReturnType<typeof useRadio> | null = null;
@@ -258,6 +263,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setMenuOpen(false);
+                        setLegalModalTab('terms');
+                        setIsLegalModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 flex items-center gap-2 cursor-pointer mt-0.5"
+                    >
+                      <Scale className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                      Termos de Uso
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setLegalModalTab('privacy');
+                        setIsLegalModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 flex items-center gap-2 cursor-pointer mt-0.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                      Políticas de Privacidade
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
                         if (onLogout) {
                           onLogout();
                         }
@@ -436,6 +463,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={() => setIsContactModalOpen(false)}
         defaultStoreName={user?.companyName}
         defaultSubject="Suporte ao Cliente / Dúvidas"
+      />
+
+      {/* Modal de Termos de Uso & Políticas de Privacidade */}
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        initialTab={legalModalTab}
+        onClose={() => setIsLegalModalOpen(false)}
       />
     </>
   );

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Radio, Volume2, Clock, Zap, ArrowRight,
   CheckCircle2, TrendingUp, Lightbulb, Mic2, Play, Pause,
-  Star, Search, Sparkles, Filter, Check, Crown, Lock
+  Star, Search, Sparkles, Filter, Check, Crown, Lock,
+  Scale, ShieldCheck, FileText
 } from 'lucide-react';
 import { Project, UserProfile, VoicePreset } from '../types/index.ts';
 import { AudioPlayer } from '../components/AudioPlayer.tsx';
 import { PlanUpgradeModal } from '../components/PlanUpgradeModal.tsx';
+import { LegalModal } from '../components/LegalModal.tsx';
 import { api } from '../services/api.ts';
 import { useFavoriteVoices } from '../services/voiceFavorites.ts';
 
@@ -28,6 +30,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onRefreshUser,
 }) => {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<'terms' | 'privacy'>('terms');
   const allAudios = projects.flatMap((p) => p.audios);
   const latestAudios = allAudios.slice(0, 3);
   const recentProjects = projects.slice(0, 4);
@@ -649,6 +653,78 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </li>
             </ul>
           </div>
+
+          {/* Card: Transparência & Conformidade Legal */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase tracking-wider">
+              <Scale className="w-4 h-4 text-blue-600" />
+              <span>Transparência & Privacidade</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Consulte nossos documentos oficiais sobre conformidade, direitos autorais e proteção de dados.
+            </p>
+            <div className="pt-1 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalTab('terms');
+                  setIsLegalModalOpen(true);
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/60 text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between border border-slate-200/80 transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
+                  <span>Termos de Uso & Responsabilidades</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-blue-600 transition" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalTab('privacy');
+                  setIsLegalModalOpen(true);
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/60 text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between border border-slate-200/80 transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
+                  <span>Políticas de Privacidade (LGPD)</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 group-hover:text-blue-600 transition" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Institucional do Painel */}
+      <div className="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div>
+          © 2026 SuperLocução Varejo IA • Plataforma de Comunicação & Rádio para Supermercados
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              setLegalTab('terms');
+              setIsLegalModalOpen(true);
+            }}
+            className="hover:text-blue-600 font-medium underline underline-offset-4 transition cursor-pointer"
+          >
+            Termos de Uso
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLegalTab('privacy');
+              setIsLegalModalOpen(true);
+            }}
+            className="hover:text-blue-600 font-medium underline underline-offset-4 transition cursor-pointer"
+          >
+            Políticas de Privacidade (LGPD)
+          </button>
         </div>
       </div>
 
@@ -659,6 +735,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onPlanUpgraded={(_newPlan, _credits) => {
           onRefreshUser?.();
         }}
+      />
+
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        initialTab={legalTab}
+        onClose={() => setIsLegalModalOpen(false)}
       />
     </div>
   );
