@@ -156,6 +156,8 @@ apiRouter.post('/projects', (req: Request, res: Response) => {
     desiredDuration: data.desiredDuration || '30s',
     tone: data.tone || 'persuasivo',
     presentationFormat: data.presentationFormat || 'abertura_sequencia_encerramento',
+    soundtrackId: data.soundtrackId || 'varejo_alegre',
+    soundtrackVolume: data.soundtrackVolume ?? 0.28,
     customOpening: data.customOpening || '',
     customClosing: data.customClosing || '',
     freeInstructions: data.freeInstructions || '',
@@ -437,11 +439,14 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
 
   try {
     const cleanScript = expandUnitsAndMeasuresToWords(scriptText);
+    const effectiveSoundtrackId = soundtrackId || (projectId ? db.getProject(projectId)?.soundtrackId : null) || 'varejo_alegre';
+    const effectiveSoundtrackVol = soundtrackVolume ?? (projectId ? db.getProject(projectId)?.soundtrackVolume : null) ?? 0.28;
+
     const ttsResult = await synthesizeSpeech({
       text: cleanScript,
       voiceId,
-      soundtrackId,
-      soundtrackVolume: soundtrackVolume ?? 0.20,
+      soundtrackId: effectiveSoundtrackId,
+      soundtrackVolume: effectiveSoundtrackVol,
     });
 
     // Deduct credits and log transaction
@@ -456,7 +461,7 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
     const voices = elevenVoices.length > 0 ? elevenVoices : db.getVoices();
     const voiceObj = voices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId) || voices[0];
 
-    const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === soundtrackId);
+    const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === effectiveSoundtrackId);
 
     const audioItem: AudioGenerationItem = {
       id: ttsResult.audioId,
@@ -466,9 +471,9 @@ apiRouter.post('/audio/generate', async (req: Request, res: Response) => {
       productName,
       voiceId: voiceObj.id,
       voiceName: voiceObj.name,
-      soundtrackId: soundtrackId || 'sem_trilha',
-      soundtrackName: soundtrackObj?.name || 'Sem Trilha',
-      soundtrackVolume: soundtrackVolume ?? 0.20,
+      soundtrackId: effectiveSoundtrackId,
+      soundtrackName: soundtrackObj?.name || (effectiveSoundtrackId === 'sem_trilha' ? 'Sem Trilha' : 'Varejo Alegre & Enérgico'),
+      soundtrackVolume: effectiveSoundtrackVol,
       provider: ttsResult.provider,
       format: ttsResult.format,
       durationSeconds: ttsResult.durationSeconds,
@@ -545,7 +550,9 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
   );
 
   const generatedAudios: AudioGenerationItem[] = [];
-  const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === soundtrackId);
+  const effectiveSoundtrackId = soundtrackId || (projectId ? db.getProject(projectId)?.soundtrackId : null) || 'varejo_alegre';
+  const effectiveSoundtrackVol = soundtrackVolume ?? (projectId ? db.getProject(projectId)?.soundtrackVolume : null) ?? 0.28;
+  const soundtrackObj = SOUNDTRACKS_LIST.find(s => s.id === effectiveSoundtrackId);
 
   for (let i = 0; i < products.length; i++) {
     const prod = products[i];
@@ -558,8 +565,8 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
       const ttsResult = await synthesizeSpeech({
         text: spotText,
         voiceId,
-        soundtrackId,
-        soundtrackVolume: soundtrackVolume ?? 0.20,
+        soundtrackId: effectiveSoundtrackId,
+        soundtrackVolume: effectiveSoundtrackVol,
       });
 
       const voices = db.getVoices();
@@ -573,9 +580,9 @@ apiRouter.post('/audio/generate-batch', async (req: Request, res: Response) => {
         title: `Oferta — ${prod.name}`,
         voiceId: voiceObj.id,
         voiceName: voiceObj.name,
-        soundtrackId: soundtrackId || 'sem_trilha',
-        soundtrackName: soundtrackObj?.name || 'Sem Trilha',
-        soundtrackVolume: soundtrackVolume ?? 0.20,
+        soundtrackId: effectiveSoundtrackId,
+        soundtrackName: soundtrackObj?.name || (effectiveSoundtrackId === 'sem_trilha' ? 'Sem Trilha' : 'Varejo Alegre & Enérgico'),
+        soundtrackVolume: effectiveSoundtrackVol,
         provider: ttsResult.provider,
         format: ttsResult.format,
         durationSeconds: ttsResult.durationSeconds,

@@ -1621,7 +1621,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
         scriptText: flashScript,
         storeName: config?.storeName || 'Supermercado',
         voiceId: selectedVoiceId,
-        soundtrackId: selectedSoundtrackId,
+        soundtrackId: selectedSoundtrackId || 'varejo_alegre',
         soundtrackVolume,
         type: flashType,
         priority: flashPriority,

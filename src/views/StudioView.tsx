@@ -53,11 +53,15 @@ export const StudioView: React.FC<StudioViewProps> = ({
 
   // Soundtracks
   const [soundtracks, setSoundtracks] = useState<SoundtrackOption[]>([]);
-  const [selectedSoundtrackId, setSelectedSoundtrackId] = useState<SoundtrackId>(
-    project.soundtrackId || 'varejo_alegre'
-  );
+  const [selectedSoundtrackId, setSelectedSoundtrackId] = useState<SoundtrackId>(() => {
+    if (project.soundtrackId && project.soundtrackId !== 'sem_trilha') {
+      return project.soundtrackId;
+    }
+    const suggested = CAMPAIGN_PRESETS[project.campaignType]?.suggestedSoundtrack;
+    return suggested || 'varejo_alegre';
+  });
   const [soundtrackVolume, setSoundtrackVolume] = useState<number>(
-    project.soundtrackVolume ?? 0.20
+    project.soundtrackVolume ?? 0.28
   );
 
   // Step 2 state: Manual vs List import
@@ -425,7 +429,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
         scriptText: cleanScriptText,
         voiceId: selectedVoiceId,
         title: project.title,
-        soundtrackId: selectedSoundtrackId,
+        soundtrackId: selectedSoundtrackId || 'varejo_alegre',
         soundtrackVolume: soundtrackVolume,
         publishToRadio,
         radioPriority: playImmediatelyOnRadio ? 'alta' : 'normal',
@@ -493,7 +497,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
         products: project.products,
         voiceId: selectedVoiceId,
         storeName: project.storeName,
-        soundtrackId: selectedSoundtrackId,
+        soundtrackId: selectedSoundtrackId || 'varejo_alegre',
         soundtrackVolume: soundtrackVolume,
         publishToRadio,
       });

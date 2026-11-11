@@ -1145,8 +1145,8 @@ class Database {
           scripts JSONB DEFAULT '[]'::jsonb,
           current_script_index INTEGER DEFAULT 0,
           audios JSONB DEFAULT '[]'::jsonb,
-          soundtrack_id TEXT DEFAULT 'sem_trilha',
-          soundtrack_volume NUMERIC(3,2) DEFAULT 0.20,
+          soundtrack_id TEXT DEFAULT 'varejo_alegre',
+          soundtrack_volume NUMERIC(3,2) DEFAULT 0.28,
           status TEXT DEFAULT 'draft',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -1514,7 +1514,7 @@ class Database {
         p.customOpening || '', p.customClosing || '', p.freeInstructions || '',
         JSON.stringify(p.products || []), JSON.stringify(p.scripts || []),
         p.currentScriptIndex || 0, JSON.stringify(p.audios || []),
-        p.soundtrackId || 'sem_trilha', p.soundtrackVolume || 0.2, p.status || 'draft',
+        p.soundtrackId || 'varejo_alegre', p.soundtrackVolume || 0.28, p.status || 'draft',
         p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
       ]);
     } catch (err) {

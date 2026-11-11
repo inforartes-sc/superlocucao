@@ -183,5 +183,25 @@ export async function initializeRealVoiceDemos(): Promise<void> {
     }
   }
 
-  console.log('[Real TTS] Todas as demonstrações de voz real inicializadas com matrizes oficiais ElevenLabs.');
+  // Garantir que todos os MP3s de trilha sonora em seedDir estejam disponíveis em AUDIO_STORAGE_DIR
+  try {
+    if (fs.existsSync(seedDir)) {
+      const seedFiles = fs.readdirSync(seedDir);
+      for (const f of seedFiles) {
+        if (f.startsWith('soundtrack_') && (f.endsWith('.mp3') || f.endsWith('.wav'))) {
+          const src = path.join(seedDir, f);
+          const dst = path.join(AUDIO_STORAGE_DIR, f);
+          if (!fs.existsSync(dst)) {
+            try {
+              fs.copyFileSync(src, dst);
+            } catch {}
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Seed Sync] Warning syncing soundtracks:', err);
+  }
+
+  console.log('[Real TTS] Todas as demonstrações de voz real e trilhas sonoras oficiais inicializadas.');
 }

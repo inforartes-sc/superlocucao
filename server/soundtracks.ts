@@ -6,9 +6,64 @@ import { SoundtrackOption, SoundtrackId } from '../src/types/index.ts';
 
 function getFfmpegPath(): string {
   if (ffmpegStatic && typeof ffmpegStatic === 'string' && fs.existsSync(ffmpegStatic)) {
+    if (process.platform !== 'win32') {
+      try {
+        fs.chmodSync(ffmpegStatic, 0o755);
+      } catch {}
+    }
     return ffmpegStatic;
   }
   return 'ffmpeg';
+}
+
+/**
+ * Robust resolution of soundtrack audio file path across .locucao_audios and server/seed_audios
+ */
+export function resolveSoundtrackFilePath(soundtrackId: SoundtrackId): string | null {
+  if (!soundtrackId || soundtrackId === 'sem_trilha') {
+    return null;
+  }
+
+  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
+
+  if (!fs.existsSync(audioDir)) {
+    try {
+      fs.mkdirSync(audioDir, { recursive: true });
+    } catch {}
+  }
+
+  const candidatePaths = [
+    path.join(audioDir, `soundtrack_${soundtrackId}.mp3`),
+    path.join(seedDir, `soundtrack_${soundtrackId}.mp3`),
+    path.join(audioDir, `soundtrack_${soundtrackId}.wav`),
+    path.join(seedDir, `soundtrack_${soundtrackId}.wav`),
+    // Fallback if specific soundtrackId isn't found
+    path.join(audioDir, 'soundtrack_varejo_alegre.mp3'),
+    path.join(seedDir, 'soundtrack_varejo_alegre.mp3'),
+  ];
+
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      const localInAudio = path.join(audioDir, path.basename(p));
+      if (!fs.existsSync(localInAudio) && p !== localInAudio) {
+        try {
+          fs.copyFileSync(p, localInAudio);
+        } catch {}
+      }
+      return p;
+    }
+  }
+
+  // Fallback synthetic WAV if files don't yet exist
+  const fallbackPath = path.join(audioDir, `soundtrack_${soundtrackId}.wav`);
+  try {
+    const wav = generateSoundtrackWav(soundtrackId, 60.0);
+    fs.writeFileSync(fallbackPath, wav);
+    return fallbackPath;
+  } catch {
+    return null;
+  }
 }
 
 export const SOUNDTRACKS_LIST: SoundtrackOption[] = [
@@ -81,20 +136,9 @@ export function getSoundtrackPreviewBuffer(trackId: SoundtrackId): Buffer {
     return Buffer.alloc(0);
   }
 
-  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
-  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
-
-  const candidatePaths = [
-    path.join(audioDir, `soundtrack_${trackId}.mp3`),
-    path.join(seedDir, `soundtrack_${trackId}.mp3`),
-    path.join(audioDir, 'soundtrack_varejo_alegre.mp3'),
-    path.join(seedDir, 'soundtrack_varejo_alegre.mp3'),
-  ];
-
-  for (const p of candidatePaths) {
-    if (fs.existsSync(p)) {
-      return fs.readFileSync(p);
-    }
+  const resolved = resolveSoundtrackFilePath(trackId);
+  if (resolved && fs.existsSync(resolved)) {
+    return fs.readFileSync(resolved);
   }
 
   // Fallback synthetic WAV if file not yet downloaded
@@ -154,6 +198,12 @@ export function normalizeVoiceAudio(voiceBuffer: Buffer): Buffer {
   if (!voiceBuffer || voiceBuffer.length === 0) return voiceBuffer;
 
   const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  if (!fs.existsSync(audioDir)) {
+    try {
+      fs.mkdirSync(audioDir, { recursive: true });
+    } catch {}
+  }
+
   const tempId = `norm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const isVoiceWav = voiceBuffer.toString('ascii', 0, 4) === 'RIFF';
   const voiceExt = isVoiceWav ? 'wav' : 'mp3';
@@ -207,21 +257,26 @@ export function normalizeVoiceAudio(voiceBuffer: Buffer): Buffer {
 export function mixVoiceAndSoundtrack(
   voiceBuffer: Buffer,
   soundtrackId: SoundtrackId,
-  musicVolumeMultiplier: number = 0.20
+  musicVolumeMultiplier: number = 0.28
 ): Buffer {
   // First normalize voice so it always speaks loud and clear
   const normalizedVoiceBuffer = normalizeVoiceAudio(voiceBuffer);
 
-  if (soundtrackId === 'sem_trilha') {
+  if (!soundtrackId || soundtrackId === 'sem_trilha') {
+    return normalizedVoiceBuffer;
+  }
+
+  const trackPath = resolveSoundtrackFilePath(soundtrackId);
+  if (!trackPath || !fs.existsSync(trackPath)) {
+    console.warn(`[Soundtrack Mixer] File not found for "${soundtrackId}". Returning voice without music.`);
     return normalizedVoiceBuffer;
   }
 
   const audioDir = path.resolve(process.cwd(), '.locucao_audios');
-  const trackPath = path.join(audioDir, `soundtrack_${soundtrackId}.mp3`);
-
-  if (!fs.existsSync(trackPath)) {
-    console.warn(`[Soundtrack Mixer] File not found: ${trackPath}. Returning voice without music.`);
-    return normalizedVoiceBuffer;
+  if (!fs.existsSync(audioDir)) {
+    try {
+      fs.mkdirSync(audioDir, { recursive: true });
+    } catch {}
   }
 
   const tempId = `mix_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -237,7 +292,7 @@ export function mixVoiceAndSoundtrack(
 
     let voiceDuration = 10;
     try {
-      execFileSync(ffmpegBin, ['-i', tempVoicePath]);
+      execFileSync(ffmpegBin, ['-i', tempVoicePath], { stdio: 'pipe' });
     } catch (e: any) {
       const errStr = e.stderr?.toString() || e.message || '';
       const match = errStr.match(/Duration:\s*(\d+):(\d+):([\d.]+)/);
@@ -247,16 +302,19 @@ export function mixVoiceAndSoundtrack(
     }
 
     const totalDuration = voiceDuration + 1.2;
-    const fadeOutStart = Math.max(0.5, totalDuration - 1.2);
-    const musicBaseVol = Math.max(0.08, Math.min(0.35, musicVolumeMultiplier));
+    const fadeOutStart = voiceDuration;
+    // Commercial supermarket broadcast volume (clearly audible groove under voice)
+    const musicBaseVol = Math.max(0.22, Math.min(0.55, musicVolumeMultiplier ?? 0.32));
 
-    // Clear vocal presence with Ducking of background music
+    // Clear vocal presence with gentle, natural Ducking of background music
+    // apad ensures the voice stream extends to totalDuration so the music outro fades out cleanly
+    // weights=1.0 1.0:normalize=0 ensures FFmpeg amix doesn't halve the volume!
     const filterParts = [
-      `[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,volume=1.05,asplit=2[vox1][vox2]`,
+      `[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,apad=whole_dur=${totalDuration.toFixed(2)},asplit=2[vox1][vox2]`,
       `[1:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,volume=${musicBaseVol.toFixed(3)},afade=t=out:st=${fadeOutStart.toFixed(2)}:d=1.2[bg_music]`,
-      `[bg_music][vox1]sidechaincompress=threshold=0.08:ratio=4.5:attack=15:release=300[ducked_bg]`,
-      `[vox2][ducked_bg]amix=inputs=2:duration=first:dropout_transition=2[mixed]`,
-      `[mixed]alimiter=limit=0.92:attack=5:release=50[out]`
+      `[bg_music][vox1]sidechaincompress=threshold=0.12:ratio=2.6:attack=20:release=350[ducked_bg]`,
+      `[vox2][ducked_bg]amix=inputs=2:duration=first:weights=1.0 1.0:normalize=0[mixed]`,
+      `[mixed]alimiter=limit=0.95:attack=5:release=50[out]`
     ];
     const filter = filterParts.join(';');
 
