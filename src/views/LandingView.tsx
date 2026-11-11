@@ -1759,8 +1759,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="pt-8 border-t border-zinc-850 flex flex-col md:flex-row items-center justify-between text-xs text-zinc-400 gap-4 text-center md:text-left">
             <div className="space-y-1">
               <p>© {new Date().getFullYear()} SuperLocução Varejo IA. Todos os direitos reservados.</p>
-              <p className="text-[11px] text-zinc-500">
-                A plataforma fornece tecnologia SaaS para automação de locuções e rádio web comercial. A execução pública musical no espaço físico é de responsabilidade do estabelecimento comercial contratante (Lei 9.610/98).
+              <p className="text-[11px] text-zinc-500 leading-relaxed md:max-w-2xl">
+                A plataforma fornece tecnologia SaaS para automação de locuções e rádio web comercial.<br className="hidden md:block" />
+                A execução pública musical no espaço físico é de responsabilidade<br className="hidden md:block" />
+                do estabelecimento comercial contratante (Lei 9.610/98).
               </p>
             </div>
 
