@@ -8,12 +8,13 @@ import {
   Play, Pause, LogIn, ExternalLink, Activity, Database, Cpu, HelpCircle,
   AlertTriangle, FileText, Download, Sliders, Layers, CreditCard,
   Wallet, QrCode, DollarSign, CheckSquare, Copy, Link, Send,
-  Music, Mic, Wifi, WifiOff, Store, LogOut, ArrowLeft, Receipt
+  Music, Mic, Wifi, WifiOff, Store, LogOut, ArrowLeft, Receipt, Image as ImageIcon
 } from 'lucide-react';
 import { api } from '../services/api.ts';
 import {
   AdminMetrics, User, RechargePackage, CommercialPlan,
-  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation
+  PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation,
+  ClientLogo
 } from '../types/index.ts';
 
 interface ClientItem {
@@ -51,10 +52,25 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
   const [pinError, setPinError] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'plans' | 'audios' | 'subscriptions' | 'gateway' | 'integrations' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'plans' | 'logos' | 'audios' | 'subscriptions' | 'gateway' | 'integrations' | 'settings'>('overview');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Client Logos (Supermercados no Carrossel da Landing Page)
+  const [clientLogos, setClientLogos] = useState<ClientLogo[]>([]);
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+  const [editingLogo, setEditingLogo] = useState<ClientLogo | null>(null);
+  const [logoFormName, setLogoFormName] = useState('');
+  const [logoFormCityState, setLogoFormCityState] = useState('');
+  const [logoFormSlogan, setLogoFormSlogan] = useState('');
+  const [logoFormImageUrl, setLogoFormImageUrl] = useState('');
+  const [logoFormWebsiteUrl, setLogoFormWebsiteUrl] = useState('');
+  const [logoFormActive, setLogoFormActive] = useState(true);
+  const [logoFormOrder, setLogoFormOrder] = useState<number>(1);
+  const [savingLogo, setSavingLogo] = useState(false);
+  const [logoNotice, setLogoNotice] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Filters & Search for Clients
   const [searchTerm, setSearchTerm] = useState('');
@@ -318,6 +334,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
 
       api.getDatabaseAudiosStats().then(stats => {
         if (stats) setDbAudioStats(stats);
+      }).catch(console.warn);
+
+      api.getAdminClientLogos().then(res => {
+        if (res && res.logos) {
+          setClientLogos(res.logos);
+        }
       }).catch(console.warn);
     } catch (e) {
       console.warn('Falha ao carregar dados do admin:', e);
@@ -594,6 +616,117 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
       alert(`Erro ao salvar planos e recargas: ${e.message}`);
     } finally {
       setSavingPlans(false);
+    }
+  };
+
+  // Handlers for Client Logos & Carrossel
+  const handleOpenNewLogo = () => {
+    setEditingLogo(null);
+    setLogoFormName('');
+    setLogoFormCityState('');
+    setLogoFormSlogan('');
+    setLogoFormImageUrl('');
+    setLogoFormWebsiteUrl('');
+    setLogoFormActive(true);
+    setLogoFormOrder(clientLogos.length + 1);
+    setIsLogoModalOpen(true);
+  };
+
+  const handleOpenEditLogo = (logo: ClientLogo) => {
+    setEditingLogo(logo);
+    setLogoFormName(logo.name);
+    setLogoFormCityState(logo.cityState || '');
+    setLogoFormSlogan(logo.slogan || '');
+    setLogoFormImageUrl(logo.imageUrl || '');
+    setLogoFormWebsiteUrl(logo.websiteUrl || '');
+    setLogoFormActive(logo.active);
+    setLogoFormOrder(logo.order || 1);
+    setIsLogoModalOpen(true);
+  };
+
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione um arquivo de imagem (PNG, JPG, SVG, WebP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setLogoFormImageUrl(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveLogo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!logoFormName.trim()) {
+      alert('Informe o nome do supermercado.');
+      return;
+    }
+
+    setSavingLogo(true);
+    try {
+      if (editingLogo) {
+        await api.updateAdminClientLogo(editingLogo.id, {
+          name: logoFormName.trim(),
+          cityState: logoFormCityState.trim(),
+          slogan: logoFormSlogan.trim(),
+          imageUrl: logoFormImageUrl.trim(),
+          websiteUrl: logoFormWebsiteUrl.trim(),
+          active: logoFormActive,
+          order: Number(logoFormOrder) || 1,
+        });
+        setLogoNotice('Logo de supermercado atualizada com sucesso!');
+      } else {
+        await api.createAdminClientLogo({
+          name: logoFormName.trim(),
+          cityState: logoFormCityState.trim(),
+          slogan: logoFormSlogan.trim(),
+          imageUrl: logoFormImageUrl.trim(),
+          websiteUrl: logoFormWebsiteUrl.trim(),
+          active: logoFormActive,
+          order: Number(logoFormOrder) || (clientLogos.length + 1),
+        });
+        setLogoNotice('Supermercado adicionado ao carrossel com sucesso!');
+      }
+
+      setIsLogoModalOpen(false);
+      const res = await api.getAdminClientLogos();
+      if (res && res.logos) setClientLogos(res.logos);
+      setTimeout(() => setLogoNotice(null), 4000);
+    } catch (err: any) {
+      alert(`Erro ao salvar logo: ${err.message}`);
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
+  const handleToggleLogoActive = async (logo: ClientLogo) => {
+    try {
+      const nextActive = !logo.active;
+      await api.updateAdminClientLogo(logo.id, { active: nextActive });
+      setClientLogos(prev =>
+        prev.map(l => (l.id === logo.id ? { ...l, active: nextActive } : l))
+      );
+    } catch (err: any) {
+      alert(`Erro ao alterar status da logo: ${err.message}`);
+    }
+  };
+
+  const handleDeleteLogo = async (logo: ClientLogo) => {
+    if (confirm(`Tem certeza que deseja remover o supermercado "${logo.name}" do carrossel?`)) {
+      try {
+        await api.deleteAdminClientLogo(logo.id);
+        setClientLogos(prev => prev.filter(l => l.id !== logo.id));
+      } catch (err: any) {
+        alert(`Erro ao excluir logo: ${err.message}`);
+      }
     }
   };
 
@@ -995,8 +1128,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         </div>
       </div>
 
-      {/* NAVIGATION TABS - 2 ROWS, NO SCROLLBAR */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pb-4 border-b border-zinc-800">
+      {/* NAVIGATION TABS - RESPONSIVE GRID, NO SCROLLBAR */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pb-4 border-b border-zinc-800">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
@@ -1031,6 +1164,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
         >
           <CreditCard className="w-4 h-4 shrink-0" />
           <span>Planos & Recargas</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('logos')}
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-2xl font-black text-xs sm:text-sm transition cursor-pointer text-center ${
+            activeTab === 'logos'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 shadow-md shadow-orange-500/20'
+              : 'bg-[#121520] border border-zinc-800 text-zinc-400 hover:text-white hover:bg-[#1a1e2b] hover:border-zinc-700'
+          }`}
+        >
+          <ImageIcon className="w-4 h-4 shrink-0" />
+          <span>Logos Carrossel ({clientLogos.length})</span>
         </button>
 
         <button
@@ -1967,6 +2112,139 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>{savingPlans ? 'Salvando...' : 'Salvar Todos os Planos & Pacotes'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: GESTÃO DE LOGOS DO CARROSSEL (CLIENTES & SUPERMERCADOS)          */}
+      {/* ===================================================================== */}
+      {activeTab === 'logos' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header com Ações */}
+          <div className="bg-[#151822] rounded-3xl p-6 border border-zinc-700/80 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-orange-400" />
+                    <span>Logos e Slogans dos Supermercados Parceiros</span>
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    {clientLogos.length} Cadastrados
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
+                  Gerencie as marcas, slogans e logos dos supermercados que utilizam a plataforma. Todas as logos ativas passam automaticamente em carrossel contínuo de ponta a ponta na página inicial.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenNewLogo}
+                className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-orange-500/20 shrink-0"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>+ Adicionar Supermercado</span>
+              </button>
+            </div>
+
+            {logoNotice && (
+              <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{logoNotice}</span>
+              </div>
+            )}
+
+            {/* Grid de Logos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-2">
+              {clientLogos.map((logo) => (
+                <div
+                  key={logo.id}
+                  className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-3.5 ${
+                    logo.active
+                      ? 'bg-[#121520] border-zinc-700/80 hover:border-orange-500/50 shadow-md'
+                      : 'bg-[#10121a]/60 border-zinc-800/80 opacity-60'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      {/* Imagem da Logo ou Emblema */}
+                      {logo.imageUrl ? (
+                        <div className="w-14 h-14 rounded-xl bg-white/5 border border-zinc-700/80 p-1.5 flex items-center justify-center shrink-0 overflow-hidden">
+                          <img
+                            src={logo.imageUrl}
+                            alt={logo.name}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/30 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+                          <Store className="w-7 h-7 text-orange-400" />
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLogoActive(logo)}
+                          title={logo.active ? 'Clique para ocultar no carrossel' : 'Clique para ativar no carrossel'}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase transition cursor-pointer border ${
+                            logo.active
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
+                              : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                          }`}
+                        >
+                          {logo.active ? 'Ativo' : 'Oculto'}
+                        </button>
+                        <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800" title="Ordem no carrossel">
+                          #{logo.order || 1}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-black text-sm text-white truncate" title={logo.name}>
+                        {logo.name}
+                      </h4>
+                      {logo.slogan ? (
+                        <p className="text-xs text-orange-400/90 italic truncate mt-0.5" title={logo.slogan}>
+                          “{logo.slogan}”
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-zinc-500 italic mt-0.5">Sem slogan definido</p>
+                      )}
+                      {logo.cityState && (
+                        <p className="text-[11px] text-zinc-400 flex items-center gap-1 mt-1 truncate">
+                          <MapPin className="w-3 h-3 text-zinc-500 shrink-0" />
+                          <span>{logo.cityState}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditLogo(logo)}
+                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer flex-1 justify-center"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Editar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLogo(logo)}
+                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition cursor-pointer border border-red-500/20"
+                      title="Excluir supermercado"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -3386,6 +3664,180 @@ export const AdminView: React.FC<AdminViewProps> = ({ onNavigate, onImpersonateU
                   className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black rounded-xl transition cursor-pointer shadow-md"
                 >
                   {submittingCredits ? 'Aplicando...' : 'Confirmar Ajuste'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: CRIAR OU EDITAR LOGO / SUPERMERCADO DO CARROSSEL              */}
+      {/* ===================================================================== */}
+      {isLogoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#161924] border border-zinc-700/80 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-orange-400" />
+                <span>{editingLogo ? 'Editar Supermercado no Carrossel' : 'Novo Supermercado / Logo'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsLogoModalOpen(false)}
+                className="p-1 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLogo} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-zinc-300 font-bold">Nome do Supermercado *</label>
+                <input
+                  type="text"
+                  required
+                  value={logoFormName}
+                  onChange={(e) => setLogoFormName(e.target.value)}
+                  placeholder="Ex: Supermercado Alvorada ou Hipermercado Estrela"
+                  className="w-full px-3.5 py-2.5 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white focus:outline-none focus:border-orange-500 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-zinc-300 font-bold">Slogan do Supermercado (Frase de Efeito)</label>
+                <input
+                  type="text"
+                  value={logoFormSlogan}
+                  onChange={(e) => setLogoFormSlogan(e.target.value)}
+                  placeholder="Ex: Economia e Qualidade Todo Dia ou O Menor Preço da Cidade"
+                  className="w-full px-3.5 py-2.5 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                />
+                <p className="text-[11px] text-zinc-500">
+                  O slogan aparece destacado em itálico abaixo do nome do supermercado no carrossel.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-zinc-300 font-bold">Cidade / Estado</label>
+                  <input
+                    type="text"
+                    value={logoFormCityState}
+                    onChange={(e) => setLogoFormCityState(e.target.value)}
+                    placeholder="Ex: Campinas/SP ou Belo Horizonte/MG"
+                    className="w-full px-3.5 py-2.5 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-zinc-300 font-bold">Ordem de Exibição</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={logoFormOrder}
+                    onChange={(e) => setLogoFormOrder(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Upload ou URL da Logo */}
+              <div className="space-y-2 pt-2 border-t border-zinc-800">
+                <label className="text-zinc-300 font-bold block">Logotipo do Supermercado</label>
+
+                {/* Preview se houver */}
+                {logoFormImageUrl ? (
+                  <div className="p-3 bg-[#10121a] rounded-2xl border border-zinc-700/80 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-14 h-14 rounded-xl bg-white/10 border border-zinc-600 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img
+                          src={logoFormImageUrl}
+                          alt="Prévia da logo"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                      <div className="min-w-0 text-xs">
+                        <span className="font-bold text-emerald-400 block">✓ Logo Carregada</span>
+                        <span className="text-zinc-400 text-[11px] truncate block max-w-xs">
+                          {logoFormImageUrl.startsWith('data:') ? 'Arquivo de imagem enviado' : logoFormImageUrl}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLogoFormImageUrl('')}
+                      className="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 text-xs font-bold transition cursor-pointer shrink-0"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-[#10121a] rounded-2xl border border-dashed border-zinc-700/80 flex flex-col items-center justify-center gap-2 text-center py-4">
+                    <Store className="w-8 h-8 text-zinc-500" />
+                    <p className="text-xs text-zinc-400">
+                      Nenhuma imagem enviada. Se deixar em branco, o sistema exibirá automaticamente um emblema vetorial de supermercado moderno.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <input
+                    ref={logoFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="flex-1 py-2.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-xl font-bold flex items-center justify-center gap-2 border border-zinc-700 transition cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 rotate-180 text-orange-400" />
+                    <span>Carregar Arquivo do Computador</span>
+                  </button>
+                </div>
+
+                <div className="pt-1">
+                  <label className="text-[11px] text-zinc-400 block mb-1">Ou cole a URL direta da imagem da logo:</label>
+                  <input
+                    type="url"
+                    value={logoFormImageUrl}
+                    onChange={(e) => setLogoFormImageUrl(e.target.value)}
+                    placeholder="https://exemplo.com.br/logo-supermercado.png"
+                    className="w-full px-3 py-2 bg-[#10121a] border border-zinc-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={logoFormActive}
+                    onChange={(e) => setLogoFormActive(e.target.checked)}
+                    className="w-4 h-4 rounded border-zinc-700 text-orange-500 focus:ring-orange-500 cursor-pointer accent-orange-500"
+                  />
+                  <span className="font-bold text-xs">Exibir no Carrossel da Página Inicial</span>
+                </label>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsLogoModalOpen(false)}
+                  className="px-4 py-2.5 bg-[#10121a] hover:bg-zinc-800 text-zinc-300 rounded-xl font-bold transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingLogo || !logoFormName.trim()}
+                  className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-zinc-950 font-black rounded-xl transition cursor-pointer shadow-md flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{savingLogo ? 'Salvando...' : editingLogo ? 'Salvar Alterações' : 'Adicionar ao Carrossel'}</span>
                 </button>
               </div>
             </form>

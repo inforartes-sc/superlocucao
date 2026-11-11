@@ -20,6 +20,7 @@ import {
   PaymentTransaction,
   OnlineRadioStation,
   RadioStoreBranch,
+  ClientLogo,
 } from '../types';
 
 const STORAGE_USER_KEY = 'superlocucao_user_id';
@@ -491,5 +492,28 @@ export const api = {
   syncDatabaseAudios: () =>
     request<{ success: boolean; message: string; uploaded: number; total: number; errors: number }>('/admin/database/sync-audios', {
       method: 'POST',
+    }),
+
+  // Client Logos (Supermercados Parceiros / Carrossel)
+  getClientLogos: () => request<{ logos: ClientLogo[] }>('/client-logos'),
+  getAdminClientLogos: () => request<{ logos: ClientLogo[] }>('/admin/client-logos'),
+  createAdminClientLogo: (data: Partial<ClientLogo>) =>
+    request<{ success: boolean; logo: ClientLogo; message?: string }>('/admin/client-logos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateAdminClientLogo: (id: string, data: Partial<ClientLogo>) =>
+    request<{ success: boolean; logo: ClientLogo; message?: string }>(`/admin/client-logos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteAdminClientLogo: (id: string) =>
+    request<{ success: boolean; message: string }>(`/admin/client-logos/${id}`, {
+      method: 'DELETE',
+    }),
+  uploadAdminClientLogo: (fileBase64: string, fileName: string) =>
+    request<{ success: boolean; imageUrl: string; message?: string }>('/admin/client-logos/upload', {
+      method: 'POST',
+      body: JSON.stringify({ fileBase64, fileName }),
     }),
 };

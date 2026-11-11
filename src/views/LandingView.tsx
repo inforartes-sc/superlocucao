@@ -39,7 +39,7 @@ import {
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
 import { api } from '../services/api.ts';
-import { CommercialPlan } from '../types/index.ts';
+import { CommercialPlan, ClientLogo } from '../types/index.ts';
 import { ContactModal } from '../components/ContactModal.tsx';
 
 interface LandingViewProps {
@@ -134,6 +134,74 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [publicWhatsapp, setPublicWhatsapp] = useState('');
   const [publicEmail, setPublicEmail] = useState('');
 
+  // Supermarket Client Logos (Carrossel Contínuo)
+  const [clientLogos, setClientLogos] = useState<ClientLogo[]>([
+    {
+      id: 'logo-alvorada',
+      name: 'Supermercado Alvorada',
+      cityState: 'Campinas/SP',
+      slogan: 'Economia e Qualidade Todo Dia',
+      active: true,
+      order: 1,
+    },
+    {
+      id: 'logo-bompreco',
+      name: 'Rede Bom Preço',
+      cityState: 'Belo Horizonte/MG',
+      slogan: 'O Menor Preço da Cidade',
+      active: true,
+      order: 2,
+    },
+    {
+      id: 'logo-atacadao-central',
+      name: 'Atacadão Central',
+      cityState: 'Curitiba/PR',
+      slogan: 'Preço de Atacado no Varejo',
+      active: true,
+      order: 3,
+    },
+    {
+      id: 'logo-estrela-sul',
+      name: 'Supermercado Estrela do Sul',
+      cityState: 'Porto Alegre/RS',
+      slogan: 'Tradição em Ofertas e Carnes',
+      active: true,
+      order: 4,
+    },
+    {
+      id: 'logo-hiper-center',
+      name: 'Hiper Center Varejo',
+      cityState: 'São Paulo/SP',
+      slogan: 'Variedade, Frescor e Economia',
+      active: true,
+      order: 5,
+    },
+    {
+      id: 'logo-alianca',
+      name: 'Supermercado Aliança',
+      cityState: 'Goiânia/GO',
+      slogan: 'Fazendo Parte da Sua Família',
+      active: true,
+      order: 6,
+    },
+    {
+      id: 'logo-sao-jose',
+      name: 'Empório São José',
+      cityState: 'Rio de Janeiro/RJ',
+      slogan: 'Padaria, Adega e Hortifrúti',
+      active: true,
+      order: 7,
+    },
+    {
+      id: 'logo-brasil-mix',
+      name: 'Atacarejo Brasil Mix',
+      cityState: 'Fortaleza/CE',
+      slogan: 'Varejo com Preço de Atacado',
+      active: true,
+      order: 8,
+    },
+  ]);
+
   useEffect(() => {
     api.getPublicSettings().then((res) => {
       if (res && res.commercialPlans && res.commercialPlans.length > 0) {
@@ -144,6 +212,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
       }
       if (res && res.contactEmail) {
         setPublicEmail(res.contactEmail);
+      }
+    }).catch(console.warn);
+
+    api.getClientLogos().then((res) => {
+      if (res && res.logos && res.logos.length > 0) {
+        setClientLogos(res.logos);
       }
     }).catch(console.warn);
   }, []);
@@ -1509,6 +1583,72 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================================================================== */}
+      {/* 8.5. CARROSSEL DE LOGOS DE SUPERMERCADOS CLIENTES (FULL-WIDTH)       */}
+      {/* ===================================================================== */}
+      <section className="w-full bg-[#0a0d14] border-y border-zinc-800/80 py-10 sm:py-12 overflow-hidden relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6 sm:mb-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2.5">
+            <Store className="w-3.5 h-3.5 text-orange-400" />
+            <span>Supermercados que Confiam</span>
+          </div>
+          <h3 className="text-xl sm:text-3xl font-black text-white tracking-tight">
+            Redes e Supermercados que Usam o SuperLocução
+          </h3>
+          <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl mx-auto mt-1.5">
+            Mais de 500+ lojas ativas aumentando as vendas no ponto de venda com locução IA diária e rádio web profissional no ar.
+          </p>
+        </div>
+
+        {/* Faixa Horizontal de Ponta a Ponta com Efeito Carrossel Infinito */}
+        <div className="relative w-full overflow-hidden">
+          {/* Sombras suaves nas laterais para transição elegante */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-36 bg-gradient-to-r from-[#0a0d14] via-[#0a0d14]/80 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-36 bg-gradient-to-l from-[#0a0d14] via-[#0a0d14]/80 to-transparent z-10 pointer-events-none" />
+
+          <div className="animate-marquee-logos flex items-center gap-4 py-2">
+            {[...clientLogos, ...clientLogos].map((logo, idx) => (
+              <div
+                key={`${logo.id}-${idx}`}
+                className="bg-[#121522]/90 hover:bg-[#181c2e] border border-zinc-800 hover:border-orange-500/50 rounded-2xl px-5 py-3.5 flex items-center gap-4 transition-all duration-300 shadow-lg shadow-black/40 shrink-0 min-w-[270px] max-w-[340px] group cursor-default"
+                title={logo.slogan ? `${logo.name} — "${logo.slogan}"` : logo.name}
+              >
+                {/* Logo Imagem Real ou Emblema Vetorial de Varejo */}
+                {logo.imageUrl ? (
+                  <div className="w-12 h-12 rounded-xl bg-white/5 border border-zinc-700/60 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                    <img
+                      src={logo.imageUrl}
+                      alt={logo.name}
+                      className="max-h-full max-w-full object-contain filter group-hover:scale-105 transition duration-300"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-orange-600/30 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0 group-hover:scale-105 group-hover:border-orange-400 transition duration-300 shadow-sm">
+                    <Store className="w-5 h-5 text-orange-400" />
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-sm text-white group-hover:text-orange-400 transition truncate block leading-snug">
+                    {logo.name}
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-400 truncate">
+                    {logo.slogan ? (
+                      <span className="truncate italic text-zinc-300/90 text-[11px]">“{logo.slogan}”</span>
+                    ) : (
+                      <span className="text-[11px] text-emerald-400 font-semibold">Cliente Verificado</span>
+                    )}
+                    {logo.cityState && (
+                      <span className="text-[10px] text-zinc-500 shrink-0 font-medium">• {logo.cityState}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

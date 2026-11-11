@@ -426,4 +426,16 @@ export interface OnlineRadioStation {
   deviceName?: string;
 }
 
+export interface ClientLogo {
+  id: string;
+  name: string;
+  cityState?: string;
+  imageUrl?: string;
+  slogan?: string;
+  websiteUrl?: string;
+  active: boolean;
+  order: number;
+  createdAt?: string;
+}
+
 export * from './campaigns.ts';

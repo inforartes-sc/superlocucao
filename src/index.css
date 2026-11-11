@@ -64,3 +64,23 @@
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
+
+/* Continuous infinite marquee carousel for client supermarket logos */
+@keyframes client-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-logos {
+  display: flex;
+  width: max-content;
+  animation: client-marquee 38s linear infinite;
+}
+
+.animate-marquee-logos:hover {
+  animation-play-state: paused;
+}

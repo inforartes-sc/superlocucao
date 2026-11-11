@@ -2131,3 +2131,91 @@ apiRouter.all(['/webhooks/mercadopago', '/webhooks/payment'], async (req: Reques
 
   res.status(200).json({ received: true, timestamp: new Date().toISOString() });
 });
+
+// =========================================================================
+// ROTAS DE LOGOS DE CLIENTES / SUPERMERCADOS PARCEIROS (CARROSSEL)
+// =========================================================================
+apiRouter.get('/client-logos', (_req: Request, res: Response) => {
+  const logos = db.getClientLogos().filter(l => l.active).sort((a, b) => a.order - b.order);
+  res.json({ logos });
+});
+
+apiRouter.get('/admin/client-logos', (_req: Request, res: Response) => {
+  const logos = db.getClientLogos().sort((a, b) => a.order - b.order);
+  res.json({ logos });
+});
+
+apiRouter.post('/admin/client-logos', (req: Request, res: Response) => {
+  const { name, cityState, imageUrl, slogan, websiteUrl, active, order } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Nome do supermercado é obrigatório' });
+  }
+
+  const logos = db.getClientLogos();
+  const newLogo = {
+    id: `logo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name: name.trim(),
+    cityState: (cityState || '').trim(),
+    imageUrl: (imageUrl || '').trim(),
+    slogan: (slogan || '').trim(),
+    websiteUrl: (websiteUrl || '').trim(),
+    active: active !== undefined ? Boolean(active) : true,
+    order: Number(order) || (logos.length + 1),
+    createdAt: new Date().toISOString(),
+  };
+
+  logos.push(newLogo);
+  db.saveClientLogos(logos);
+  res.json({ success: true, logo: newLogo, message: 'Logo de supermercado adicionada com sucesso!' });
+});
+
+apiRouter.put('/admin/client-logos/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const logos = db.getClientLogos();
+  const idx = logos.findIndex(l => l.id === id);
+  if (idx < 0) {
+    return res.status(404).json({ error: 'Logo não encontrada' });
+  }
+
+  const existing = logos[idx];
+  const updated = {
+    ...existing,
+    name: req.body.name !== undefined ? req.body.name.trim() : existing.name,
+    cityState: req.body.cityState !== undefined ? req.body.cityState.trim() : existing.cityState,
+    imageUrl: req.body.imageUrl !== undefined ? req.body.imageUrl.trim() : existing.imageUrl,
+    slogan: req.body.slogan !== undefined ? req.body.slogan.trim() : existing.slogan,
+    websiteUrl: req.body.websiteUrl !== undefined ? req.body.websiteUrl.trim() : existing.websiteUrl,
+    active: req.body.active !== undefined ? Boolean(req.body.active) : existing.active,
+    order: req.body.order !== undefined ? Number(req.body.order) : existing.order,
+  };
+
+  logos[idx] = updated;
+  db.saveClientLogos(logos);
+  res.json({ success: true, logo: updated, message: 'Logo atualizada com sucesso!' });
+});
+
+apiRouter.delete('/admin/client-logos/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  let logos = db.getClientLogos();
+  logos = logos.filter(l => l.id !== id);
+  db.saveClientLogos(logos);
+  res.json({ success: true, message: 'Logo removida com sucesso!' });
+});
+
+apiRouter.post('/admin/client-logos/upload', (req: Request, res: Response) => {
+  try {
+    const { fileName, fileBase64 } = req.body;
+    if (!fileBase64) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    }
+
+    let dataUrl = fileBase64;
+    if (!dataUrl.startsWith('data:')) {
+      dataUrl = `data:image/png;base64,${fileBase64}`;
+    }
+
+    res.json({ success: true, imageUrl: dataUrl, message: 'Upload de logo concluído!' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro no upload da logo' });
+  }
+});

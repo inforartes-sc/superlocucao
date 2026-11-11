@@ -691,6 +691,101 @@ export const DEFAULT_PAYMENT_TRANSACTIONS: PaymentTransaction[] = [
   },
 ];
 
+export interface ClientLogo {
+  id: string;
+  name: string;
+  cityState?: string;
+  imageUrl?: string;
+  slogan?: string;
+  websiteUrl?: string;
+  active: boolean;
+  order: number;
+  createdAt?: string;
+}
+
+export const DEFAULT_CLIENT_LOGOS: ClientLogo[] = [
+  {
+    id: 'logo-alvorada',
+    name: 'Supermercado Alvorada',
+    cityState: 'Campinas/SP',
+    slogan: 'Economia e Qualidade Todo Dia',
+    imageUrl: '',
+    active: true,
+    order: 1,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-bompreco',
+    name: 'Rede Bom Preço',
+    cityState: 'Belo Horizonte/MG',
+    slogan: 'O Menor Preço da Cidade',
+    imageUrl: '',
+    active: true,
+    order: 2,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-atacadao-central',
+    name: 'Atacadão Central',
+    cityState: 'Curitiba/PR',
+    slogan: 'Preço de Atacado no Varejo',
+    imageUrl: '',
+    active: true,
+    order: 3,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-estrela-sul',
+    name: 'Supermercado Estrela do Sul',
+    cityState: 'Porto Alegre/RS',
+    slogan: 'Tradição em Ofertas e Carnes',
+    imageUrl: '',
+    active: true,
+    order: 4,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-hiper-center',
+    name: 'Hiper Center Varejo',
+    cityState: 'São Paulo/SP',
+    slogan: 'Variedade, Frescor e Economia',
+    imageUrl: '',
+    active: true,
+    order: 5,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-alianca',
+    name: 'Supermercado Aliança',
+    cityState: 'Goiânia/GO',
+    slogan: 'Fazendo Parte da Sua Família',
+    imageUrl: '',
+    active: true,
+    order: 6,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-sao-jose',
+    name: 'Empório São José',
+    cityState: 'Rio de Janeiro/RJ',
+    slogan: 'Padaria, Adega e Hortifrúti Selecionado',
+    imageUrl: '',
+    active: true,
+    order: 7,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'logo-brasil-mix',
+    name: 'Atacarejo Brasil Mix',
+    cityState: 'Fortaleza/CE',
+    slogan: 'Compre no Varejo com Preço de Atacado',
+    imageUrl: '',
+    active: true,
+    order: 8,
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+];
+
 interface DbData {
   users: UserProfile[];
   projects: Project[];
@@ -711,6 +806,7 @@ interface DbData {
     paymentGateway?: PaymentGatewayConfig;
     subscriptions?: SubscriptionItem[];
     payments?: PaymentTransaction[];
+    clientLogos?: ClientLogo[];
   };
 }
 
@@ -1051,6 +1147,7 @@ class Database {
         paymentGateway: DEFAULT_PAYMENT_GATEWAY,
         subscriptions: DEFAULT_SUBSCRIPTIONS,
         payments: DEFAULT_PAYMENT_TRANSACTIONS,
+        clientLogos: DEFAULT_CLIENT_LOGOS,
       };
       this.save();
     } else {
@@ -1081,6 +1178,10 @@ class Database {
       }
       if (!this.data.adminSettings.payments || this.data.adminSettings.payments.length === 0) {
         this.data.adminSettings.payments = DEFAULT_PAYMENT_TRANSACTIONS;
+        changed = true;
+      }
+      if (!this.data.adminSettings.clientLogos || this.data.adminSettings.clientLogos.length === 0) {
+        this.data.adminSettings.clientLogos = DEFAULT_CLIENT_LOGOS;
         changed = true;
       }
       if (changed) this.save();
@@ -2439,6 +2540,22 @@ class Database {
     this.save();
     this.pgSaveAdminSettings(this.data.adminSettings);
     return this.data.adminSettings;
+  }
+
+  // Client Logos (Supermercados Parceiros / Carrossel)
+  getClientLogos(): ClientLogo[] {
+    if (!this.data.adminSettings.clientLogos || this.data.adminSettings.clientLogos.length === 0) {
+      this.data.adminSettings.clientLogos = DEFAULT_CLIENT_LOGOS;
+      this.save();
+    }
+    return this.data.adminSettings.clientLogos;
+  }
+
+  saveClientLogos(logos: ClientLogo[]): ClientLogo[] {
+    this.data.adminSettings.clientLogos = logos;
+    this.save();
+    this.pgSaveAdminSettings(this.data.adminSettings);
+    return this.data.adminSettings.clientLogos;
   }
 
   // Subscriptions & Payments
