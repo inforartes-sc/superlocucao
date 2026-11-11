@@ -393,6 +393,7 @@ export interface RadioStationConfig {
   stationName: string;
   storeName?: string;
   slogan: string;
+  niche?: ProjectNiche;
   isOnAir: boolean;
   mode: 'intervalo_tempo' | 'intercalado_musicas' | 'somente_ofertas';
   spotsEveryNTracks: number;
@@ -452,6 +453,42 @@ export interface ClientLogo {
   active: boolean;
   order: number;
   createdAt?: string;
+}
+
+export interface QuickRadioTemplate {
+  id: string;
+  label: string;
+  badge: string;
+  type: RadioQueueItem['type'];
+  title: string;
+  script: string;
+  soundtrackId: SoundtrackId;
+}
+
+export interface RadioVinhetaItem {
+  id: string;
+  category: 'identificacao' | 'institucional' | 'setores' | 'clube' | 'sweepers';
+  categoryLabel: string;
+  icon: string;
+  title: string;
+  badge: string;
+  description: string;
+  scriptTemplate: string;
+  soundtrackId: SoundtrackId;
+  defaultPriority: 'normal' | 'alta';
+}
+
+export interface QuickAnnouncementItem {
+  id: string;
+  category: 'estacionamento' | 'fechamento' | 'caixa' | 'seguranca' | 'informativo' | 'operacional';
+  categoryLabel: string;
+  icon: string;
+  title: string;
+  badge: string;
+  description: string;
+  script: string;
+  soundtrackId: SoundtrackId;
+  defaultPriority: 'normal' | 'alta';
 }
 
 export * from './campaigns.ts';

@@ -64,7 +64,25 @@ import {
   playCashRegister,
   LiveMicrophoneBroadcaster,
 } from '../utils/soundboard';
-import { VoicePreset, SoundtrackOption, SoundtrackId, RadioQueueItem, RadioPlaylist, RadioMusicTrack, UserProfile } from '../types';
+import {
+  VoicePreset,
+  SoundtrackOption,
+  SoundtrackId,
+  RadioQueueItem,
+  RadioPlaylist,
+  RadioMusicTrack,
+  UserProfile,
+  ProjectNiche,
+  QuickRadioTemplate,
+  RadioVinhetaItem,
+  QuickAnnouncementItem,
+} from '../types';
+import {
+  getVinhetasByNiche,
+  getLiveTemplatesByNiche,
+  getAnnouncementsByNiche,
+  getNicheSlogan,
+} from '../utils/nicheDefaults';
 import { api } from '../services/api';
 import { useFavoriteVoices } from '../services/voiceFavorites';
 
@@ -74,518 +92,9 @@ interface RadioViewProps {
   onOpenStudio: () => void;
 }
 
-interface QuickRadioTemplate {
-  id: string;
-  label: string;
-  badge: string;
-  type: RadioQueueItem['type'];
-  title: string;
-  script: string;
-  soundtrackId: SoundtrackId;
-}
-
-const SUPERMARKET_LIVE_TEMPLATES: QuickRadioTemplate[] = [
-  {
-    id: 'fornada-padaria',
-    label: '🥖 Pão Quentinho na Padaria',
-    badge: 'Padaria',
-    type: 'comunicado',
-    title: 'Aviso Padaria — Fornada de Pão Francês Quentinho',
-    script:
-      'Atenção clientes! Acabou de sair mais uma fornada de pão francês quentinho e crocante na nossa padaria! Passe agora mesmo no setor de panificação e leve pão fresquinho para a sua família!',
-    soundtrackId: 'varejo_alegre',
-  },
-  {
-    id: 'relampago-acougue',
-    label: '🥩 Oferta Relâmpago Açougue',
-    badge: 'Açougue',
-    type: 'relampago',
-    title: 'Oferta Relâmpago — Cortes Selecionados no Açougue',
-    script:
-      'Atenção clientes para a oferta relâmpago no nosso açougue! Só pelos próximos trinta minutos: Contrafilé Bovino fresquinho por apenas trinta e nove reais e noventa centavos o quilo! Corra para o balcão do açougue e garanta o seu churrasco!',
-    soundtrackId: 'black_friday_urgente',
-  },
-  {
-    id: 'feira-hortifruti',
-    label: '🥬 Feirinha do Hortifrúti',
-    badge: 'Hortifrúti',
-    type: 'oferta',
-    title: 'Oferta Hortifrúti — Frutas e Verduras direto do Produtor',
-    script:
-      'Clientes amigos, aproveitem a nossa seleção especial no setor de hortifrúti! Banana Prata selecionada por apenas quatro reais e noventa e nove centavos o quilo! Tomate maduro e batata lavada com preço baixo de verdade. Confira!',
-    soundtrackId: 'acustico_hortifruti',
-  },
-  {
-    id: 'boas-vindas-loja',
-    label: '🛒 Vinheta de Boas-Vindas',
-    badge: 'Institucional',
-    type: 'vinheta',
-    title: 'Vinheta Institucional — Boas-Vindas aos Clientes',
-    script:
-      'Seja muito bem-vindo ao nosso supermercado! É uma alegria receber você e sua família. Você está ouvindo a nossa Rádio Interna com as melhores ofertas do dia para você economizar de verdade. Boas compras!',
-    soundtrackId: 'varejo_alegre',
-  },
-  {
-    id: 'chamada-estacionamento',
-    label: '🚗 Chamada de Estacionamento',
-    badge: 'Comunicado',
-    type: 'comunicado',
-    title: 'Comunicado — Solicitação de Comparecimento ao Estacionamento',
-    script:
-      'Atenção senhor cliente proprietário do veículo estacionado no pátio da loja, solicitamos por gentileza o seu comparecimento imediato ao balcão de atendimento ao cliente na entrada da loja. Obrigado!',
-    soundtrackId: 'institucional_gourmet',
-  },
-  {
-    id: 'fechamento-loja',
-    label: '⏰ Aviso de Fechamento',
-    badge: 'Comunicado',
-    type: 'comunicado',
-    title: 'Comunicado — Aviso de Encerramento do Expediente',
-    script:
-      'Atenção senhores clientes! Informamos que a nossa loja encerrará o atendimento dentro de quinze minutos. Pedimos por gentileza que se dirijam aos caixas para finalizar suas compras. Agradecemos a preferência!',
-    soundtrackId: 'institucional_gourmet',
-  },
-];
-
-export interface QuickAnnouncementItem {
-  id: string;
-  category: 'estacionamento' | 'fechamento' | 'caixa' | 'seguranca' | 'informativo' | 'operacional';
-  categoryLabel: string;
-  icon: string;
-  title: string;
-  badge: string;
-  description: string;
-  script: string;
-  soundtrackId: SoundtrackId;
-  defaultPriority: 'normal' | 'alta';
-}
-
-export const SUPERMARKET_ANNOUNCEMENTS: QuickAnnouncementItem[] = [
-  // 🚗 Estacionamento
-  {
-    id: 'carro-farol-aceso',
-    category: 'estacionamento',
-    categoryLabel: 'Estacionamento',
-    icon: '🚗',
-    title: 'Veículo com Faróis Acesos no Estacionamento',
-    badge: 'Urgente',
-    description: 'Avisa o proprietário para desligar as luzes e não descarregar a bateria.',
-    script:
-      'Atenção clientes: identificamos um veículo no estacionamento da loja com os faróis acesos. Solicitamos por gentileza que o proprietário verifique seu automóvel para evitar o descarregamento da bateria. Agradecemos a atenção!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'carro-bloqueando',
-    category: 'estacionamento',
-    categoryLabel: 'Estacionamento',
-    icon: '🚫',
-    title: 'Veículo Bloqueando Passagem no Estacionamento',
-    badge: 'Atenção',
-    description: 'Solicita a retirada de carro bloqueando a saída ou vaga de outro cliente.',
-    script:
-      'Atenção proprietário do veículo estacionado no pátio: solicitamos a gentileza de comparecer ao estacionamento para manobrar seu veículo, pois o mesmo está bloqueando a passagem de outros clientes. Agradecemos a compreensão!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'alarme-disparado',
-    category: 'estacionamento',
-    categoryLabel: 'Estacionamento',
-    icon: '🚨',
-    title: 'Alarme de Carro Disparando no Pátio Externo',
-    badge: 'Segurança',
-    description: 'Alerta sobre veículo com alarme sonoro ativado no pátio.',
-    script:
-      'Atenção senhores clientes: comunicamos que há um veículo com o alarme sonoro disparado no nosso estacionamento externo. Por gentileza, solicitamos ao proprietário que verifique seu veículo no pátio.',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-
-  // ⏰ Fechamento de Loja
-  {
-    id: 'fechamento-15min',
-    category: 'fechamento',
-    categoryLabel: 'Fechamento',
-    icon: '⏰',
-    title: 'Aviso de Fechamento em 15 Minutos',
-    badge: 'Horário',
-    description: 'Orienta os clientes a se dirigirem aos caixas para finalizar compras.',
-    script:
-      'Atenção estimados clientes! Informamos que a nossa loja encerrará o atendimento dentro de quinze minutos. Aproveite para finalizar suas compras e se dirigir a um de nossos caixas abertos. Agradecemos a preferência e boas compras!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'fechamento-5min',
-    category: 'fechamento',
-    categoryLabel: 'Fechamento',
-    icon: '⏳',
-    title: 'Aviso de Fechamento em 5 Minutos (Últimas Compras)',
-    badge: 'Última Chamada',
-    description: 'Aviso urgente de caixas fechando em 5 minutos.',
-    script:
-      'Atenção senhores clientes: faltam apenas cinco minutos para o encerramento das nossas atividades hoje. Por gentileza, dirijam-se imediatamente aos caixas para registrar seus produtos. Desejamos a todos uma excelente noite!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'fechamento-concluido',
-    category: 'fechamento',
-    categoryLabel: 'Fechamento',
-    icon: '🌙',
-    title: 'Encerramento do Expediente & Agradecimento',
-    badge: 'Boa Noite',
-    description: 'Mensagem de encerramento da loja e agradecimento aos clientes.',
-    script:
-      'Informamos que encerramos o nosso expediente de hoje. Agradecemos a todos os nossos clientes pela presença e preferência. Amanhã estaremos de volta a partir das sete da manhã com produtos fresquinhos e muitas promoções para você. Tenham todos uma ótima noite!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'normal',
-  },
-
-  // 💳 Frente de Caixa e Atendimento
-  {
-    id: 'caixa-rapido-10itens',
-    category: 'caixa',
-    categoryLabel: 'Frente de Caixa',
-    icon: '⚡',
-    title: 'Abertura de Caixa Rápido (Até 10 Volumes)',
-    badge: 'Agilidade',
-    description: 'Convida clientes com poucas compras para atendimento expresso.',
-    script:
-      'Atenção clientes com compras de até dez volumes: temos caixa rápido aberto para atendimento imediato e sem fila! Passe suas compras com total agilidade e economia de tempo.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'caixa-preferencial',
-    category: 'caixa',
-    categoryLabel: 'Frente de Caixa',
-    icon: '👵',
-    title: 'Atendimento Preferencial Aberto',
-    badge: 'Prioridade',
-    description: 'Aviso de caixas prioritários para idosos, gestantes e PcD.',
-    script:
-      'Comunicamos que os caixas de atendimento preferencial estão à disposição para gestantes, idosos, lactantes e pessoas com deficiência. Nosso compromisso é o respeito, o conforto e a dedicação ao seu atendimento!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'novo-caixa-fila',
-    category: 'caixa',
-    categoryLabel: 'Frente de Caixa',
-    icon: '🛒',
-    title: 'Abertura de Novo Caixa para Agilizar Atendimento',
-    badge: 'Sem Fila',
-    description: 'Chamada de clientes da fila para novo caixa aberto.',
-    script:
-      'Atenção clientes amigos: estamos abrindo mais um caixa para agilizar o atendimento de vocês! Por gentileza, os próximos clientes da fila podem se dirigir ao caixa ao lado.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-
-  // 👶 Segurança e Apoio
-  {
-    id: 'crianca-atendimento',
-    category: 'seguranca',
-    categoryLabel: 'Segurança & Clientes',
-    icon: '👶',
-    title: 'Criança Aguardando Responsáveis no Atendimento',
-    badge: 'Urgente',
-    description: 'Localização de responsáveis por criança na loja.',
-    script:
-      'Atenção clientes e colaboradores: temos uma criança aguardando seus pais ou responsáveis com toda a segurança no balcão de atendimento ao cliente, na entrada da loja. Solicitamos por gentileza que os responsáveis se dirijam ao balcão. Obrigado!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'achados-perdidos',
-    category: 'seguranca',
-    categoryLabel: 'Segurança & Clientes',
-    icon: '🔑',
-    title: 'Achados e Perdidos — Documento ou Objeto Localizado',
-    badge: 'Atendimento',
-    description: 'Comunica achado de documento, bolsa ou chave na loja.',
-    script:
-      'Atenção clientes: foi encontrado um objeto pessoal no interior da nossa loja. O mesmo encontra-se guardado no balcão de atendimento ao cliente. Para retirá-lo, favor comparecer ao balcão mediante identificação. Agradecemos a atenção!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'limpeza-corredor',
-    category: 'operacional',
-    categoryLabel: 'Operacional',
-    icon: '🧼',
-    title: 'Chamada Operacional — Apoio de Limpeza no Corredor',
-    badge: 'Equipe',
-    description: 'Solicita equipe de limpeza e apoio no corredor.',
-    script:
-      'Atenção equipe de apoio e limpeza da loja: solicitamos o comparecimento com material de apoio ao corredor da loja para atendimento imediato. Obrigado!',
-    soundtrackId: 'sem_trilha',
-    defaultPriority: 'alta',
-  },
-
-  // 📢 Informativos da Loja
-  {
-    id: 'clube-descontos-cpf',
-    category: 'informativo',
-    categoryLabel: 'Informativo',
-    icon: '📱',
-    title: 'Clube de Descontos & CPF no Caixa',
-    badge: 'Economia',
-    description: 'Estimula os clientes a informarem o CPF para descontos exclusivos.',
-    script:
-      'Você sabia que informando o seu CPF no caixa você garante descontos automáticos e exclusivos em centenas de itens? É rápido, gratuito e a economia cai direto na sua nota! Peça ao nosso operador e aproveite os benefícios do nosso clube!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'formas-pagamento-pix',
-    category: 'informativo',
-    categoryLabel: 'Informativo',
-    icon: '💳',
-    title: 'Formas de Pagamento, PIX e Vales-Alimentação',
-    badge: 'Facilidade',
-    description: 'Informa todas as opções de pagamento aceitas pelo supermercado.',
-    script:
-      'Facilidade e comodidade para você economizar: aceitamos pagamentos via PIX, cartões de crédito e débito das principais bandeiras e todos os vales-alimentação e refeição. Venha encher o carrinho com total tranquilidade!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'delivery-whatsapp',
-    category: 'informativo',
-    categoryLabel: 'Informativo',
-    icon: '🛵',
-    title: 'Delivery & Pedidos pelo WhatsApp da Loja',
-    badge: 'Comodidade',
-    description: 'Divulga o canal de compras online e entrega em domicílio.',
-    script:
-      'Sabia que você pode fazer suas compras sem sair de casa? Envie sua lista de compras agora mesmo para o nosso WhatsApp oficial e receba tudo fresquinho com entrega rápida no conforto do seu lar! Consulte nosso número nos cartazes da loja.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-];
-
-export interface RadioVinhetaItem {
-  id: string;
-  category: 'identificacao' | 'institucional' | 'setores' | 'clube' | 'sweepers';
-  categoryLabel: string;
-  icon: string;
-  title: string;
-  badge: string;
-  description: string;
-  scriptTemplate: string;
-  soundtrackId: SoundtrackId;
-  defaultPriority: 'normal' | 'alta';
-}
-
-export const SUPERMARKET_VINHETAS: RadioVinhetaItem[] = [
-  // 📻 Identificação da Rádio
-  {
-    id: 'vinheta-radio-principal',
-    category: 'identificacao',
-    categoryLabel: 'Identificação da Rádio',
-    icon: '📻',
-    title: 'Identificação Oficial da Rádio da Loja',
-    badge: 'Rádio Oficial',
-    description: 'Apresenta a rádio interna da loja para os clientes em compras.',
-    scriptTemplate:
-      'Você está sintonizado na Rádio {loja}! A sua melhor escolha em economia, variedade e produtos selecionados todos os dias.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-radio-slogan',
-    category: 'identificacao',
-    categoryLabel: 'Identificação da Rádio',
-    icon: '✨',
-    title: 'Slogan & Economia Familiar',
-    badge: 'Slogan da Loja',
-    description: 'Reforça a marca e a economia garantida para a família.',
-    scriptTemplate:
-      'Rádio {loja}! A rádio da economia e das melhores ofertas para a sua família. Aqui você compra mais gastando menos!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-radio-frequencia',
-    category: 'identificacao',
-    categoryLabel: 'Identificação da Rádio',
-    icon: '🎵',
-    title: 'Música & Melhores Compras',
-    badge: 'Trilha & Ofertas',
-    description: 'Passagem descontraída valorizando o ambiente agradável da loja.',
-    scriptTemplate:
-      'No ar, a Rádio {loja}! A seleção musical perfeita para embalar o seu dia com ofertas imperdíveis em todos os corredores.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-
-  // 🏪 Institucional & Boas-Vindas
-  {
-    id: 'vinheta-boas-vindas',
-    category: 'institucional',
-    categoryLabel: 'Institucional',
-    icon: '🛒',
-    title: 'Boas-Vindas com Carinho ao Cliente',
-    badge: 'Boas-Vindas',
-    description: 'Dá as boas-vindas e deseja uma excelente experiência de compras.',
-    scriptTemplate:
-      'Seja muito bem-vindo ao {loja}! É um prazer imenso ter você aqui com a gente. Aproveite nossas promoções e tenha um ótimo dia de compras!',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-obrigado-preferencia',
-    category: 'institucional',
-    categoryLabel: 'Institucional',
-    icon: '❤️',
-    title: 'Agradecimento pela Preferência',
-    badge: 'Gratidão',
-    description: 'Agradece a confiança e fidelidade dos clientes.',
-    scriptTemplate:
-      'Obrigado pela sua preferência em comprar no {loja}! Nossa equipe trabalha diariamente com muito carinho para levar sempre o melhor até a sua mesa.',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'vinheta-compromisso-qualidade',
-    category: 'institucional',
-    categoryLabel: 'Institucional',
-    icon: '⭐',
-    title: 'Compromisso com a Qualidade',
-    badge: 'Qualidade Total',
-    description: 'Destaca o compromisso da loja com produtos de excelência.',
-    scriptTemplate:
-      '{loja}: aqui a qualidade máxima anda de mãos dadas com o preço justo! Obrigado por escolher a nossa casa para abastecer a sua.',
-    soundtrackId: 'institucional_gourmet',
-    defaultPriority: 'normal',
-  },
-
-  // 🥩 Setores Especializados
-  {
-    id: 'vinheta-setor-acougue',
-    category: 'setores',
-    categoryLabel: 'Setores da Loja',
-    icon: '🥩',
-    title: 'Açougue — Carnes Nobres & Cortes Especiais',
-    badge: 'Açougue',
-    description: 'Chama a atenção dos clientes para o balcão de carnes e churrasco.',
-    scriptTemplate:
-      'As melhores carnes, cortes nobres e procedência rigorosa para o seu dia a dia e para o churrasco do fim de semana. Venha conferir o açougue do {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-setor-hortifruti',
-    category: 'setores',
-    categoryLabel: 'Setores da Loja',
-    icon: '🍎',
-    title: 'Hortifrúti — Frescor & Saúde Direto da Roça',
-    badge: 'Hortifrúti',
-    description: 'Valoriza o setor de frutas, legumes e verduras fresquinhas.',
-    scriptTemplate:
-      'Frutas, legumes e verduras fresquinhas, selecionadas e cheias de sabor esperando por você. Dê uma passadinha no setor de hortifrúti do {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-setor-padaria',
-    category: 'setores',
-    categoryLabel: 'Setores da Loja',
-    icon: '🥖',
-    title: 'Padaria — Pão Quentinho & Confeitaria',
-    badge: 'Padaria',
-    description: 'Desperta o apetite para os pães e doces recém-saídos do forno.',
-    scriptTemplate:
-      'Aquele cheirinho irresistível de pão quentinho e delícias saindo do forno a toda hora! Passe na padaria e confeitaria do {loja} e leve o melhor para o seu café.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-  {
-    id: 'vinheta-setor-bebidas',
-    category: 'setores',
-    categoryLabel: 'Setores da Loja',
-    icon: '🍾',
-    title: 'Bebidas & Adega — Cervejas & Vinhos Especiais',
-    badge: 'Bebidas & Adega',
-    description: 'Divulga o setor de bebidas geladas e vinhos com ótimos preços.',
-    scriptTemplate:
-      'Cervejas estupidamente geladas, vinhos selecionados, sucos e refrigerantes com descontos imperdíveis no setor de bebidas do {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-
-  // 💳 Clube & Vantagens
-  {
-    id: 'vinheta-clube-cpf',
-    category: 'clube',
-    categoryLabel: 'Clube & Vantagens',
-    icon: '💳',
-    title: 'Clube de Descontos & CPF no Caixa',
-    badge: 'Clube da Loja',
-    description: 'Lembra os clientes de informar o CPF para garantir descontos.',
-    scriptTemplate:
-      'Você já garantiu seus descontos exclusivos hoje? Ao passar no caixa, informe o seu CPF e aproveite as vantagens do Clube de Descontos do {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-delivery-whatsapp',
-    category: 'clube',
-    categoryLabel: 'Clube & Vantagens',
-    icon: '📱',
-    title: 'Delivery & Pedidos pelo WhatsApp',
-    badge: 'Delivery Rápido',
-    description: 'Informa sobre o canal de compras práticas sem sair de casa.',
-    scriptTemplate:
-      'Sabia que você pode fazer suas compras pelo WhatsApp? Mande sua lista para o nosso número oficial e receba tudo fresquinho na sua casa com o Delivery do {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-
-  // ⚡ Sweepers / Carimbos Rápidos (5 a 8s)
-  {
-    id: 'vinheta-sweeper-oferta',
-    category: 'sweepers',
-    categoryLabel: 'Carimbos Rápidos (Sweepers)',
-    icon: '⚡',
-    title: 'Carimbo Curto — Economia Garantida',
-    badge: 'Carimbo 5s',
-    description: 'Passagem ultracurta para carimbar o nome da loja entre músicas.',
-    scriptTemplate:
-      '{loja}! Lugar de comprar barato e economizar de verdade.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-sweeper-qualidade',
-    category: 'sweepers',
-    categoryLabel: 'Carimbos Rápidos (Sweepers)',
-    icon: '🔥',
-    title: 'Carimbo Curto — As Melhores Ofertas',
-    badge: 'Carimbo 6s',
-    description: 'Intercalador sonoro rápido focado em ofertas.',
-    scriptTemplate:
-      'Fique ligado! As melhores ofertas do dia estão aqui no {loja}!',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'alta',
-  },
-  {
-    id: 'vinheta-sweeper-passagem',
-    category: 'sweepers',
-    categoryLabel: 'Carimbos Rápidos (Sweepers)',
-    icon: '🎶',
-    title: 'Carimbo Musical — Rádio no Ar',
-    badge: 'Carimbo 5s',
-    description: 'Assinatura sonora rápida da rádio da loja.',
-    scriptTemplate:
-      'Você está ouvindo a Rádio {loja}! Música e economia o dia todo.',
-    soundtrackId: 'varejo_alegre',
-    defaultPriority: 'normal',
-  },
-];
+export const SUPERMARKET_ANNOUNCEMENTS: QuickAnnouncementItem[] = getAnnouncementsByNiche('supermercado');
+export const SUPERMARKET_VINHETAS: RadioVinhetaItem[] = getVinhetasByNiche('supermercado');
+export const SUPERMARKET_LIVE_TEMPLATES: QuickRadioTemplate[] = getLiveTemplatesByNiche('supermercado');
 
 export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, onOpenStudio }) => {
   const {
@@ -694,6 +203,43 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     [config.excludedPlaylistIds]
   );
 
+  const effectiveNiche: ProjectNiche = user?.niche || config?.niche || 'supermercado';
+  const liveTemplates = useMemo(() => getLiveTemplatesByNiche(effectiveNiche), [effectiveNiche]);
+  const vinhetas = useMemo(() => getVinhetasByNiche(effectiveNiche), [effectiveNiche]);
+  const announcements = useMemo(() => getAnnouncementsByNiche(effectiveNiche), [effectiveNiche]);
+
+  const quickProductsPlaceholder = useMemo(() => {
+    switch (effectiveNiche) {
+      case 'farmacia': return 'ex: Dipirona 500mg 4,90, Protetor Solar 39,90';
+      case 'moda': return 'ex: Vestido Floral 89,90, Calça Jeans 119,90';
+      case 'petshop': return 'ex: Ração Premium 15kg 149,90, Petisco Cães 9,90';
+      case 'construcao': return 'ex: Cimento CP II 32,90 saco, Tinta Acrílica 89,90';
+      case 'beleza': return 'ex: Perfume Floral 129,90, Máscara Capilar 34,90';
+      case 'restaurante': return 'ex: Prato Executivo 24,90, Suco Natural 8,90';
+      case 'autopecas': return 'ex: Óleo Sintético 5W30 39,90, Filtro de Óleo 24,90';
+      case 'otica': return 'ex: Armação Acetato 149,90, Lentes Antirreflexo 199,90';
+      case 'geral': return 'ex: Jogo de Copos 19,90, Organizador Multiuso 14,90';
+      case 'supermercado':
+      default: return 'ex: Picanha 59,90 kg, Cerveja lata 3,49';
+    }
+  }, [effectiveNiche]);
+
+  const sectorIcon = useMemo(() => {
+    switch (effectiveNiche) {
+      case 'moda': return '👗';
+      case 'farmacia': return '💊';
+      case 'petshop': return '🐾';
+      case 'construcao': return '🧱';
+      case 'beleza': return '💄';
+      case 'restaurante': return '🍽️';
+      case 'autopecas': return '🚗';
+      case 'otica': return '👓';
+      case 'geral': return '🛍️';
+      case 'supermercado':
+      default: return '🥩';
+    }
+  }, [effectiveNiche]);
+
   // Announcements & Soundboard State
   const [announcementCategoryFilter, setAnnouncementCategoryFilter] = useState<string>('todas');
   const [isMicActive, setIsMicActive] = useState<boolean>(false);
@@ -730,9 +276,9 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
   const uploadVinhetaInputRef = useRef<HTMLInputElement | null>(null);
 
   // Flash Spot Generator State
-  const [flashTitle, setFlashTitle] = useState<string>('Oferta Relâmpago — Rádio do Supermercado');
+  const [flashTitle, setFlashTitle] = useState<string>('Oferta Relâmpago — Rádio da Loja');
   const [flashScript, setFlashScript] = useState<string>(
-    'Atenção clientes! Oferta relâmpago acabando de entrar no ar: Café Torrado e Moído quinhentos gramas por apenas quatorze reais e noventa centavos a unidade! Aproveite agora nos nossos corredores!'
+    'Atenção clientes amigos! Oferta especial acabando de entrar no ar com descontos exclusivos. Aproveite agora mesmo em nossa loja!'
   );
   const [flashQuickProducts, setFlashQuickProducts] = useState<string>('');
   const [flashType, setFlashType] = useState<RadioQueueItem['type']>('relampago');
@@ -1169,7 +715,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
       const res = await api.createRadioFlashSpot({
         title: titleToUse,
         scriptText: textToSpeak,
-        storeName: config?.storeName || 'Supermercado',
+        storeName: config?.storeName || user?.companyName || 'Minha Loja',
         voiceId: selectedVoiceId,
         soundtrackId: ann.soundtrackId,
         soundtrackVolume: 0.15,
@@ -1193,7 +739,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
           downloadUrl: res.audio.downloadUrl,
           durationSeconds: res.audio.durationSeconds || 15,
           voiceName: res.audio.voiceName || 'Locutor',
-          storeName: config?.storeName || 'Supermercado',
+          storeName: config?.storeName || user?.companyName || 'Minha Loja',
           type: 'comunicado',
           active: true,
           priority: 'alta',
@@ -1237,7 +783,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
       const res = await api.createRadioFlashSpot({
         title: titleToUse,
         scriptText: textToSpeak,
-        storeName: config?.storeName || 'Supermercado',
+        storeName: config?.storeName || user?.companyName || 'Minha Loja',
         voiceId: selectedVoiceId,
         soundtrackId: ann.soundtrackId,
         soundtrackVolume: 0.15,
@@ -1279,7 +825,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
   // Nome resolvido da rádio / loja para as vinhetas
   const resolvedVinhetaStoreName = (config?.storeName && config.storeName !== 'Supermercado')
     ? config.storeName
-    : (config?.stationName ? config.stationName.replace(/^rádio\s+/i, '').trim() : (config?.storeName || 'Supermercado'));
+    : (user?.companyName || (config?.stationName ? config.stationName.replace(/^rádio\s+/i, '').trim() : (config?.storeName || 'Minha Loja')));
 
   // Atualizar todas as vinhetas com o nome que está no título da rádio
   const handleSyncVinhetasWithRadioName = async () => {
@@ -1549,7 +1095,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
   const handleSaveStationIdentity = async () => {
     await updateConfig({
       stationName: stationNameInput.trim() || 'Rádio Supermercado Ao Vivo',
-      storeName: storeNameInput.trim() || 'Supermercado',
+      storeName: storeNameInput.trim() || user?.companyName || 'Minha Loja',
       slogan: sloganInput.trim() || 'Ofertas imbatíveis e economia todo dia para sua família!',
     });
     setEditingStationInfo(false);
@@ -1559,7 +1105,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     if (isGratuito && (tpl.type === 'comunicado' || tpl.type === 'vinheta')) {
       setRestrictedModal({
         title: tpl.type === 'vinheta' ? 'Vinhetas da Loja' : 'Avisos Informativos',
-        message: `A utilização de ${tpl.type === 'vinheta' ? 'vinhetas' : 'avisos informativos'} na Rádio Web é exclusiva dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você tem à disposição as opções de Ofertas Relâmpago e Feirinha do Hortifrúti para testar com 50 créditos!`
+        message: `A utilização de ${tpl.type === 'vinheta' ? 'vinhetas' : 'avisos informativos'} na Rádio Web é exclusiva dos planos Pro Varejo e Redes Atacarejo. No plano gratuito você tem à disposição as opções de Ofertas Rápidas para testar com 50 créditos!`
       });
       return;
     }
@@ -1575,7 +1121,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     if (!flashQuickProducts.trim()) {
       setFlashFeedback({
         type: 'error',
-        message: 'Digite os produtos e preços (ex: Picanha 59,90 kg, Cerveja lata 3,49) para a IA criar a chamada.',
+        message: `Digite os produtos e preços (${quickProductsPlaceholder}) para a IA criar a chamada.`,
       });
       return;
     }
@@ -1583,17 +1129,17 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
     setGeneratingAiScript(true);
     setFlashFeedback(null);
     try {
-      const parsed = await api.parseProducts(flashQuickProducts, 'supermercado');
+      const parsed = await api.parseProducts(flashQuickProducts, effectiveNiche);
       const generated = await api.generateScript({
-        niche: 'supermercado',
-        storeName: config?.storeName || 'nosso Supermercado',
+        niche: effectiveNiche,
+        storeName: config?.storeName || user?.companyName || 'Nossa Loja',
         campaignType: flashType === 'relampago' ? 'relampago' : 'ofertas_dia',
-        style: flashType === 'relampago' ? 'urgente_relampago' : 'energetica_supermercado',
+        style: flashType === 'relampago' ? 'urgente_relampago' : (effectiveNiche === 'farmacia' ? 'natural_amigavel' : (effectiveNiche === 'moda' || effectiveNiche === 'beleza' || effectiveNiche === 'otica') ? 'elegante_institucional' : 'energetica_supermercado'),
         desiredDuration: '30s',
         tone: 'entusiasmado',
         presentationFormat: 'abertura_sequencia_encerramento',
         products: parsed.products,
-        freeInstructions: 'Chamada curta e impactante para tocar ao vivo na rádio interna do supermercado.',
+        freeInstructions: 'Chamada curta e impactante para tocar ao vivo na rádio interna da loja.',
       });
       setFlashScript(generated.text);
       if (parsed.products.length > 0) {
@@ -1632,7 +1178,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
       const res = await api.createRadioFlashSpot({
         title: flashTitle.trim() || 'Oferta Relâmpago — Rádio Web',
         scriptText: flashScript,
-        storeName: config?.storeName || 'Supermercado',
+        storeName: config?.storeName || user?.companyName || 'Minha Loja',
         voiceId: selectedVoiceId,
         soundtrackId: selectedSoundtrackId || 'varejo_alegre',
         soundtrackVolume,
@@ -1909,7 +1455,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
-                        Nome do Supermercado
+                        Nome do Estabelecimento / Loja
                       </label>
                       <input
                         type="text"
@@ -2558,10 +2104,10 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                 {/* 1-Click Supermarket Live Templates */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
-                    1. Atalhos Rápidos de Supermercado (Clique para preencher):
+                    1. Atalhos Rápidos da sua Loja (Clique para preencher):
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {SUPERMARKET_LIVE_TEMPLATES.map(tpl => (
+                    {liveTemplates.map(tpl => (
                       <button
                         key={tpl.id}
                         onClick={() => handleApplyTemplate(tpl)}
@@ -3533,31 +3079,31 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       id: 'todas',
                       label: 'Todos os Avisos',
                       icon: '📢',
-                      count: SUPERMARKET_ANNOUNCEMENTS.length,
+                      count: announcements.length,
                     },
                     {
                       id: 'estacionamento',
                       label: 'Estacionamento',
                       icon: '🚗',
-                      count: SUPERMARKET_ANNOUNCEMENTS.filter(a => a.category === 'estacionamento').length,
+                      count: announcements.filter(a => a.category === 'estacionamento').length,
                     },
                     {
                       id: 'fechamento',
                       label: 'Fechamento',
                       icon: '⏰',
-                      count: SUPERMARKET_ANNOUNCEMENTS.filter(a => a.category === 'fechamento').length,
+                      count: announcements.filter(a => a.category === 'fechamento').length,
                     },
                     {
                       id: 'caixa',
                       label: 'Caixas & Filas',
                       icon: '💳',
-                      count: SUPERMARKET_ANNOUNCEMENTS.filter(a => a.category === 'caixa').length,
+                      count: announcements.filter(a => a.category === 'caixa').length,
                     },
                     {
                       id: 'seguranca',
                       label: 'Segurança & Apoio',
                       icon: '👶',
-                      count: SUPERMARKET_ANNOUNCEMENTS.filter(
+                      count: announcements.filter(
                         a => a.category === 'seguranca' || a.category === 'operacional'
                       ).length,
                     },
@@ -3565,7 +3111,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                       id: 'informativo',
                       label: 'Informativos',
                       icon: '📱',
-                      count: SUPERMARKET_ANNOUNCEMENTS.filter(a => a.category === 'informativo').length,
+                      count: announcements.filter(a => a.category === 'informativo').length,
                     },
                   ].map(cat => (
                     <button
@@ -3595,7 +3141,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
                 {/* Lista de Cards de Avisos */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                  {SUPERMARKET_ANNOUNCEMENTS.filter(ann => {
+                  {announcements.filter(ann => {
                     if (announcementCategoryFilter === 'todas') return true;
                     if (announcementCategoryFilter === 'seguranca') {
                       return ann.category === 'seguranca' || ann.category === 'operacional';
@@ -3936,36 +3482,36 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
               {/* 2. CATEGORY PILLS FILTER (1 LINHA SEM CORTAR) */}
               <div className="grid grid-cols-6 gap-1.5 sm:gap-2 w-full">
                 {[
-                  { id: 'todas', label: 'Todas', icon: '📻', count: SUPERMARKET_VINHETAS.length },
+                  { id: 'todas', label: 'Todas', icon: '📻', count: vinhetas.length },
                   {
                     id: 'identificacao',
                     label: 'Identificação',
                     icon: '🎙️',
-                    count: SUPERMARKET_VINHETAS.filter(v => v.category === 'identificacao').length,
+                    count: vinhetas.filter(v => v.category === 'identificacao').length,
                   },
                   {
                     id: 'institucional',
                     label: 'Institucional',
                     icon: '🛒',
-                    count: SUPERMARKET_VINHETAS.filter(v => v.category === 'institucional').length,
+                    count: vinhetas.filter(v => v.category === 'institucional').length,
                   },
                   {
                     id: 'setores',
-                    label: 'Setores',
-                    icon: '🥩',
-                    count: SUPERMARKET_VINHETAS.filter(v => v.category === 'setores').length,
+                    label: effectiveNiche === 'moda' ? 'Departamentos' : 'Setores',
+                    icon: sectorIcon,
+                    count: vinhetas.filter(v => v.category === 'setores').length,
                   },
                   {
                     id: 'clube',
                     label: 'Clube',
                     icon: '💳',
-                    count: SUPERMARKET_VINHETAS.filter(v => v.category === 'clube').length,
+                    count: vinhetas.filter(v => v.category === 'clube').length,
                   },
                   {
                     id: 'sweepers',
                     label: 'Carimbos (5s)',
                     icon: '⚡',
-                    count: SUPERMARKET_VINHETAS.filter(v => v.category === 'sweepers').length,
+                    count: vinhetas.filter(v => v.category === 'sweepers').length,
                   },
                 ].map(cat => (
                   <button
@@ -3995,7 +3541,7 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
 
               {/* 3. VINHETAS CARDS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {SUPERMARKET_VINHETAS.filter(vinheta => {
+                {vinhetas.filter(vinheta => {
                   if (vinhetaCategoryFilter === 'todas') return true;
                   return vinheta.category === vinhetaCategoryFilter;
                 }).map(vinheta => {

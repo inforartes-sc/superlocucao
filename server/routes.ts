@@ -11,6 +11,7 @@ import { fetchRealBrazilianTTS } from './tts.ts';
 import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage, CommercialPlan } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 import { buildTimeAnnouncementScript, formatTimeInSpokenWords } from '../src/utils/timeAnnouncement.ts';
+import { createInitialProjectForNiche } from '../src/utils/nicheDefaults.ts';
 
 /**
  * Regra oficial de consumo de créditos para locução de ofertas:
@@ -103,19 +104,31 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
   }
 
   const initialBonus = db.getAdminSettings()?.initialCredits ?? 50;
+  const userNiche = (niche ? String(niche).trim() : 'supermercado') as any;
   const user = db.createUser({
     id: `user-${Date.now()}`,
     name: String(name).trim(),
     email: cleanEmail,
     password: cleanPassword,
     companyName: (companyName ? String(companyName).trim() : 'Minha Loja'),
-    niche: (niche ? String(niche).trim() : 'supermercado') as any,
+    niche: userNiche,
     role: 'supermarket_owner',
     plan: req.body.plan || 'gratuito',
     creditsBalance: 0,
     createdAt: new Date().toISOString(),
   });
   user.creditsBalance = db.updateUserCredits(user.id, initialBonus, 'Bônus de Boas-Vindas (Cadastro)');
+
+  // Cria projeto inicial correspondente ao nicho selecionado pelo lojista
+  try {
+    const initialProj = createInitialProjectForNiche(user.id, userNiche, user.companyName);
+    db.saveProject(initialProj);
+    // Inicializa a rádio personalizada com slogan e fila do nicho do usuário
+    db.getRadioConfig(user.id);
+  } catch (err) {
+    console.warn('Falha ao instanciar projeto inicial por nicho:', err);
+  }
+
   res.json({ user, token: user.id });
 });
 

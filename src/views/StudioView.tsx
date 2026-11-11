@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Plus, Trash2,
   Copy, Volume2, Loader2, RefreshCw, Check, Zap, Layers, Play, Pause,
@@ -153,7 +153,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
   }, []);
 
   const saveProjectChanges = (updated: Partial<Project>, immediate = false) => {
-    const merged = { ...project, ...updated, niche: 'supermercado' as const };
+    const merged = { ...project, ...updated, niche: (updated.niche || project.niche || user?.niche || 'supermercado') };
     setProject(merged);
     onUpdateProject(merged);
 
@@ -178,6 +178,38 @@ export const StudioView: React.FC<StudioViewProps> = ({
   const currentNicheInfo = getNicheInfo(effectiveNiche);
   const campaignsForNiche = getCampaignsByNiche(effectiveNiche);
   const stylesForNiche = getStylesByNiche(effectiveNiche);
+
+  const campaignTitlePlaceholder = useMemo(() => {
+    switch (effectiveNiche) {
+      case 'moda': return 'Ex: Festival Nova Coleção & Promoção Jeans';
+      case 'farmacia': return 'Ex: Quinzena da Saúde & Cuidados Pessoais';
+      case 'petshop': return 'Ex: Semana do Pet & Ofertas de Rações';
+      case 'construcao': return 'Ex: Feirão da Reforma & Construção';
+      case 'beleza': return 'Ex: Festival da Beleza & Linha Capilar';
+      case 'restaurante': return 'Ex: Rodízio Especial & Festival de Sobremesas';
+      case 'autopecas': return 'Ex: Mês da Manutenção & Troca de Óleo';
+      case 'otica': return 'Ex: Festival das Lentes & Armações em Oferta';
+      case 'geral': return 'Ex: Liquidação de Variedades & Utilidades';
+      case 'supermercado':
+      default: return 'Ex: Quarta e Quinta da Carne & Hortifrúti';
+    }
+  }, [effectiveNiche]);
+
+  const objectivePlaceholder = useMemo(() => {
+    switch (effectiveNiche) {
+      case 'moda': return 'Ex: Apresentar a nova coleção e aumentar as vendas nos provadores';
+      case 'farmacia': return 'Ex: Divulgar ofertas em dermocosméticos, vitaminas e cuidados diários';
+      case 'petshop': return 'Ex: Aumentar o giro de rações premium e atrair tutores para a loja';
+      case 'construcao': return 'Ex: Atrair construtores e divulgar materiais básicos para obras';
+      case 'beleza': return 'Ex: Destacar cosméticos em destaque e perfumes importados';
+      case 'restaurante': return 'Ex: Estimular os pedidos de pratos especiais e combos da casa';
+      case 'autopecas': return 'Ex: Movimentar os serviços e a linha de filtros e óleos';
+      case 'otica': return 'Ex: Convidar para revisão visual e escolha de novas armações';
+      case 'geral': return 'Ex: Acelerar vendas e atrair clientes para a loja';
+      case 'supermercado':
+      default: return 'Ex: Acelerar vendas do açougue e giro de carnes resfriadas';
+    }
+  }, [effectiveNiche]);
 
   const handleSelectCampaign = (type: CampaignType) => {
     const preset = CAMPAIGN_PRESETS[type];
@@ -655,10 +687,10 @@ export const StudioView: React.FC<StudioViewProps> = ({
         <div className="bg-white rounded-3xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-6 sm:space-y-8 animate-in fade-in">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              Etapa 1 — Informações do Supermercado & Campanha
+              Etapa 1 — Informações de {currentNicheInfo.name} & Campanha
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Defina os detalhes da sua campanha de ofertas para ajustar automaticamente o tom de voz, estilo do roteiro e trilha sonora.
+              Defina os detalhes da sua campanha para ajustar automaticamente o tom de voz, estilo do roteiro e trilha sonora.
             </p>
           </div>
 
@@ -693,7 +725,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                 type="text"
                 value={project.title}
                 onChange={(e) => saveProjectChanges({ title: e.target.value })}
-                placeholder="Ex: Quarta e Quinta da Carne & Hortifrúti"
+                placeholder={campaignTitlePlaceholder}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -732,7 +764,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                 type="text"
                 value={project.objective || ''}
                 onChange={(e) => saveProjectChanges({ objective: e.target.value })}
-                placeholder="Ex: Acelerar vendas do açougue e giro de carnes resfriadas"
+                placeholder={objectivePlaceholder}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -742,7 +774,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Tipo de Campanha de Supermercado
+                Tipo de Campanha — {currentNicheInfo.name}
               </label>
               <span className="text-xs text-blue-600 font-medium">
                 A IA adapta vocabulário, ritmo e abertura ao tipo escolhido
@@ -1146,7 +1178,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
               Etapa 3 — Personalização do Roteiro & Trilha Sonora
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Ouça amostras de cada estilo de voz, escolha a trilha de fundo para o som do seu supermercado e ajuste o tempo do anúncio.
+              Ouça amostras de cada estilo de voz, escolha a trilha de fundo para o som da sua loja e ajuste o tempo do anúncio.
             </p>
           </div>
 
@@ -1460,7 +1492,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                   type="text"
                   value={project.customOpening || ''}
                   onChange={(e) => saveProjectChanges({ customOpening: e.target.value })}
-                  placeholder="Ex: Atenção você cliente amigo do Supermercado Alvorada!"
+                  placeholder={`Ex: Atenção clientes da ${project.storeName || 'nossa loja'}!`}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -1473,7 +1505,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                   type="text"
                   value={project.customClosing || ''}
                   onChange={(e) => saveProjectChanges({ customClosing: e.target.value })}
-                  placeholder="Ex: Ofertas válidas enquanto durarem os estoques. Vem pro Alvorada!"
+                  placeholder={`Ex: Ofertas válidas enquanto durarem os estoques. Aproveite!`}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -2003,7 +2035,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                     Áudios Gerados Prontos para Download ({project.audios.length})
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Reproduza os áudios ou baixe em MP3 para usar no sistema de som do supermercado.
+                    Reproduza os áudios ou baixe em MP3 para usar no sistema de som da loja.
                   </p>
                 </div>
 

@@ -7,8 +7,9 @@ import {
   RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist,
   RechargePackage, CommercialPlan,
   PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation,
-  RadioStoreBranch
+  RadioStoreBranch, ProjectNiche
 } from '../src/types/index.ts';
+import { getNicheSlogan, getInitialQueueForNiche } from '../src/utils/nicheDefaults.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
 
@@ -1041,10 +1042,13 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
   const queue: RadioQueueItem[] = [];
   const seenAudioIds = new Set<string>();
 
-  const storeName = user?.companyName || user?.name || (projects.length > 0 && projects[0].storeName) || 'Supermercado';
+  const niche: ProjectNiche = user?.niche || (projects.length > 0 && projects[0].niche) || 'supermercado';
+  const defaultStoreName = niche === 'farmacia' ? 'Farmácia' : niche === 'moda' ? 'Loja de Moda' : niche === 'petshop' ? 'Pet Shop' : niche === 'construcao' ? 'Materiais de Construção' : 'Supermercado';
+  const storeName = user?.companyName || user?.name || (projects.length > 0 && projects[0].storeName) || defaultStoreName;
   const stationName = `Rádio ${storeName} FM`;
 
   for (const proj of projects) {
+    if (proj.niche && proj.niche !== niche) continue;
     for (const aud of proj.audios || []) {
       if (aud.status === 'ready' && !seenAudioIds.has(aud.id)) {
         seenAudioIds.add(aud.id);
@@ -1068,10 +1072,16 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     }
   }
 
+  // Se a fila estiver vazia para o nicho (ex: usuário novo de outro segmento), popula spots demonstrativos do nicho
+  if (queue.length === 0) {
+    queue.push(...getInitialQueueForNiche(niche, storeName));
+  }
+
   return {
     stationName,
     storeName,
-    slogan: 'A rádio da economia e das melhores ofertas para a sua família!',
+    slogan: getNicheSlogan(niche),
+    niche,
     isOnAir: false,
     mode: 'intervalo_tempo',
     spotsEveryNTracks: 1,

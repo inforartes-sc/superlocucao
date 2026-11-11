@@ -3,6 +3,7 @@ import { CampaignType, LocutionStyle, LocutionTone, SoundtrackId, ProjectNiche }
 export interface NicheOption {
   id: ProjectNiche;
   label: string;
+  name?: string;
   badge: string;
   subtitle: string;
   description: string;
@@ -673,14 +674,82 @@ export const STYLE_PRESETS: Record<LocutionStyle, StylePreset> = {
   },
 };
 
-export function getCampaignsByNiche(_niche: ProjectNiche = 'supermercado'): CampaignPreset[] {
-  return Object.values(CAMPAIGN_PRESETS);
+export function getCampaignsByNiche(niche: ProjectNiche = 'supermercado'): CampaignPreset[] {
+  const all = Object.values(CAMPAIGN_PRESETS);
+  const filtered = niche === 'supermercado'
+    ? all
+    : all.filter(c => c.id !== 'quarta_carne' && c.id !== 'festival_hortifruti');
+
+  if (niche === 'supermercado') return filtered;
+
+  const nicheInfo = getNicheInfo(niche);
+
+  return filtered.map(c => {
+    if (c.id === 'ofertas_dia') {
+      return {
+        ...c,
+        label: `Ofertas do Dia — ${nicheInfo.name}`,
+        desc: `Preços especiais e itens selecionados de ${nicheInfo.name.toLowerCase()} válidos para hoje.`,
+        badge: 'Destaques do Dia',
+      };
+    }
+    if (c.id === 'ofertas_semana') {
+      return {
+        ...c,
+        label: `Destaques da Semana — ${nicheInfo.name}`,
+        desc: `Seleção de itens em promoção e oportunidades da semana em ${nicheInfo.name.toLowerCase()}.`,
+        badge: 'Semana de Ofertas',
+      };
+    }
+    if (c.id === 'superofertas') {
+      return {
+        ...c,
+        label: 'Super Fim de Semana',
+        desc: `Promoções exclusivas de sexta a domingo para movimentar a sua loja de ${nicheInfo.name.toLowerCase()}.`,
+        badge: 'Fim de Semana',
+      };
+    }
+    if (c.id === 'queima_estoque') {
+      return {
+        ...c,
+        label: 'Mega Queima de Estoque & Saldão',
+        desc: 'Preços cortados para liquidar itens, renovar coleções e liberar espaço.',
+        badge: 'Liquidação Total',
+      };
+    }
+    if (c.id === 'divulgacao_produtos') {
+      return {
+        ...c,
+        label: `Novidades & Marcas — ${nicheInfo.name}`,
+        desc: `Divulgação das melhores marcas, novidades e lançamentos em ${nicheInfo.name.toLowerCase()}.`,
+        badge: 'Novidades & Marcas',
+      };
+    }
+    return c;
+  });
 }
 
-export function getStylesByNiche(_niche: ProjectNiche = 'supermercado'): StylePreset[] {
-  return Object.values(STYLE_PRESETS);
+export function getStylesByNiche(niche: ProjectNiche = 'supermercado'): StylePreset[] {
+  const styles = Object.values(STYLE_PRESETS);
+  if (niche !== 'supermercado') {
+    return styles.map(s => {
+      if (s.id === 'energetica_supermercado') {
+        return {
+          ...s,
+          label: 'Varejo Comercial Enérgico',
+          desc: 'Tom vibrante e entusiasmado com ritmo de vendas e impacto promocional.',
+        };
+      }
+      return s;
+    });
+  }
+  return styles;
 }
 
-export function getNicheInfo(niche: ProjectNiche = 'supermercado'): NicheOption {
-  return NICHE_OPTIONS.find(n => n.id === niche) || NICHE_OPTIONS[0];
+export type NicheInfo = NicheOption & { name: string };
+
+export function getNicheInfo(niche: ProjectNiche = 'supermercado'): NicheInfo {
+  const opt = NICHE_OPTIONS.find(n => n.id === niche) || NICHE_OPTIONS[0];
+  const shortName = opt.label.includes('&') ? opt.label.split('&')[0].trim() : opt.label;
+  return { ...opt, name: shortName };
 }

@@ -9,6 +9,7 @@ import { CreditsView } from './views/CreditsView';
 import { AdminView } from './views/AdminView';
 import { AuthModal } from './views/AuthModal';
 import { User, Project, ProjectNiche } from './types';
+import { createInitialProjectForNiche } from './utils/nicheDefaults';
 import { api, getActiveUserId, setActiveUserId, clearActiveUserId } from './services/api';
 import { RadioBroadcastProvider } from './context/RadioContext';
 import { ShieldCheck, ArrowLeft, LogOut } from 'lucide-react';
@@ -119,27 +120,11 @@ export function App() {
 
   const handleNewCampaign = () => {
     const effectiveNiche: ProjectNiche = user?.niche || 'supermercado';
-    const newDraft: Project = {
-      id: `proj-${Date.now()}`,
-      userId: user?.id || 'user-alvorada',
-      niche: effectiveNiche,
-      title: 'Nova Campanha de Ofertas',
-      storeName: user?.companyName || 'Minha Loja',
-      storeCity: user?.city || 'São Paulo - SP',
-      objective: 'Aumentar giro de estoque e atrair clientes',
-      campaignType: 'ofertas_dia',
-      style: effectiveNiche === 'farmacia' ? 'natural_amigavel' : (effectiveNiche === 'moda' || effectiveNiche === 'beleza' || effectiveNiche === 'otica') ? 'elegante_institucional' : 'energetica_supermercado',
-      desiredDuration: '30s',
-      tone: 'alegre',
-      presentationFormat: 'abertura_sequencia_encerramento',
-      products: [],
-      scripts: [],
-      currentScriptIndex: 0,
-      audios: [],
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const newDraft: Project = createInitialProjectForNiche(
+      user?.id || 'user-alvorada',
+      effectiveNiche,
+      user?.companyName
+    );
     setSelectedProject(newDraft);
     setActiveView('studio');
   };
