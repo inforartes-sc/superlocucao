@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api, setActiveUserId } from '../services/api.ts';
 import { User as UserType } from '../types/index.ts';
+import { LegalModal } from '../components/LegalModal.tsx';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'terms' | 'privacy'>('terms');
 
   useEffect(() => {
     if (isOpen) {
@@ -251,7 +254,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </>
             )}
           </button>
+
+          {mode === 'register' && (
+            <p className="text-[11px] text-zinc-400 text-center pt-2 leading-relaxed">
+              Ao criar sua conta, você declara concordar com os nossos{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalModalTab('terms');
+                  setIsLegalModalOpen(true);
+                }}
+                className="text-orange-400 hover:underline font-bold cursor-pointer"
+              >
+                Termos de Uso
+              </button>{' '}
+              e{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalModalTab('privacy');
+                  setIsLegalModalOpen(true);
+                }}
+                className="text-orange-400 hover:underline font-bold cursor-pointer"
+              >
+                Políticas de Privacidade (LGPD)
+              </button>.
+            </p>
+          )}
         </form>
+
+        {/* Legal Terms & Privacy Modal */}
+        <LegalModal
+          isOpen={isLegalModalOpen}
+          initialTab={legalModalTab}
+          onClose={() => setIsLegalModalOpen(false)}
+        />
       </div>
     </div>
   );

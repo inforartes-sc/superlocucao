@@ -35,12 +35,14 @@ import {
   ArrowUp,
   Menu,
   MessageSquare,
+  Scale,
 } from 'lucide-react';
 import { downloadAudioMp3 } from '../utils/downloadAudio.ts';
 import { playSupermarketChime } from '../utils/soundboard.ts';
 import { api } from '../services/api.ts';
 import { CommercialPlan, ClientLogo } from '../types/index.ts';
 import { ContactModal } from '../components/ContactModal.tsx';
+import { LegalModal } from '../components/LegalModal.tsx';
 
 interface LandingViewProps {
   onStartCreating: () => void;
@@ -60,6 +62,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactSubject, setContactSubject] = useState('Dúvidas sobre os Planos & Rádio Web');
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'terms' | 'privacy'>('terms');
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [commercialPlans, setCommercialPlans] = useState<CommercialPlan[]>([
@@ -527,6 +531,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
     {
       q: 'Preciso pagar para testar?',
       a: 'Não! Ao criar sua conta você recebe 50 créditos gratuitos imediatamente de boas-vindas para criar roteiros, gerar anúncios com voz profissional e testar na prática a qualidade dentro da sua loja.',
+    },
+    {
+      q: 'Como funciona a questão do ECAD e dos Direitos Autorais na loja?',
+      a: 'A plataforma SuperLocução Varejo IA fornece infraestrutura tecnológica de software e IA para criação de anúncios comerciais, contando com trilhas sonoras instrumentais de produção (Royalty-Free) com direitos de uso liberados para as locuções. A execução pública de música ambiente no espaço físico do estabelecimento comercial é de responsabilidade de cada lojista ou supermercado contratante, cabendo ao estabelecimento o enquadramento e eventual recolhimento junto ao ECAD quando aplicável ao seu espaço físico.',
     },
   ];
 
@@ -1748,12 +1756,47 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-zinc-400 gap-4 text-center sm:text-left">
-            <p>© {new Date().getFullYear()} SuperLocução Varejo IA. Todos os direitos reservados.</p>
-            <p>Desenvolvido para Supermercados, Hipermercados, Atacarejos e Redes de Varejo.</p>
+          <div className="pt-8 border-t border-zinc-850 flex flex-col md:flex-row items-center justify-between text-xs text-zinc-400 gap-4 text-center md:text-left">
+            <div className="space-y-1">
+              <p>© {new Date().getFullYear()} SuperLocução Varejo IA. Todos os direitos reservados.</p>
+              <p className="text-[11px] text-zinc-500">
+                A plataforma fornece tecnologia SaaS para automação de locuções e rádio web comercial. A execução pública musical no espaço físico é de responsabilidade do estabelecimento comercial contratante (Lei 9.610/98).
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs font-semibold shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalModalTab('terms');
+                  setIsLegalModalOpen(true);
+                }}
+                className="text-zinc-400 hover:text-orange-400 transition cursor-pointer underline underline-offset-4"
+              >
+                Termos de Uso & Responsabilidades
+              </button>
+              <span className="text-zinc-600">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalModalTab('privacy');
+                  setIsLegalModalOpen(true);
+                }}
+                className="text-zinc-400 hover:text-orange-400 transition cursor-pointer underline underline-offset-4"
+              >
+                Políticas de Privacidade (LGPD)
+              </button>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* Legal & Privacy Modal */}
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        initialTab={legalModalTab}
+        onClose={() => setIsLegalModalOpen(false)}
+      />
 
       {/* Floating WhatsApp / Contact Button */}
       <button

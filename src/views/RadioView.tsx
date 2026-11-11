@@ -4529,6 +4529,15 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                   </div>
                 </div>
 
+                {/* Nota Informativa de Respaldo Jurídico sobre Direitos Autorais & ECAD */}
+                <div className="p-3 rounded-xl bg-[#12141c] border border-zinc-700/60 text-xs text-zinc-400 flex items-start gap-2.5">
+                  <span className="text-sm shrink-0">⚖️</span>
+                  <div className="min-w-0 leading-relaxed text-[11px]">
+                    <span className="text-zinc-200 font-bold">Direitos Autorais & Execução Pública:</span>{' '}
+                    As trilhas e vinhetas nativas da plataforma possuem licença de produção comercial para anúncios e locuções. A execução sonora e música ambiente no espaço físico do estabelecimento é de responsabilidade de cada lojista ou supermercado perante o órgão arrecadador competente (ECAD - Lei nº 9.610/98).
+                  </div>
+                </div>
+
                 {uploadMusicFeedback && (
                   <div
                     className={`p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
