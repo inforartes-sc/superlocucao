@@ -988,7 +988,7 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     activePlaylistId: 'todas',
     excludedPlaylistIds: [],
     playlists: DEFAULT_RADIO_PLAYLISTS,
-    autoPublishNewAudios: true,
+    autoPublishNewAudios: false,
     queue,
     musicTracks: DEFAULT_RADIO_MUSIC_TRACKS,
   };
@@ -1419,7 +1419,7 @@ class Database {
           playlists: rc.playlists || DEFAULT_RADIO_PLAYLISTS,
           queue: rc.queue || [],
           musicTracks: rc.music_tracks || DEFAULT_RADIO_MUSIC_TRACKS,
-          autoPublishNewAudios: rc.auto_publish_new_audios ?? true,
+          autoPublishNewAudios: rc.auto_publish_new_audios ?? false,
         };
       }
       if (this.data.radioConfigs['user-alvorada']) {
@@ -1666,7 +1666,7 @@ class Database {
         rc.spotsIntervalSeconds, rc.onlyOffersPauseSeconds, rc.musicVolume,
         rc.spotVolume, rc.duckingLevel, rc.selectedMusicCategory, rc.activePlaylistId,
         JSON.stringify(rc.playlists || []), JSON.stringify(rc.queue || []),
-        JSON.stringify(rc.musicTracks || []), rc.autoPublishNewAudios ?? true
+        JSON.stringify(rc.musicTracks || []), rc.autoPublishNewAudios ?? false
       ]);
     } catch (err) {
       console.error(`[PostgreSQL] Erro ao salvar radio_config para ${userId}:`, err);

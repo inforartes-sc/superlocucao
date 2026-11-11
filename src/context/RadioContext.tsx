@@ -86,7 +86,7 @@ export const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   activePlaylistId: 'todas',
   excludedPlaylistIds: [],
   playlists: DEFAULT_RADIO_PLAYLISTS,
-  autoPublishNewAudios: true,
+  autoPublishNewAudios: false,
   queue: [
     {
       id: 'rq-default-1',

@@ -97,7 +97,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
-  const [publishToRadio, setPublishToRadio] = useState(true);
+  const [publishToRadio, setPublishToRadio] = useState(false);
   const [playImmediatelyOnRadio, setPlayImmediatelyOnRadio] = useState(false);
 
   let radioCtx: ReturnType<typeof useRadio> | null = null;
