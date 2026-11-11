@@ -82,10 +82,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  register: (name: string, email: string, companyName: string, password?: string) =>
+  register: (name: string, email: string, companyName: string, password?: string, niche?: NicheType) =>
     request<{ user: User; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, companyName, password }),
+      body: JSON.stringify({ name, email, companyName, password, niche }),
     }),
 
   // Projects

@@ -1,4 +1,14 @@
-export type ProjectNiche = 'supermercado';
+export type ProjectNiche =
+  | 'supermercado'
+  | 'farmacia'
+  | 'moda'
+  | 'petshop'
+  | 'construcao'
+  | 'beleza'
+  | 'restaurante'
+  | 'autopecas'
+  | 'otica'
+  | 'geral';
 export type NicheType = ProjectNiche;
 
 export type CampaignType =
@@ -172,6 +182,7 @@ export interface UserProfile {
   password?: string;
   phone?: string;
   companyName?: string;
+  niche?: ProjectNiche;
   city?: string;
   role: 'supermarket_owner' | 'manager' | 'admin';
   plan: 'gratuito' | 'pro_varejo' | 'redes_atacarejo';

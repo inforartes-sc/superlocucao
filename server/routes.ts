@@ -87,7 +87,7 @@ apiRouter.post('/auth/login', (req: Request, res: Response) => {
 });
 
 apiRouter.post('/auth/register', (req: Request, res: Response) => {
-  const { name, email, companyName, password } = req.body;
+  const { name, email, companyName, password, niche } = req.body;
   if (!email || !name) {
     return res.status(400).json({ error: 'Nome e e-mail são obrigatórios' });
   }
@@ -108,7 +108,8 @@ apiRouter.post('/auth/register', (req: Request, res: Response) => {
     name: String(name).trim(),
     email: cleanEmail,
     password: cleanPassword,
-    companyName: (companyName ? String(companyName).trim() : 'Supermercado'),
+    companyName: (companyName ? String(companyName).trim() : 'Minha Loja'),
+    niche: (niche ? String(niche).trim() : 'supermercado') as any,
     role: 'supermarket_owner',
     plan: req.body.plan || 'gratuito',
     creditsBalance: 0,
@@ -240,13 +241,16 @@ apiRouter.post('/projects/:id/duplicate', (req: Request, res: Response) => {
 // AI SERVICES (GEMINI 3.8 FLASH)
 // -------------------------------------------------------------
 apiRouter.post('/ai/parse-products', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
   const { text, niche } = req.body;
+  const effectiveNiche = niche || user?.niche || 'supermercado';
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Texto não fornecido' });
   }
 
   try {
-    const products = await parseProductsWithGemini(text, niche);
+    const products = await parseProductsWithGemini(text, effectiveNiche);
     res.json({ products });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Erro ao processar lista de produtos' });
@@ -254,8 +258,11 @@ apiRouter.post('/ai/parse-products', async (req: Request, res: Response) => {
 });
 
 apiRouter.post('/ai/generate-script', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
+  const effectiveNiche = req.body.niche || user?.niche || 'supermercado';
   try {
-    const scriptResult = await generateSupermarketScript(req.body);
+    const scriptResult = await generateSupermarketScript({ ...req.body, niche: effectiveNiche });
     scriptResult.text = expandUnitsAndMeasuresToWords(scriptResult.text);
     scriptResult.spokenPhoneticText = expandUnitsAndMeasuresToWords(scriptResult.spokenPhoneticText || scriptResult.text);
     res.json(scriptResult);
@@ -265,13 +272,16 @@ apiRouter.post('/ai/generate-script', async (req: Request, res: Response) => {
 });
 
 apiRouter.post('/ai/refine-script', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const user = db.getUser(userId);
   const { currentText, action, instruction, products, niche } = req.body;
+  const effectiveNiche = niche || user?.niche || 'supermercado';
   if (!currentText) {
     return res.status(400).json({ error: 'Texto atual não fornecido' });
   }
 
   try {
-    const refinedText = await refineSupermarketScript(currentText, action, instruction, products, niche);
+    const refinedText = await refineSupermarketScript(currentText, action, instruction, products, effectiveNiche);
     res.json({ text: expandUnitsAndMeasuresToWords(refinedText) });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Erro ao aprimorar roteiro' });

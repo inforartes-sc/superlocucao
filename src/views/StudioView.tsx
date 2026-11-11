@@ -8,7 +8,7 @@ import {
   Project, ProductItem, CampaignType, LocutionTone,
   DesiredDuration, PresentationFormat, VoicePreset,
   SoundtrackOption, SoundtrackId, CAMPAIGN_PRESETS, STYLE_PRESETS,
-  User,
+  User, ProjectNiche
 } from '../types/index.ts';
 import {
   getCampaignsByNiche, getStylesByNiche, getNicheInfo
@@ -174,14 +174,15 @@ export const StudioView: React.FC<StudioViewProps> = ({
     }
   };
 
-  const currentNicheInfo = getNicheInfo('supermercado');
-  const campaignsForNiche = getCampaignsByNiche('supermercado');
-  const stylesForNiche = getStylesByNiche('supermercado');
+  const effectiveNiche: ProjectNiche = project.niche || user?.niche || 'supermercado';
+  const currentNicheInfo = getNicheInfo(effectiveNiche);
+  const campaignsForNiche = getCampaignsByNiche(effectiveNiche);
+  const stylesForNiche = getStylesByNiche(effectiveNiche);
 
   const handleSelectCampaign = (type: CampaignType) => {
     const preset = CAMPAIGN_PRESETS[type];
     const updates: Partial<Project> = {
-      niche: 'supermercado',
+      niche: effectiveNiche,
       campaignType: type,
     };
     if (preset) {
@@ -250,7 +251,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
     if (!pastedListText.trim()) return;
     setIsParsingList(true);
     try {
-      const res = await api.parseProducts(pastedListText, 'supermercado');
+      const res = await api.parseProducts(pastedListText, effectiveNiche);
       if (res.products && res.products.length > 0) {
         const updatedProducts = [...project.products, ...res.products];
         saveProjectChanges({ products: updatedProducts });
@@ -303,7 +304,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
     setIsGeneratingScript(true);
     try {
       const result = await api.generateScript({
-        niche: 'supermercado',
+        niche: effectiveNiche,
         storeName: project.storeName,
         storeCity: project.storeCity,
         campaignType: project.campaignType,
@@ -347,7 +348,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
     if (!scriptText.trim()) return;
     setIsRefiningScript(true);
     try {
-      const res = await api.refineScript(scriptText, action, undefined, project.products, 'supermercado');
+      const res = await api.refineScript(scriptText, action, undefined, project.products, effectiveNiche);
       const normalizedText = expandUnitsAndMeasuresToWords(res.text || '');
       setScriptText(normalizedText);
       setRefineFeedback(feedbackMsg);
@@ -662,6 +663,28 @@ export const StudioView: React.FC<StudioViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Segmento / Nicho do Comércio
+              </label>
+              <select
+                value={effectiveNiche}
+                onChange={(e) => saveProjectChanges({ niche: e.target.value as ProjectNiche })}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="supermercado">🛒 Supermercado & Varejo Alimentício</option>
+                <option value="farmacia">💊 Farmácia & Drogaria</option>
+                <option value="moda">👗 Loja de Roupas, Calçados & Moda</option>
+                <option value="petshop">🐾 Pet Shop & Agropecuária</option>
+                <option value="construcao">🧱 Materiais de Construção & Reforma</option>
+                <option value="beleza">💄 Cosméticos, Beleza & Perfumaria</option>
+                <option value="restaurante">🍔 Restaurante, Lanchonete & Delivery</option>
+                <option value="autopecas">🚗 Auto Peças & Centro Automotivo</option>
+                <option value="otica">👓 Ótica, Joalheria & Relojoaria</option>
+                <option value="geral">🛍️ Comércio Geral, Bazar & Variedades</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Nome da Campanha ou Título da Locução *

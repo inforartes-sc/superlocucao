@@ -1231,6 +1231,7 @@ class Database {
         );
 
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '123456';
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS niche TEXT DEFAULT 'supermercado';
 
         CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
@@ -1257,6 +1258,8 @@ class Database {
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        ALTER TABLE projects ADD COLUMN IF NOT EXISTS niche TEXT DEFAULT 'supermercado';
 
         CREATE TABLE IF NOT EXISTS credit_transactions (
           id TEXT PRIMARY KEY,
@@ -1344,6 +1347,8 @@ class Database {
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        ALTER TABLE projects ADD COLUMN IF NOT EXISTS niche TEXT DEFAULT 'supermercado';
         CREATE INDEX IF NOT EXISTS idx_audio_binaries_id ON audio_binaries(id);
       `);
 
@@ -1395,6 +1400,7 @@ class Database {
           email: r.email,
           phone: r.phone || undefined,
           companyName: r.company_name || 'Supermercado',
+          niche: r.niche || 'supermercado',
           city: r.city || undefined,
           role: r.role || 'supermarket_owner',
           plan: r.plan || 'pro_varejo',
@@ -1542,8 +1548,8 @@ class Database {
     if (!this.pool) return;
     try {
       await this.pool.query(`
-        INSERT INTO profiles (id, name, email, phone, company_name, city, role, plan, status, notes, credits_balance, password, created_at, last_login)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        INSERT INTO profiles (id, name, email, phone, company_name, city, role, plan, status, notes, credits_balance, password, created_at, last_login, niche)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
@@ -1556,12 +1562,14 @@ class Database {
           notes = EXCLUDED.notes,
           credits_balance = EXCLUDED.credits_balance,
           password = COALESCE(EXCLUDED.password, profiles.password, '123456'),
-          last_login = EXCLUDED.last_login
+          last_login = EXCLUDED.last_login,
+          niche = COALESCE(EXCLUDED.niche, profiles.niche, 'supermercado')
       `, [
         u.id, u.name, u.email, u.phone || null, u.companyName, u.city || null,
         u.role, u.plan, u.status || 'ativo', u.notes || null, u.creditsBalance,
         u.password || '123456',
-        u.createdAt || new Date().toISOString(), u.lastLogin || new Date().toISOString()
+        u.createdAt || new Date().toISOString(), u.lastLogin || new Date().toISOString(),
+        u.niche || 'supermercado'
       ]);
     } catch (err) {
       console.error(`[PostgreSQL] Erro ao salvar profile ${u.id}:`, err);

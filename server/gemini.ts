@@ -78,9 +78,10 @@ export function formatSpokenPriceBR(price: number, unit?: string): string {
 /**
  * Intelligent parser: Converts messy pasted list/sheet text into structured supermarket items
  */
-export async function parseProductsWithGemini(rawText: string, _niche: ProjectNiche = 'supermercado'): Promise<ProductItem[]> {
+export async function parseProductsWithGemini(rawText: string, niche: ProjectNiche = 'supermercado'): Promise<ProductItem[]> {
   try {
-    const systemInstruction = 'Você é um assistente especialista em varejo e supermercados brasileiros. Extraia a lista de produtos, marcas, embalagens e preços do texto a seguir.';
+    const nicheInfo = getNichePersonality(niche);
+    const systemInstruction = `Você é um assistente especialista no comércio varejista brasileiro, especialmente no segmento de ${nicheInfo.title}. Extraia a lista de produtos/itens, marcas, embalagens e preços do texto a seguir.`;
 
     const response = await callGeminiWithFallback({
       contents: `${systemInstruction}
@@ -178,6 +179,127 @@ function fallbackParseProducts(rawText: string): ProductItem[] {
   return items;
 }
 
+export interface NichePersonality {
+  id: ProjectNiche;
+  title: string;
+  roleTitle: string;
+  defaultStore: string;
+  ambientDescription: string;
+  vocabulary: string[];
+  retailRules: string;
+  defaultMiddle: string;
+}
+
+const NICHE_PERSONALITIES: Record<ProjectNiche, NichePersonality> = {
+  supermercado: {
+    id: 'supermercado',
+    title: 'Supermercado, Açougue & Hortifrúti',
+    roleTitle: 'roteirista premiado de rádio de supermercados, atacarejos, açougues, hortifrútis e mercearias',
+    defaultStore: 'nosso supermercado',
+    ambientDescription: 'ambiente de compras de supermercado com ofertas na gôndola, carrinho cheio, produtos frescos e economia para a família',
+    vocabulary: ['carrinho cheio', 'oferta na gôndola', 'economia para sua casa', 'direto do hortifrúti', 'açougue com carnes inspecionadas', 'abasteça a sua despensa'],
+    retailRules: 'Destaque frescor, economia familiar, abastecimento do lar, carnes frescas e ofertas imperdíveis de gôndola.',
+    defaultMiddle: 'Aqui você encontra economia de verdade em todos os corredores, carnes inspecionadas, hortifrúti fresco e as melhores marcas para abastecer a sua casa.'
+  },
+  farmacia: {
+    id: 'farmacia',
+    title: 'Farmácia, Drogaria & Bem-Estar',
+    roleTitle: 'roteirista especializado em spots de rádio para farmácias, drogarias e lojas de saúde e bem-estar',
+    defaultStore: 'nossa farmácia',
+    ambientDescription: 'ambiente de saúde, cuidado, bem-estar, medicamentos de confiança, dermocosméticos e higiene pessoal',
+    vocabulary: ['cuidado com a sua saúde', 'bem-estar da sua família', 'atendimento farmacêutico de confiança', 'dermocosméticos', 'higiene e cuidados diários', 'vida saudável'],
+    retailRules: 'Transmita confiança, cuidado com a saúde, bem-estar, higiene e promoções em dermocosméticos e perfumaria.',
+    defaultMiddle: 'Aqui você encontra atendimento farmacêutico humanizado, medicamentos de confiança, dermocosméticos selecionados e produtos de higiene com preços especiais.'
+  },
+  moda: {
+    id: 'moda',
+    title: 'Moda, Calçados & Acessórios',
+    roleTitle: 'roteirista de comerciais de lojas de moda, boutiques de roupas, calçados e vestuário',
+    defaultStore: 'nossa loja de moda',
+    ambientDescription: 'ambiente moderno, estilo, tendências da estação, elegância, conforto e novidades em vestuário',
+    vocabulary: ['nova coleção', 'tendências da estação', 'vista-se com estilo', 'conforto e elegância', 'peças exclusivas', 'looks incríveis'],
+    retailRules: 'Use tom moderno, estiloso e inspirador. Fale de tendências, combinações de looks, novidades no provador e facilidade no pagamento.',
+    defaultMiddle: 'Aqui você encontra as últimas tendências da estação, tecidos confortáveis, modelos exclusivos e tamanhos para toda a família.'
+  },
+  petshop: {
+    id: 'petshop',
+    title: 'Pet Shop, Clínica Veterinária & Agropecuária',
+    roleTitle: 'roteirista de rádio para pet shops, clínicas veterinárias e casas de ração',
+    defaultStore: 'nosso pet shop',
+    ambientDescription: 'ambiente de carinho e amor pelos animais de estimação, rações premium, petiscos, brinquedos e banho e tosa',
+    vocabulary: ['amor de quatro patas', 'o melhor para seu pet', 'ração premium', 'petiscos e mimos', 'saúde animal', 'pelos brilhantes'],
+    retailRules: 'Transmita afeto pelos animais, nutrição de alta qualidade, diversão com brinquedos e cuidados com a saúde e higiene do pet.',
+    defaultMiddle: 'As melhores marcas de ração, petiscos saborosos, caminhas confortáveis e brinquedos divertidos para garantir a alegria do seu amigão.'
+  },
+  construcao: {
+    id: 'construcao',
+    title: 'Materiais de Construção & Reforma',
+    roleTitle: 'roteirista de rádio para lojas de materiais de construção, tintas, elétrica, hidráulica e ferramentas',
+    defaultStore: 'nossa loja de materiais de construção',
+    ambientDescription: 'ambiente de obra, reforma, ferramentas profissionais, acabamentos elegantes, pisos e tintas com economia',
+    vocabulary: ['do alicerce ao acabamento', 'reforme gastando menos', 'ferramentas de alta performance', 'pisos e revestimentos', 'tintas que transformam', 'durabilidade e resistência'],
+    retailRules: 'Destaque durabilidade, economia em grande volume para obras, facilidade de entrega no canteiro e marcas confiáveis.',
+    defaultMiddle: 'Do básico ao acabamento: cimento, pisos, argamassas, tubos, conexões, ferramentas e tintas com o melhor custo-benefício da região.'
+  },
+  beleza: {
+    id: 'beleza',
+    title: 'Cosméticos, Perfumaria & Beleza',
+    roleTitle: 'roteirista de rádio para perfumarias, lojas de cosméticos e produtos de beleza',
+    defaultStore: 'nossa perfumaria',
+    ambientDescription: 'ambiente de beleza, autocuidado, maquiagem, skincare, fragrâncias marcantes e tratamento capilar',
+    vocabulary: ['realce sua beleza natural', 'cabelos radiantes', 'skincare renovador', 'fragrâncias inesquecíveis', 'autocuidado diário', 'make impecável'],
+    retailRules: 'Foco em autoestima, fragrâncias marcantes, cabelos impecáveis, cuidados com a pele e lançamentos de maquiagem.',
+    defaultMiddle: 'Perfumes marcantes, linhas completas para cronograma capilar, maquiagens de alta fixação e produtos de pele para você brilhar em qualquer ocasião.'
+  },
+  restaurante: {
+    id: 'restaurante',
+    title: 'Restaurante, Lanchonete & Delivery',
+    roleTitle: 'roteirista para restaurantes, pizzarias, hamburguerias, lanchonetes e padarias',
+    defaultStore: 'nosso restaurante',
+    ambientDescription: 'ambiente apetitoso, aroma irresistível, refeições saborosas feitas na hora, ingredientes selecionados e entrega rápida',
+    vocabulary: ['sabor irresistível', 'feito na hora', 'ingredientes fresquinhos', 'peça pelo delivery', 'combinação perfeita', 'de dar água na boca'],
+    retailRules: 'Desperte o apetite imediato! Use adjetivos sensoriais (quentinho, crocante, suculento, fresquinho, artesanal).',
+    defaultMiddle: 'Receitas preparadas com muito carinho, ingredientes selecionados e aquele tempero especial que você só encontra aqui.'
+  },
+  autopecas: {
+    id: 'autopecas',
+    title: 'Autopeças, Motopeças & Acessórios',
+    roleTitle: 'roteirista para lojas de autopeças, motopeças e centros automotivos',
+    defaultStore: 'nossa loja de autopeças',
+    ambientDescription: 'ambiente automotivo, peças mecânicas com procedência e garantia, óleos lubrificantes, pneus e segurança na rodovia',
+    vocabulary: ['peças com procedência e garantia', 'revisão em dia', 'segurança na estrada', 'máxima durabilidade', 'óleo e filtros', 'desempenho para seu veículo'],
+    retailRules: 'Transmita segurança, garantia de fábrica, durabilidade mecânica e tranquilidade para rodar com o veículo.',
+    defaultMiddle: 'Pastilhas de freio, amortecedores, baterias com garantia estendida, filtros e óleos lubrificantes das marcas mais renomadas do mercado.'
+  },
+  otica: {
+    id: 'otica',
+    title: 'Ótica, Armações & Lentes',
+    roleTitle: 'roteirista de rádio para óticas, armações, óculos de grau e óculos de sol',
+    defaultStore: 'nossa ótica',
+    ambientDescription: 'ambiente de precisão visual, armações modernas de design, lentes antirreflexo, conforto e proteção contra raios UV',
+    vocabulary: ['enxergue a vida com clareza', 'armações modernas e leves', 'lentes com proteção antirreflexo', 'óculos de sol com proteção UV', 'saúde visual', 'elegância no seu olhar'],
+    retailRules: 'Combine saúde dos olhos e estilo visual. Fale sobre descanso para a visão, proteção das lentes e armações modernas.',
+    defaultMiddle: 'Lentes com tecnologia digital antirreflexo e filtro de luz azul, além de óculos de sol e armações de grau dos designers mais desejados.'
+  },
+  geral: {
+    id: 'geral',
+    title: 'Comércio Geral & Varejo',
+    roleTitle: 'roteirista premiado de rádio interna e spots comerciais para o comércio varejista',
+    defaultStore: 'nossa loja',
+    ambientDescription: 'ambiente dinâmico de compras, promoções vantajosas, atendimento personalizado e variedade',
+    vocabulary: ['ofertas imperdíveis', 'qualidade garantida', 'variedade completa', 'economia no seu bolso', 'atendimento de primeira', 'preço baixo de verdade'],
+    retailRules: 'Comunicação comercial clara, direta, estimulante, com foco em preço justo e experiência de compra positiva.',
+    defaultMiddle: 'Grande variedade de produtos, preços imbatíveis e o carinho no atendimento que você e sua família merecem todos os dias.'
+  }
+};
+
+export function getNichePersonality(niche?: ProjectNiche): NichePersonality {
+  if (niche && NICHE_PERSONALITIES[niche]) {
+    return NICHE_PERSONALITIES[niche];
+  }
+  return NICHE_PERSONALITIES.supermercado;
+}
+
 export interface GenerateScriptParams {
   niche?: ProjectNiche;
   storeName?: string;
@@ -199,13 +321,15 @@ export async function generateSupermarketScript(params: GenerateScriptParams): P
   estimatedDurationSeconds: number;
   wordCount: number;
 }> {
+  const effectiveNiche = params.niche || 'supermercado';
+  const nicheInfo = getNichePersonality(effectiveNiche);
   const campaignInfo = CAMPAIGN_PRESETS[params.campaignType] || CAMPAIGN_PRESETS['ofertas_dia'];
   const styleInfo = STYLE_PRESETS[params.style] || STYLE_PRESETS['energetica_supermercado'];
 
   let entityName = params.storeName?.trim();
-  const defaultNames = ['Meu Supermercado', 'Supermercado Alvorada', 'Locução Super IA Matriz', 'Nossa Loja'];
+  const defaultNames = ['Meu Supermercado', 'Supermercado Alvorada', 'Locução Super IA Matriz', 'Nossa Loja', 'nossa loja'];
   if (!entityName || defaultNames.includes(entityName)) {
-    entityName = 'nosso supermercado';
+    entityName = nicheInfo.defaultStore;
   }
 
   const replaceEntity = (str: string) => {
@@ -225,25 +349,31 @@ export async function generateSupermarketScript(params: GenerateScriptParams): P
     return `- ${p.name} ${p.brand ? `[Marca: ${p.brand}]` : ''} ${p.notes ? `[Obs: ${p.notes}]` : ''}`;
   }).join('\n');
 
-  const systemPrompt = `Você é o mais premiado roteirista de locuções e spots comerciais de rádio interna de supermercados, atacarejos, açougues, hortifrútis e mercearias do Brasil.
-Sua missão primordial é criar o roteiro comercial de supermercado perfeito, encarnado na campanha "${campaignInfo.label.toUpperCase()}".
+  const systemPrompt = `Você é o mais premiado ${nicheInfo.roleTitle} do Brasil.
+Sua missão primordial é criar o roteiro comercial de rádio perfeito para ${entityName}, no segmento de ${nicheInfo.title}, encarnado na campanha "${campaignInfo.label.toUpperCase()}".
+
+CONTEXTO DO SEGMENTO DE NEGÓCIO:
+- Segmento: ${nicheInfo.title}
+- Ambiente e público: ${nicheInfo.ambientDescription}
+- Diretrizes de linguagem do nicho: ${nicheInfo.retailRules}
+- Vocabulário e jargões adequados: ${nicheInfo.vocabulary.join(', ')}
 
 REGRA FUNDAMENTAL E ABSOLUTA — TEXTO 100% POR EXTENSO PARA LOCUÇÃO:
 É TERMINANTEMENTE PROIBIDO UTILIZAR ALGARISMOS ARÁBICOS (0 a 9) OU SIGLAS NO TEXTO DO ROTEIRO.
 Tudo deve ser escrito integralmente por extenso em português para facilitar e garantir a pronúncia perfeita em todos os modelos de vozes:
 - Preços: escreva SEMPRE por extenso (ex: "trinta e seis reais e noventa centavos", "quatro reais e cinquenta centavos", "noventa e nove centavos", "um real"). NUNCA use "R$", "36,90" ou "36.90".
 - Pesos e Volumes: escreva SEMPRE por extenso (ex: "cinco quilos", "um quilo e meio", "quinhentos gramas", "trezentos e cinquenta mililitros", "um litro", "dois litros"). NUNCA use "kg", "g", "ml", "L".
-- Unidades e Embalagens: escreva SEMPRE por extenso (ex: "a unidade", "o pacote", "a caixa", "a lata", "a bandeja", "o fardo", "a dúzia"). NUNCA use "un", "pct", "cx", "dz", "bdj".
+- Unidades e Embalagens: escreva SEMPRE por extenso (ex: "a unidade", "o pacote", "a caixa", "a lata", "a bandeja", "o fardo", "a dúzia", "a peça", "o par"). NUNCA use "un", "pct", "cx", "dz", "bdj", "pc".
 - Números e Parcelas: escreva SEMPRE por extenso (ex: "em até três vezes sem juros", "dez ofertas imperdíveis", "vinte por cento de desconto"). NUNCA use "3x" ou "20%".
 
-REGRAS DE VAREJO E SUPERMERCADO:
+REGRAS COMERCIAIS DO SEGMENTO:
 1. NÚMEROS, PREÇOS E UNIDADES 100% POR EXTENSO (sem números, sem abreviações).
-2. FIDELIDADE AOS PRODUTOS: Apresente todos os produtos fornecidos de forma comercial e convidativa.
+2. FIDELIDADE AOS PRODUTOS: Apresente todos os produtos fornecidos com apelo comercial autêntico para ${nicheInfo.title}.
 3. CAMPANHA E ESTILO:
    - Campanha: "${campaignInfo.label.toUpperCase()}" (${campaignInfo.badge})
    - Diretrizes: ${campaignInfo.themeGuidelines}
-   - Expressões: ${campaignInfo.vocabulary.map(v => `• "${v}"`).join(', ')}
-   - Ganchos:
+   - Expressões da campanha: ${campaignInfo.vocabulary.map(v => `• "${v}"`).join(', ')}
+   - Ganchos sugeridos:
 ${campaignInfo.sampleHooks.map(h => `     • ${replaceEntity(h)}`).join('\n')}
    - Fechamento:
 ${campaignInfo.sampleClosings.map(c => `     • ${replaceEntity(c)}`).join('\n')}
@@ -252,15 +382,16 @@ ${campaignInfo.sampleClosings.map(c => `     • ${replaceEntity(c)}`).join('\n'
    - 15s: ~35 a 45 palavras | 30s: ~70 a 85 palavras | 45s: ~105 a 125 palavras | 60s: ~140 a 160 palavras`;
 
   const userPrompt = `
-DADOS DA CAMPANHA DE SUPERMERCADO:
+DADOS DA CAMPANHA:
+- Segmento / Nicho: ${nicheInfo.title}
 - Tipo de Campanha: ${campaignInfo.label} (${params.campaignType})
-- Supermercado: ${entityName} ${params.storeCity ? `em ${params.storeCity}` : ''}
+- Nome do Estabelecimento: ${entityName} ${params.storeCity ? `em ${params.storeCity}` : ''}
 - Estilo: ${styleInfo.label} | Tom: ${params.tone} | Duração: ${params.desiredDuration}
 ${params.customOpening ? `- Abertura personalizada: "${params.customOpening}"` : ''}
 ${params.customClosing ? `- Encerramento personalizado: "${params.customClosing}"` : ''}
 ${params.freeInstructions ? `- Instruções adicionais do lojista: "${params.freeInstructions}"` : ''}
 
-PRODUTOS EM OFERTA:
+PRODUTOS / ITENS EM OFERTA:
 ${productsSummary}
 
 LEMBRE-SE: Preços, números e unidades 100% POR EXTENSO (zero algarismos e zero abreviações no texto gerado)! Retorne um JSON com "text", "spokenPhoneticText", "estimatedDurationSeconds", "wordCount".`;
@@ -320,10 +451,12 @@ function generateDynamicCampaignFallback(
   estimatedDurationSeconds: number;
   wordCount: number;
 } {
+  const effectiveNiche = params.niche || 'supermercado';
+  const nicheInfo = getNichePersonality(effectiveNiche);
   let store = params.storeName?.trim();
-  const defaultStoreNames = ['Meu Supermercado', 'Supermercado Alvorada', 'Locução Super IA Matriz', 'Nossa Loja'];
+  const defaultStoreNames = ['Meu Supermercado', 'Supermercado Alvorada', 'Locução Super IA Matriz', 'Nossa Loja', 'nossa loja'];
   if (!store || defaultStoreNames.includes(store)) {
-    store = 'nosso supermercado';
+    store = nicheInfo.defaultStore;
   }
   const varIdx = (scriptVariationCounter++) % 4;
 
@@ -541,12 +674,7 @@ function generateDynamicCampaignFallback(
   }
 
   if (!middleContent) {
-    const retailMiddles = [
-      `Aqui você encontra economia de verdade em todos os corredores, carnes inspecionadas, hortifrúti fresco e as melhores marcas para abastecer a sua casa.`,
-      `Preços baixos garantidos direto na gôndola, variedade completa e o atendimento atencioso que a sua família merece no dia a dia.`,
-      `Economia garantida para o seu bolso! Passe no nosso supermercado, encha o carrinho com qualidade e comprove o desconto no caixa.`,
-    ];
-    middleContent = retailMiddles[varIdx % retailMiddles.length];
+    middleContent = nicheInfo.defaultMiddle;
   }
 
   const rawFullText = `${opening} ${middleContent} ${closing}`.replace(/\s+/g, ' ').trim();
@@ -686,16 +814,17 @@ export async function refineSupermarketScript(
   products?: ProductItem[],
   niche?: ProjectNiche
 ): Promise<string> {
+  const nicheInfo = getNichePersonality(niche || 'supermercado');
   const instructionsMap: Record<string, string> = {
-    improve: 'Aprimore o ritmo, o vocabulário de vendas e a cadência de locutor de rádio de supermercado mantendo todos os produtos, preços e unidades por extenso.',
+    improve: `Aprimore o ritmo, o vocabulário comercial e a cadência de locutor de rádio para o segmento de ${nicheInfo.title} mantendo todos os produtos, preços e unidades por extenso.`,
     shorten: 'Encurte o texto para torná-lo mais dinâmico e direto mantendo as informações essenciais.',
-    energize: 'Deixe a locução muito mais animada, vibrante e comercial!',
+    energize: `Deixe a locução muito mais animada, vibrante e comercial para os clientes de ${nicheInfo.title}!`,
     natural: 'Torne o texto mais acolhedor, familiar e amigável.',
     verify_prices: 'Revise minuciosamente os preços, unidades e nomes comparando com a lista oficial para garantir que todos os valores e unidades estejam 100% por extenso.',
     custom: instruction || 'Ajuste o texto conforme orientado.'
   };
 
-  const prompt = `Você é um editor sênior de locuções de supermercado.
+  const prompt = `Você é um editor sênior de locuções comerciais de rádio para estabelecimentos do segmento de ${nicheInfo.title}.
 Texto atual da locução:
 """
 ${currentText}
@@ -721,7 +850,7 @@ Retorne APENAS o texto da nova locução sem introdução, explicações ou aspa
     }
     return refineLocally(currentText, action, instruction, products, niche);
   } catch (e: any) {
-    console.log(`[AI] Refinando localmente com estilo "${action}" para supermercado...`);
+    console.log(`[AI] Refinando localmente com estilo "${action}" para ${nicheInfo.title}...`);
     return refineLocally(currentText, action, instruction, products, niche);
   }
 }

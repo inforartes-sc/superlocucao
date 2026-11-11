@@ -17,7 +17,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api, setActiveUserId } from '../services/api.ts';
-import { User as UserType } from '../types/index.ts';
+import { User as UserType, ProjectNiche } from '../types/index.ts';
 import { LegalModal } from '../components/LegalModal.tsx';
 
 interface AuthModalProps {
@@ -37,6 +37,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [niche, setNiche] = useState<ProjectNiche>('supermercado');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onSuccess(res.user);
         onClose();
       } else {
-        const res = await api.register(name, email, companyName, password);
+        const res = await api.register(name, email, companyName, password, niche);
         setActiveUserId(res.user.id);
         onSuccess(res.user);
         onClose();
@@ -172,7 +173,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                  Nome do Supermercado / Loja
+                  Segmento / Nicho do seu Comércio
+                </label>
+                <div className="relative">
+                  <Building2 className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <select
+                    value={niche}
+                    onChange={e => setNiche(e.target.value as ProjectNiche)}
+                    className="w-full pl-10 pr-8 py-2.5 bg-[#12141c] border border-zinc-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500 transition cursor-pointer appearance-none font-medium"
+                  >
+                    <option value="supermercado">🛒 Supermercado, Hortifrúti & Açougue</option>
+                    <option value="farmacia">💊 Farmácia & Drogaria</option>
+                    <option value="moda">👗 Loja de Roupas, Calçados & Moda</option>
+                    <option value="petshop">🐾 Pet Shop, Ração & Agropecuária</option>
+                    <option value="construcao">🧱 Materiais de Construção & Reforma</option>
+                    <option value="beleza">💄 Cosméticos, Beleza & Perfumaria</option>
+                    <option value="restaurante">🍔 Restaurante, Lanchonete & Delivery</option>
+                    <option value="autopecas">🚗 Auto Peças & Centro Automotivo</option>
+                    <option value="otica">👓 Ótica, Joalheria & Relojoaria</option>
+                    <option value="geral">🛍️ Comércio Geral, Bazar & Variedades</option>
+                  </select>
+                </div>
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  A IA gerará as locuções e ofertas adaptadas ao vocabulário deste segmento.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                  Nome do seu Comércio / Loja
                 </label>
                 <div className="relative">
                   <Store className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -181,7 +210,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={companyName}
                     onChange={e => setCompanyName(e.target.value)}
-                    placeholder="Supermercado Alvorada"
+                    placeholder={
+                      niche === 'farmacia'
+                        ? 'Drogaria Popular Farma'
+                        : niche === 'moda'
+                        ? 'Bella Donna Moda & Estilo'
+                        : niche === 'petshop'
+                        ? 'Amigo Fiel Pet & Agro'
+                        : niche === 'construcao'
+                        ? 'Constrular Materiais de Construção'
+                        : niche === 'beleza'
+                        ? 'Glamour Cosméticos'
+                        : niche === 'restaurante'
+                        ? 'Sabor da Praça Grill'
+                        : niche === 'autopecas'
+                        ? 'PitStop Auto Peças'
+                        : niche === 'otica'
+                        ? 'Óticas Visão Real'
+                        : niche === 'geral'
+                        ? 'Bazar Tudo de Bom Variedades'
+                        : 'Supermercado Alvorada'
+                    }
                     className="w-full pl-10 pr-3.5 py-2.5 bg-[#12141c] border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition"
                   />
                 </div>
