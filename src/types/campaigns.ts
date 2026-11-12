@@ -731,19 +731,57 @@ export function getCampaignsByNiche(niche: ProjectNiche = 'supermercado'): Campa
 
 export function getStylesByNiche(niche: ProjectNiche = 'supermercado'): StylePreset[] {
   const styles = Object.values(STYLE_PRESETS);
-  if (niche !== 'supermercado') {
-    return styles.map(s => {
-      if (s.id === 'energetica_supermercado') {
-        return {
-          ...s,
-          label: 'Varejo Comercial Enérgico',
-          desc: 'Tom vibrante e entusiasmado com ritmo de vendas e impacto promocional.',
-        };
-      }
-      return s;
-    });
-  }
-  return styles;
+  if (niche === 'supermercado') return styles;
+
+  const nicheInfo = getNicheInfo(niche);
+  const nicheName = nicheInfo.name;
+
+  return styles.map(s => {
+    if (s.id === 'energetica_supermercado') {
+      return {
+        ...s,
+        label: 'Varejo Comercial Enérgico',
+        desc: `Tom vibrante e entusiasmado com ritmo de vendas e impacto promocional para ${nicheName.toLowerCase()}.`,
+        speechGuidelines: `Locutor de rádio comercial de varejo: tom entusiasmado, projeção vocal marcante, ritmo dinâmico com ênfase nas novidades e promoções de ${nicheName.toLowerCase()}.`,
+      };
+    }
+    if (s.id === 'animada_promocional') {
+      return {
+        ...s,
+        desc: 'Tom alegre, dinâmico e convidativo para compras e promoções especiais da nossa loja.',
+        speechGuidelines: 'Voz calorosa, simpática, alto astral e convidativa. Foco em novidades, economia e ambiente alegre.',
+      };
+    }
+    if (s.id === 'natural_amigavel') {
+      return {
+        ...s,
+        desc: 'Voz acolhedora e próxima, tom de atendimento consultivo, gentil e de confiança.',
+        speechGuidelines: `Conversa próxima e amigável, como um consultor gentil e de confiança para ${nicheName.toLowerCase()}.`,
+      };
+    }
+    if (s.id === 'urgente_oportunidade') {
+      return {
+        ...s,
+        desc: 'Foco em ofertas relâmpago, descontos pontuais e oportunidades por tempo limitado.',
+        speechGuidelines: 'Voz de alerta, ritmo rápido, senso urgente de oportunidade imediata. Frases curtas e diretas.',
+      };
+    }
+    if (s.id === 'elegante_institucional') {
+      return {
+        ...s,
+        desc: 'Voz sóbria e refinada para marcas exclusivas, coleções premium e clube de benefícios.',
+        speechGuidelines: 'Dicção perfeita, tom aveludado, refinado e sóbrio. Ideal para fidelização, lançamentos premium e comunicados da loja.',
+      };
+    }
+    if (s.id === 'popular_descontraida') {
+      return {
+        ...s,
+        desc: 'Linguagem solta, muito próxima e direta, excelente para saldões, liquidações e queima de estoque.',
+        speechGuidelines: 'Linguagem direta e coloquial. Energia contagiante de oportunidades e preços arrasadores.',
+      };
+    }
+    return s;
+  });
 }
 
 export type NicheInfo = NicheOption & { name: string };

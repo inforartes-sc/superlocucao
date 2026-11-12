@@ -8,10 +8,10 @@ import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, save
 import { convertWavToMp3 } from './mp3_converter.ts';
 import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer, mixVoiceAndSoundtrack } from './soundtracks.ts';
 import { fetchRealBrazilianTTS } from './tts.ts';
-import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage, CommercialPlan } from '../src/types/index.ts';
+import { Project, AudioGenerationItem, SoundtrackId, VoicePreset, RadioPlaylist, RadioMusicTrack, PaymentTransaction, RechargePackage, CommercialPlan, ProjectNiche } from '../src/types/index.ts';
 import { expandUnitsAndMeasuresToWords } from '../src/utils/textNormalizer.ts';
 import { buildTimeAnnouncementScript, formatTimeInSpokenWords } from '../src/utils/timeAnnouncement.ts';
-import { createInitialProjectForNiche } from '../src/utils/nicheDefaults.ts';
+import { createInitialProjectForNiche, getSoundtracksByNiche, getStyleDemoTextForNiche, getStyleDemoSoundtrack } from '../src/utils/nicheDefaults.ts';
 
 /**
  * Regra oficial de consumo de créditos para locução de ofertas:
@@ -341,8 +341,10 @@ const handleVoicePreview = async (req: Request, res: Response) => {
 apiRouter.get('/voices/:voiceId/preview', handleVoicePreview);
 apiRouter.get('/elevenlabs/voices/:voiceId/preview', handleVoicePreview);
 
-apiRouter.get('/soundtracks', (_req: Request, res: Response) => {
-  res.json({ soundtracks: SOUNDTRACKS_LIST });
+apiRouter.get('/soundtracks', (req: Request, res: Response) => {
+  const niche = (req.query.niche as ProjectNiche) || 'supermercado';
+  const soundtracks = getSoundtracksByNiche(niche);
+  res.json({ soundtracks });
 });
 
 apiRouter.get('/soundtracks/:id/preview.:ext', async (req: Request, res: Response) => {
@@ -367,7 +369,11 @@ apiRouter.get('/soundtracks/:id/preview.:ext', async (req: Request, res: Respons
 
 apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response) => {
   const styleId = req.params.styleId;
-  const stored = await getAudioBinaryAsync(`style_${styleId}`);
+  const niche = (req.query.niche as ProjectNiche) || 'supermercado';
+  const audioKey = niche === 'supermercado' ? `style_${styleId}` : `style_${styleId}_${niche}`;
+
+  // 1. Verifica no banco PostgreSQL / cache binário
+  const stored = await getAudioBinaryAsync(audioKey);
   if (stored) {
     res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
     res.setHeader('Content-Length', stored.buffer.length);
@@ -375,24 +381,53 @@ apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.end(stored.buffer);
   }
-  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
-  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
-  const mp3Path = path.join(audioDir, `style_${styleId}.mp3`);
-  const seedMp3 = path.join(seedDir, `style_${styleId}.mp3`);
-  const target = fs.existsSync(mp3Path) ? mp3Path : fs.existsSync(seedMp3) ? seedMp3 : null;
-  if (target) {
-    const buffer = fs.readFileSync(target);
+
+  // 2. Se for supermercado, verifica arquivo pré-gerado em disco
+  if (niche === 'supermercado') {
+    const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+    const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
+    const mp3Path = path.join(audioDir, `style_${styleId}.mp3`);
+    const seedMp3 = path.join(seedDir, `style_${styleId}.mp3`);
+    const target = fs.existsSync(mp3Path) ? mp3Path : fs.existsSync(seedMp3) ? seedMp3 : null;
+    if (target) {
+      const buffer = fs.readFileSync(target);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.end(buffer);
+    }
+  }
+
+  // 3. Para nichos que não sejam supermercado (ou caso o arquivo não exista), sintetiza com TTS natural brasileiro do nicho
+  try {
+    const demoText = getStyleDemoTextForNiche(styleId, niche);
+    const bgTrack = getStyleDemoSoundtrack(styleId);
+
+    const voiceBuffer = await fetchRealBrazilianTTS(demoText);
+    const mixedMp3 = mixVoiceAndSoundtrack(voiceBuffer, bgTrack, 0.22);
+
+    saveAudioBinary(audioKey, mixedMp3, 'audio/mpeg', `${audioKey}.mp3`);
+    const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+    if (!fs.existsSync(audioDir)) {
+      try { fs.mkdirSync(audioDir, { recursive: true }); } catch {}
+    }
+    const outDisk = path.join(audioDir, `${audioKey}.mp3`);
+    try { fs.writeFileSync(outDisk, mixedMp3); } catch {}
+
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Content-Length', mixedMp3.length);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    return res.end(buffer);
+    return res.end(mixedMp3);
+  } catch (err: any) {
+    console.warn(`[Style Sample] Fallback para sintetizador WAV para estilo ${styleId} (${niche}):`, err.message);
+    const wavBuffer = generateStyleDemoWav(styleId);
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Content-Length', wavBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    return res.end(wavBuffer);
   }
-  const wavBuffer = generateStyleDemoWav(styleId);
-  res.setHeader('Content-Type', 'audio/wav');
-  res.setHeader('Content-Length', wavBuffer.length);
-  res.setHeader('Accept-Ranges', 'bytes');
-  res.end(wavBuffer);
 });
 
 apiRouter.get('/samples/voice/:voiceId.:ext', async (req: Request, res: Response) => {

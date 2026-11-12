@@ -9,7 +9,7 @@ import {
   PaymentGatewayConfig, SubscriptionItem, PaymentTransaction, OnlineRadioStation,
   RadioStoreBranch, ProjectNiche
 } from '../src/types/index.ts';
-import { getNicheSlogan, getInitialQueueForNiche } from '../src/utils/nicheDefaults.ts';
+import { getNicheSlogan, getInitialQueueForNiche, getPlaylistsByNiche, getMusicTracksByNiche } from '../src/utils/nicheDefaults.ts';
 
 const DB_FILE = path.resolve(process.cwd(), '.locucao_db.json');
 
@@ -1093,7 +1093,7 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     selectedMusicCategory: 'todas',
     activePlaylistId: 'todas',
     excludedPlaylistIds: [],
-    playlists: DEFAULT_RADIO_PLAYLISTS,
+    playlists: getPlaylistsByNiche(niche),
     autoPublishNewAudios: false,
     timeAnnouncementEnabled: false,
     timeAnnouncementInterval: '30min',
@@ -1101,7 +1101,7 @@ function buildInitialRadioConfig(projects: Project[], user?: UserProfile): Radio
     timeAnnouncementStyle: 'comercial',
     timeAnnouncementVoiceId: 'voice-marcos',
     queue,
-    musicTracks: DEFAULT_RADIO_MUSIC_TRACKS,
+    musicTracks: getMusicTracksByNiche(niche),
   };
 }
 
@@ -2136,58 +2136,82 @@ class Database {
       this.pgSaveRadioConfig(key, this.data.radioConfigs[key]);
     }
     const config = this.data.radioConfigs[key];
-    // Guarantee all default system playlists (including Natal & Final de Ano) exist
-    if (!config.playlists || config.playlists.length === 0) {
-      config.playlists = DEFAULT_RADIO_PLAYLISTS;
+    const user = this.getUser(key);
+    const userNiche = (user?.niche || config.niche || 'supermercado') as ProjectNiche;
+    const nichePlaylists = getPlaylistsByNiche(userNiche);
+    const nicheTracks = getMusicTracksByNiche(userNiche);
+
+    // If niche changed or if a non-supermarket account has supermarket playlists
+    const hasSupermarketPlaylists = (config.playlists || []).some(
+      (p: any) => !p.isCustom && (p.id === 'pop_varejo' || p.id === 'acustico_manha')
+    );
+    const shouldMigrateNiche = config.niche !== userNiche || (userNiche !== 'supermercado' && hasSupermarketPlaylists);
+
+    if (shouldMigrateNiche) {
+      config.niche = userNiche;
+      config.slogan = getNicheSlogan(userNiche);
+      const customPlaylists = (config.playlists || []).filter((p: any) => p.isCustom);
+      config.playlists = [...customPlaylists, ...nichePlaylists];
+      const customTracks = (config.musicTracks || []).filter((t: any) => t.isCustom);
+      config.musicTracks = [...customTracks, ...nicheTracks];
       this.save();
+      this.pgSaveRadioConfig(key, config);
     } else {
-      const existingPlaylistIds = new Set((config.playlists || []).map((p: any) => p.id));
-      const missingPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
-      if (missingPlaylists.length > 0) {
-        config.playlists = [...config.playlists, ...missingPlaylists];
+      // Guarantee all default system playlists for this niche exist
+      if (!config.playlists || config.playlists.length === 0) {
+        config.playlists = nichePlaylists;
         this.save();
+      } else {
+        const existingPlaylistIds = new Set((config.playlists || []).map((p: any) => p.id));
+        const missingPlaylists = nichePlaylists.filter(p => !existingPlaylistIds.has(p.id));
+        if (missingPlaylists.length > 0) {
+          config.playlists = [...config.playlists, ...missingPlaylists];
+          this.save();
+        }
       }
     }
 
     // Guarantee stores exist
     if (!config.stores || config.stores.length === 0) {
-      const user = this.getUser(key);
+      const storeNameFallback = user?.companyName || (userNiche === 'moda' ? 'Loja de Moda' : userNiche === 'farmacia' ? 'Farmácia & Drogaria' : userNiche === 'petshop' ? 'Pet Shop' : userNiche === 'construcao' ? 'Materiais de Construção' : 'Loja');
       config.stores = [
         {
           id: 'store-matriz',
-          name: `${config.storeName || user?.companyName || 'Supermercado'} — Loja Matriz`,
+          name: `${config.storeName || storeNameFallback} — Loja Matriz`,
           city: user?.city || 'Centro',
-          slogan: config.slogan || 'O melhor preço todo dia',
+          slogan: config.slogan || getNicheSlogan(userNiche),
           createdAt: new Date().toISOString(),
         },
       ];
       this.save();
     }
 
-    // Guarantee all system default music tracks (including Natal & Réveillon) exist
-    if (!config.musicTracks || config.musicTracks.length <= 5) {
-      const customTracks = (config.musicTracks || []).filter(t => t.isCustom);
-      config.musicTracks = [...customTracks, ...DEFAULT_RADIO_MUSIC_TRACKS];
-      this.save();
-    } else {
-      const existingTrackIds = new Set((config.musicTracks || []).map((t: any) => t.id));
-      const missingTracks = DEFAULT_RADIO_MUSIC_TRACKS.filter(t => !existingTrackIds.has(t.id));
-      let modified = false;
+    // Guarantee all system default music tracks exist for this niche
+    if (!shouldMigrateNiche) {
+      if (!config.musicTracks || config.musicTracks.length <= 5) {
+        const customTracks = (config.musicTracks || []).filter(t => t.isCustom);
+        config.musicTracks = [...customTracks, ...nicheTracks];
+        this.save();
+      } else {
+        const existingTrackIds = new Set((config.musicTracks || []).map((t: any) => t.id));
+        const missingTracks = nicheTracks.filter(t => !existingTrackIds.has(t.id));
+        let modified = false;
 
-      if (missingTracks.length > 0) {
-        config.musicTracks = [...config.musicTracks, ...missingTracks];
-        modified = true;
-      }
-
-      config.musicTracks = config.musicTracks.map(t => {
-        if (!t.playlistId) {
+        if (missingTracks.length > 0) {
+          config.musicTracks = [...config.musicTracks, ...missingTracks];
           modified = true;
-          return { ...t, playlistId: t.category };
         }
-        return t;
-      });
 
-      if (modified) this.save();
+        config.musicTracks = config.musicTracks.map(t => {
+          if (!t.playlistId) {
+            modified = true;
+            return { ...t, playlistId: t.category };
+          }
+          return t;
+        });
+
+        if (modified) this.save();
+      }
     }
     if (key === 'user-alvorada') {
       this.data.radioConfig = config;

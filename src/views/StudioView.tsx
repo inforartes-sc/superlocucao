@@ -13,6 +13,7 @@ import {
 import {
   getCampaignsByNiche, getStylesByNiche, getNicheInfo
 } from '../types/campaigns.ts';
+import { getSoundtracksByNiche } from '../utils/nicheDefaults.ts';
 import { api } from '../services/api.ts';
 import { AudioPlayer } from '../components/AudioPlayer.tsx';
 import { expandUnitsAndMeasuresToWords } from '../utils/textNormalizer.ts';
@@ -44,6 +45,9 @@ export const StudioView: React.FC<StudioViewProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [project, setProject] = useState<Project>(initialProject);
+
+  const effectiveNiche: ProjectNiche = project.niche || user?.niche || 'supermercado';
+  const displaySoundtracks = useMemo(() => getSoundtracksByNiche(effectiveNiche), [effectiveNiche]);
 
   // Audio preview playback state for listening to styles, soundtracks and voices
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -118,11 +122,11 @@ export const StudioView: React.FC<StudioViewProps> = ({
     }
   }, [project.currentScriptIndex, project.scripts]);
 
-  // Load voices, soundtracks and public settings on mount
+  // Load voices, soundtracks and public settings on mount / niche change
   useEffect(() => {
     Promise.all([
       api.getVoices().catch(() => ({ voices: [], hasElevenKey: false })),
-      api.getSoundtracks().catch(() => ({ soundtracks: [] })),
+      api.getSoundtracks(effectiveNiche).catch(() => ({ soundtracks: [] })),
       api.getPublicSettings().catch(() => ({ systemAnnouncement: '' })),
     ]).then(([vRes, sRes, setRes]) => {
       if (vRes.voices && vRes.voices.length > 0) {
@@ -140,7 +144,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
         setSystemNotice(setRes.systemAnnouncement);
       }
     });
-  }, []);
+  }, [effectiveNiche]);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -174,7 +178,6 @@ export const StudioView: React.FC<StudioViewProps> = ({
     }
   };
 
-  const effectiveNiche: ProjectNiche = project.niche || user?.niche || 'supermercado';
   const currentNicheInfo = getNicheInfo(effectiveNiche);
   const campaignsForNiche = getCampaignsByNiche(effectiveNiche);
   const stylesForNiche = getStylesByNiche(effectiveNiche);
@@ -1237,7 +1240,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                             e.stopPropagation();
                             handleTogglePreview(
                               `style-${style.id}`,
-                              `/api/samples/style/${style.id}.mp3`
+                              `/api/samples/style/${style.id}.mp3?niche=${encodeURIComponent(effectiveNiche)}`
                             );
                           }}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
@@ -1315,7 +1318,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
 
               {/* Soundtracks Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {soundtracks.map((track) => {
+                {displaySoundtracks.map((track) => {
                   const isSelected = selectedSoundtrackId === track.id;
                   const isPreviewing = activeSampleKey === `soundtrack-${track.id}` && isSamplePlaying;
 
@@ -1910,7 +1913,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                     <div>
                       <div className="text-[11px] text-slate-500 font-medium">Trilha sonora de fundo:</div>
                       <div className="text-xs font-bold text-slate-800">
-                        {soundtracks.find((s) => s.id === selectedSoundtrackId)?.name || 'Varejo Alegre & Enérgico'}
+                        {displaySoundtracks.find((s) => s.id === selectedSoundtrackId)?.name || 'Varejo Alegre & Enérgico'}
                       </div>
                     </div>
                   </div>

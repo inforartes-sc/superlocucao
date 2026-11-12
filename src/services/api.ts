@@ -152,7 +152,8 @@ export const api = {
 
   // Voices & Audio
   getVoices: () => request<{ voices: VoicePreset[]; hasElevenKey: boolean }>('/voices'),
-  getSoundtracks: () => request<{ soundtracks: SoundtrackOption[] }>('/soundtracks'),
+  getSoundtracks: (niche?: string) =>
+    request<{ soundtracks: SoundtrackOption[] }>(niche ? `/soundtracks?niche=${encodeURIComponent(niche)}` : '/soundtracks'),
   generateAudio: (params: {
     projectId?: string;
     scriptText: string;

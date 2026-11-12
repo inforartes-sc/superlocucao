@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist, AudioGenerationItem, RadioStoreBranch } from '../types';
+import { RadioStationConfig, RadioQueueItem, RadioMusicTrack, RadioPlaylist, AudioGenerationItem, RadioStoreBranch, ProjectNiche } from '../types';
 import { api } from '../services/api';
 import { Radio, Zap, Pause, SkipForward, Megaphone, ArrowUpRight, Gauge } from 'lucide-react';
 import { attachVoiceNormalizer, attachMusicNormalizer, BroadcastVoiceProcessor } from '../utils/audioNormalizer';
 import { playRadioTimePips } from '../utils/soundboard';
+import { getPlaylistsByNiche, getMusicTracksByNiche } from '../utils/nicheDefaults';
 
 export interface BroadcastLogEntry {
   id: string;
@@ -365,17 +366,25 @@ function loadInitialRadioConfig(): RadioStationConfig {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.stationName && Array.isArray(parsed.queue) && Array.isArray(parsed.musicTracks)) {
-        const customTracks = (parsed.musicTracks || []).filter((t: any) => t.isCustom);
-        
-        // Merge playlists to ensure new system playlists (like Natal & Final de Ano) are always present
-        const existingPlaylistIds = new Set((parsed.playlists || []).map((p: any) => p.id));
-        const missingDefaultPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
-        const finalPlaylists = [...(parsed.playlists || []), ...missingDefaultPlaylists];
+        const niche: ProjectNiche = parsed.niche || 'supermercado';
+        const nichePlaylists = getPlaylistsByNiche(niche);
+        const nicheTracks = getMusicTracksByNiche(niche);
 
-        // Merge music tracks to guarantee new festive tracks are available
-        const existingTrackIds = new Set((parsed.musicTracks || []).map((t: any) => t.id));
-        const missingDefaultTracks = DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks.filter(t => !existingTrackIds.has(t.id));
-        const finalTracks = [...(parsed.musicTracks || []), ...missingDefaultTracks];
+        // Filter out supermarket playlists if this store is not a supermarket
+        const basePlaylists = (parsed.playlists || []).filter((p: any) =>
+          p.isCustom || (niche === 'supermercado' || (p.id !== 'pop_varejo' && p.id !== 'acustico_manha'))
+        );
+        const existingPlaylistIds = new Set(basePlaylists.map((p: any) => p.id));
+        const missingPlaylists = nichePlaylists.filter(p => !existingPlaylistIds.has(p.id));
+        const finalPlaylists = [...basePlaylists, ...missingPlaylists];
+
+        // Filter out supermarket tracks if store is not supermarket
+        const baseTracks = (parsed.musicTracks || []).filter((t: any) =>
+          t.isCustom || (niche === 'supermercado' || !t.id.includes('varejo') && !t.id.includes('acustico-manha'))
+        );
+        const existingTrackIds = new Set(baseTracks.map((t: any) => t.id));
+        const missingTracks = nicheTracks.filter(t => !existingTrackIds.has(t.id));
+        const finalTracks = [...baseTracks, ...missingTracks];
 
         return {
           ...DEFAULT_FALLBACK_RADIO_CONFIG,
@@ -654,14 +663,18 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
     try {
       const res = await api.getRadio();
       if (res && res.config && res.config.stationName) {
-        // Guarantee system playlists & tracks are merged even on frontend
+        // Guarantee system playlists & tracks are merged even on frontend respecting niche
+        const niche: ProjectNiche = res.config.niche || 'supermercado';
+        const nichePlaylists = getPlaylistsByNiche(niche);
+        const nicheTracks = getMusicTracksByNiche(niche);
+
         const existingPlaylistIds = new Set((res.config.playlists || []).map((p: any) => p.id));
-        const missingDefaultPlaylists = DEFAULT_RADIO_PLAYLISTS.filter(p => !existingPlaylistIds.has(p.id));
-        const finalPlaylists = [...(res.config.playlists || []), ...missingDefaultPlaylists];
+        const missingPlaylists = nichePlaylists.filter(p => !existingPlaylistIds.has(p.id));
+        const finalPlaylists = [...(res.config.playlists || []), ...missingPlaylists];
 
         const existingTrackIds = new Set((res.config.musicTracks || []).map((t: any) => t.id));
-        const missingDefaultTracks = DEFAULT_FALLBACK_RADIO_CONFIG.musicTracks.filter(t => !existingTrackIds.has(t.id));
-        const finalTracks = [...(res.config.musicTracks || []), ...missingDefaultTracks];
+        const missingTracks = nicheTracks.filter(t => !existingTrackIds.has(t.id));
+        const finalTracks = [...(res.config.musicTracks || []), ...missingTracks];
 
         const mergedConfig = {
           ...res.config,
