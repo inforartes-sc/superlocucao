@@ -63,6 +63,7 @@ import {
   playAttentionAlert,
   playCashRegister,
   LiveMicrophoneBroadcaster,
+  playRadioTimePips,
 } from '../utils/soundboard';
 import {
   VoicePreset,
@@ -2957,11 +2958,11 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                     </p>
                   </div>
 
-                  {/* 4. Sinal Horário (Bips) & Voz */}
-                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-1">
+                  {/* 4. Sinal / Chime de Abertura & Voz */}
+                  <div className="bg-[#141620] border border-zinc-700/80 rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-bold uppercase text-zinc-400 block">
-                        Sinal de Bips & Voz
+                        Toque de Abertura & Voz
                       </label>
                       <label className="flex items-center gap-1.5 text-[10px] text-zinc-300 cursor-pointer">
                         <input
@@ -2970,10 +2971,38 @@ export const RadioView: React.FC<RadioViewProps> = ({ user, onCreditsChanged, on
                           onChange={e => updateConfig({ timeAnnouncementChime: e.target.checked })}
                           className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer"
                         />
-                        <span>Pips sonoros</span>
+                        <span>Tocar abertura antes</span>
                       </label>
                     </div>
 
+                    {/* Seletor do Estilo do Toque de Abertura */}
+                    {(config.timeAnnouncementChime ?? true) && (
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <select
+                          value={config.timeAnnouncementChimeSound || 'moderno'}
+                          onChange={e => updateConfig({ timeAnnouncementChimeSound: e.target.value as any })}
+                          className="w-full bg-[#1e222e] border border-zinc-700 rounded-lg px-2 py-1.5 text-xs font-semibold text-white cursor-pointer truncate"
+                        >
+                          <option value="moderno">✨ Chime Moderno & Elegante (Recomendado)</option>
+                          <option value="cristalino">🔔 Sino Cristalino & Leve</option>
+                          <option value="classico">📻 Sinal Horário Clássico de Rádio</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playRadioTimePips(0.85, config.timeAnnouncementChimeSound || 'moderno');
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer flex items-center gap-1 shrink-0 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border-amber-500/40"
+                          title="Ouvir som do toque da hora certa"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          <span>Ouvir</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Seletor da Voz da Hora Certa */}
                     <div className="flex items-center gap-1.5 pt-0.5">
                       <select
                         value={config.timeAnnouncementVoiceId || selectedVoiceId}

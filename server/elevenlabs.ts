@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { StoredAudioBinary, db, saveAudioBinary } from './db.ts';
 import { generateGeminiSpeech } from './gemini.ts';

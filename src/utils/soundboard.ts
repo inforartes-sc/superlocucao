@@ -254,12 +254,94 @@ export class LiveMicrophoneBroadcaster {
   }
 }
 
+export type TimeChimeSoundType = 'moderno' | 'cristalino' | 'classico';
+
 /**
- * Sinal Horário Tradicional de Rádio (Pips de Hora Certa)
- * 3 bips curtos de 1000Hz seguidos de 1 bip longo de 1500Hz que marca a hora exata.
- * Retorna uma Promise que resolve quando a sequência de bips termina (~2.4s).
+ * Toca uma nota acústica com ressonância harmônica (estilo carrilhão / vibrafone / marimba de rádio)
  */
-export function playRadioTimePips(volume: number = 0.75): Promise<void> {
+function playAcousticBell(
+  ctx: AudioContext,
+  master: GainNode,
+  freq: number,
+  startTime: number,
+  duration: number = 1.2,
+  options?: { subBassFreq?: number; shimmerGain?: number }
+) {
+  // 1. Frequência Fundamental (Corpo do sino)
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.setValueAtTime(freq, startTime);
+
+  gain1.gain.setValueAtTime(0, startTime);
+  gain1.gain.linearRampToValueAtTime(0.58, startTime + 0.015);
+  gain1.gain.exponentialRampToValueAtTime(0.0006, startTime + duration);
+
+  osc1.connect(gain1);
+  gain1.connect(master);
+  osc1.start(startTime);
+  osc1.stop(startTime + duration);
+
+  // 2. Harmônico Superior Oitava (Brilho e presença acústica calorosa)
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(freq * 2, startTime);
+
+  gain2.gain.setValueAtTime(0, startTime);
+  gain2.gain.linearRampToValueAtTime(0.25, startTime + 0.01);
+  gain2.gain.exponentialRampToValueAtTime(0.0006, startTime + (duration * 0.75));
+
+  osc2.connect(gain2);
+  gain2.connect(master);
+  osc2.start(startTime);
+  osc2.stop(startTime + duration);
+
+  // 3. Shimmer Cintilante (Harmônico metálico de sino límpido)
+  const osc3 = ctx.createOscillator();
+  const gain3 = ctx.createGain();
+  osc3.type = 'triangle';
+  osc3.frequency.setValueAtTime(freq * 3.02, startTime);
+
+  const shimmerVol = options?.shimmerGain ?? 0.14;
+  gain3.gain.setValueAtTime(0, startTime);
+  gain3.gain.linearRampToValueAtTime(shimmerVol, startTime + 0.008);
+  gain3.gain.exponentialRampToValueAtTime(0.0006, startTime + (duration * 0.45));
+
+  osc3.connect(gain3);
+  gain3.connect(master);
+  osc3.start(startTime);
+  osc3.stop(startTime + duration);
+
+  // 4. Sub-Grave aveludado opcional (para o acorde majestoso de encerramento)
+  if (options?.subBassFreq) {
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(options.subBassFreq, startTime);
+
+    subGain.gain.setValueAtTime(0, startTime);
+    subGain.gain.linearRampToValueAtTime(0.38, startTime + 0.02);
+    subGain.gain.exponentialRampToValueAtTime(0.0006, startTime + duration);
+
+    subOsc.connect(subGain);
+    subGain.connect(master);
+    subOsc.start(startTime);
+    subOsc.stop(startTime + duration);
+  }
+}
+
+/**
+ * Chamada Sonora de Hora Certa para Rádio Comercial
+ * Gera toques modernos, atrativos e musicais antes do anúncio vocal.
+ * - 'moderno': Arpejo musical sofisticado e acolhedor (Dó5 -> Mi5 -> Sol5 -> Dó6 + Dó4) com cauda acústica
+ * - 'cristalino': Chime leve e brilhante (Fá5 -> Lá5 -> Dó6 -> Fá6) estilo glockenspiel
+ * - 'classico': 3 bips curtos e 1 longo com atenuação suave
+ */
+export function playRadioTimePips(
+  volume: number = 0.85,
+  soundType: TimeChimeSoundType = 'moderno'
+): Promise<void> {
   return new Promise((resolve) => {
     try {
       const ctx = getAudioContext();
@@ -268,47 +350,85 @@ export function playRadioTimePips(volume: number = 0.75): Promise<void> {
       master.gain.setValueAtTime(volume, now);
       master.connect(ctx.destination);
 
-      // Três bips curtos a cada 600ms
-      const shortPips = [0, 0.6, 1.2];
-      shortPips.forEach((startTime) => {
-        const t = now + startTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1000, t);
+      if (soundType === 'cristalino') {
+        // Sequência Cristalina estilo Glockenspiel / Marimba leve
+        // Fá5 (698.46 Hz) -> Lá5 (880.00 Hz) -> Dó6 (1046.50 Hz) -> Fá6 (1396.91 Hz)
+        const notes = [
+          { freq: 698.46, time: 0.00, dur: 0.9 },
+          { freq: 880.00, time: 0.32, dur: 0.9 },
+          { freq: 1046.50, time: 0.64, dur: 1.0 },
+          { freq: 1396.91, time: 0.98, dur: 1.35, sub: 349.23 },
+        ];
 
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.5, t + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        notes.forEach(n => {
+          playAcousticBell(ctx, master, n.freq, now + n.time, n.dur, {
+            subBassFreq: n.sub,
+            shimmerGain: 0.18,
+          });
+        });
 
-        osc.connect(gain);
-        gain.connect(master);
-        osc.start(t);
-        osc.stop(t + 0.13);
+        setTimeout(resolve, 2350);
+        return;
+      }
+
+      if (soundType === 'classico') {
+        // Sinal Horário Clássico com envelope arredondado suave
+        const shortPips = [0, 0.55, 1.1];
+        shortPips.forEach((startTime) => {
+          const t = now + startTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(980, t);
+
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.5, t + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+
+          osc.connect(gain);
+          gain.connect(master);
+          osc.start(t);
+          osc.stop(t + 0.15);
+        });
+
+        const finalPipTime = now + 1.65;
+        const oscFinal = ctx.createOscillator();
+        const gainFinal = ctx.createGain();
+        oscFinal.type = 'sine';
+        oscFinal.frequency.setValueAtTime(1480, finalPipTime);
+
+        gainFinal.gain.setValueAtTime(0, finalPipTime);
+        gainFinal.gain.linearRampToValueAtTime(0.65, finalPipTime + 0.02);
+        gainFinal.gain.exponentialRampToValueAtTime(0.001, finalPipTime + 0.6);
+
+        oscFinal.connect(gainFinal);
+        gainFinal.connect(master);
+        oscFinal.start(finalPipTime);
+        oscFinal.stop(finalPipTime + 0.65);
+
+        setTimeout(resolve, 2300);
+        return;
+      }
+
+      // Padrão: 'moderno' (Chime Comercial Elegante & Cativante de Rádio FM)
+      // Dó5 (523.25 Hz) -> Mi5 (659.25 Hz) -> Sol5 (783.99 Hz) -> Dó6 (1046.50 Hz) + Dó4 (261.63 Hz)
+      const modernNotes = [
+        { freq: 523.25, time: 0.00, dur: 1.05 },
+        { freq: 659.25, time: 0.35, dur: 1.05 },
+        { freq: 783.99, time: 0.70, dur: 1.15 },
+        { freq: 1046.50, time: 1.08, dur: 1.35, sub: 261.63 },
+      ];
+
+      modernNotes.forEach(n => {
+        playAcousticBell(ctx, master, n.freq, now + n.time, n.dur, {
+          subBassFreq: n.sub,
+          shimmerGain: 0.15,
+        });
       });
 
-      // Bip longo final de confirmação de hora exata (1.8s -> 2.4s)
-      const finalPipTime = now + 1.8;
-      const oscFinal = ctx.createOscillator();
-      const gainFinal = ctx.createGain();
-      oscFinal.type = 'sine';
-      oscFinal.frequency.setValueAtTime(1500, finalPipTime);
-
-      gainFinal.gain.setValueAtTime(0, finalPipTime);
-      gainFinal.gain.linearRampToValueAtTime(0.65, finalPipTime + 0.02);
-      gainFinal.gain.exponentialRampToValueAtTime(0.001, finalPipTime + 0.55);
-
-      oscFinal.connect(gainFinal);
-      gainFinal.connect(master);
-      oscFinal.start(finalPipTime);
-      oscFinal.stop(finalPipTime + 0.58);
-
-      // Resolução quando o sinal horário terminar
-      setTimeout(() => {
-        resolve();
-      }, 2400);
+      setTimeout(resolve, 2400);
     } catch (e) {
-      console.warn('Erro ao reproduzir sinal horário:', e);
+      console.warn('Erro ao reproduzir chamada da hora certa:', e);
       resolve();
     }
   });

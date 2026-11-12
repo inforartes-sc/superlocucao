@@ -92,6 +92,7 @@ export const DEFAULT_FALLBACK_RADIO_CONFIG: RadioStationConfig = {
   timeAnnouncementEnabled: false,
   timeAnnouncementInterval: '30min',
   timeAnnouncementChime: true,
+  timeAnnouncementChimeSound: 'moderno',
   timeAnnouncementStyle: 'comercial',
   timeAnnouncementVoiceId: 'voice-marcos',
   queue: [
@@ -1209,8 +1210,9 @@ export const RadioBroadcastProvider: React.FC<ProviderProps> = ({
         // 2 & 3: Toca o sinal horário de rádio e solicita a síntese neural em paralelo
         // Enquanto os bips tocam no ar (~2.4s), o áudio neural já é gerado, eliminando atrasos
         const now = new Date();
+        const chimeSound = cfg.timeAnnouncementChimeSound || 'moderno';
         const [_, res] = await Promise.all([
-          useChime ? playRadioTimePips(0.8) : new Promise(r => setTimeout(r, 200)),
+          useChime ? playRadioTimePips(0.85, chimeSound) : new Promise(r => setTimeout(r, 200)),
           api.requestTimeAnnouncement({
             style,
             voiceId: cfg.timeAnnouncementVoiceId,

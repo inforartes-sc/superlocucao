@@ -413,6 +413,7 @@ export interface RadioStationConfig {
   timeAnnouncementEnabled?: boolean;
   timeAnnouncementInterval?: '2min' | '5min' | '10min' | '15min' | '30min' | '60min' | 'manual_only';
   timeAnnouncementChime?: boolean;
+  timeAnnouncementChimeSound?: 'moderno' | 'cristalino' | 'classico';
   timeAnnouncementStyle?: 'comercial' | 'padrao' | 'curto';
   timeAnnouncementVoiceId?: string;
   queue: RadioQueueItem[];
