@@ -4,7 +4,7 @@ import path from 'path';
 import JSZip from 'jszip';
 import { db, audioBinaryStore, getAudioBinary, saveAudioBinary, getAudioBinaryAsync, DEFAULT_RECHARGE_PACKAGES, DEFAULT_COMMERCIAL_PLANS } from './db.ts';
 import { parseProductsWithGemini, generateSupermarketScript, refineSupermarketScript, formatSpokenPriceBR, saveGeminiApiKeyToEnv, fetchGeminiAccountInfo } from './gemini.ts';
-import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio } from './elevenlabs.ts';
+import { synthesizeSpeech, getElevenLabsVoices, fetchElevenLabsAccountInfo, saveElevenLabsApiKeyToEnv, getVoicePreviewAudio, getElevenLabsApiKey, STYLE_ELEVEN_VOICES, synthesizeElevenLabsVoice } from './elevenlabs.ts';
 import { convertWavToMp3 } from './mp3_converter.ts';
 import { normalizeVoiceAudio, SOUNDTRACKS_LIST, generateSoundtrackWav, generateStyleDemoWav, generateVoiceActorDemoWav, getSoundtrackPreviewBuffer, mixVoiceAndSoundtrack } from './soundtracks.ts';
 import { fetchRealBrazilianTTS } from './tts.ts';
@@ -370,11 +370,12 @@ apiRouter.get('/soundtracks/:id/preview.:ext', async (req: Request, res: Respons
 apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response) => {
   const styleId = req.params.styleId;
   const niche = (req.query.niche as ProjectNiche) || 'supermercado';
-  const audioKey = niche === 'supermercado' ? `style_${styleId}` : `style_${styleId}_${niche}`;
+  const elevenKey = getElevenLabsApiKey();
+  const audioKey = elevenKey ? `style_eleven_${styleId}_${niche}` : `style_${styleId}_${niche}`;
 
   // 1. Verifica no banco PostgreSQL / cache binário
   const stored = await getAudioBinaryAsync(audioKey);
-  if (stored) {
+  if (stored && stored.buffer && stored.buffer.length > 1000) {
     res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
     res.setHeader('Content-Length', stored.buffer.length);
     res.setHeader('Accept-Ranges', 'bytes');
@@ -382,38 +383,44 @@ apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response
     return res.end(stored.buffer);
   }
 
-  // 2. Se for supermercado, verifica arquivo pré-gerado em disco
-  if (niche === 'supermercado') {
-    const audioDir = path.resolve(process.cwd(), '.locucao_audios');
-    const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
-    const mp3Path = path.join(audioDir, `style_${styleId}.mp3`);
-    const seedMp3 = path.join(seedDir, `style_${styleId}.mp3`);
-    const target = fs.existsSync(mp3Path) ? mp3Path : fs.existsSync(seedMp3) ? seedMp3 : null;
-    if (target) {
-      const buffer = fs.readFileSync(target);
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Content-Length', buffer.length);
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      return res.end(buffer);
-    }
+  // 2. Verifica se o áudio já está salvo em disco
+  const audioDir = path.resolve(process.cwd(), '.locucao_audios');
+  const diskPath = path.join(audioDir, `${audioKey}.mp3`);
+  if (fs.existsSync(diskPath)) {
+    try {
+      const buffer = fs.readFileSync(diskPath);
+      if (buffer && buffer.length > 1000) {
+        saveAudioBinary(audioKey, buffer, 'audio/mpeg', `${audioKey}.mp3`);
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.end(buffer);
+      }
+    } catch {}
   }
 
-  // 3. Para nichos que não sejam supermercado (ou caso o arquivo não exista), sintetiza com TTS natural brasileiro do nicho
+  // 3. Sintetiza a amostra com voz real do estilo correspondente
   try {
     const demoText = getStyleDemoTextForNiche(styleId, niche);
     const bgTrack = getStyleDemoSoundtrack(styleId);
+    let voiceBuffer: Buffer;
 
-    const voiceBuffer = await fetchRealBrazilianTTS(demoText);
+    if (elevenKey) {
+      const voiceId = STYLE_ELEVEN_VOICES[styleId] || 'dXQsuVXyCGkF7meZLeFk';
+      console.log(`[Style Sample] Sintetizando estilo "${styleId}" (${niche}) com voz ElevenLabs "${voiceId}"...`);
+      voiceBuffer = await synthesizeElevenLabsVoice(voiceId, demoText);
+    } else {
+      voiceBuffer = await fetchRealBrazilianTTS(demoText);
+    }
+
     const mixedMp3 = mixVoiceAndSoundtrack(voiceBuffer, bgTrack, 0.22);
 
     saveAudioBinary(audioKey, mixedMp3, 'audio/mpeg', `${audioKey}.mp3`);
-    const audioDir = path.resolve(process.cwd(), '.locucao_audios');
     if (!fs.existsSync(audioDir)) {
       try { fs.mkdirSync(audioDir, { recursive: true }); } catch {}
     }
-    const outDisk = path.join(audioDir, `${audioKey}.mp3`);
-    try { fs.writeFileSync(outDisk, mixedMp3); } catch {}
+    try { fs.writeFileSync(diskPath, mixedMp3); } catch {}
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', mixedMp3.length);
@@ -421,7 +428,7 @@ apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.end(mixedMp3);
   } catch (err: any) {
-    console.warn(`[Style Sample] Fallback para sintetizador WAV para estilo ${styleId} (${niche}):`, err.message);
+    console.error(`[Style Sample] Erro na síntese do estilo ${styleId} (${niche}):`, err);
     const wavBuffer = generateStyleDemoWav(styleId);
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('Content-Length', wavBuffer.length);
@@ -432,21 +439,12 @@ apiRouter.get('/samples/style/:styleId.:ext', async (req: Request, res: Response
 
 apiRouter.get('/samples/voice/:voiceId.:ext', async (req: Request, res: Response) => {
   const voiceId = req.params.voiceId;
-  const audioId = `voice_${voiceId}`;
-  const stored = await getAudioBinaryAsync(audioId);
-  if (stored) {
-    res.setHeader('Content-Type', stored.mimeType || 'audio/mpeg');
-    res.setHeader('Content-Length', stored.buffer.length);
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    return res.end(stored.buffer);
-  }
   try {
     const buffer = await getVoicePreviewAudio(voiceId);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', buffer.length);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.end(buffer);
   } catch (err: any) {
     console.error(`Erro ao carregar amostra da voz ${voiceId}:`, err);

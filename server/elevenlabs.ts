@@ -250,6 +250,49 @@ export function getElevenLabsApiKey(): string | null {
   return key;
 }
 
+export const STYLE_ELEVEN_VOICES: Record<string, string> = {
+  energetica_supermercado: 'dXQsuVXyCGkF7meZLeFk', // Dany Varejo (Varejo Comercial Enérgico)
+  animada_promocional: 'ohZOfA9iwlZ5nOsoY7LB',     // Roberta (Animada e Promocional / Jovem & Dinâmica)
+  natural_amigavel: 'BKv4Uz2HPF6TFlDgFBKN',        // Marianne (Natural e Amigável / Atendimento Empático)
+  urgente_oportunidade: 'Fjiik8aKXNDjmxd1Q2jF',    // Nassif (Urgente / Oferta Relâmpago)
+  elegante_institucional: 'a1ijbt2xmlhzaGXHewzV',  // Augusto Vasconcelos (Elegante e Institucional)
+  popular_descontraida: 'plASsyS7JE6GCAvx9uIc',    // Marcio (Popular e Descontraída)
+};
+
+export async function synthesizeElevenLabsVoice(voiceId: string, text: string): Promise<Buffer> {
+  const elevenKey = getElevenLabsApiKey();
+  if (!elevenKey) {
+    throw new Error('ElevenLabs API Key não configurada');
+  }
+
+  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'xi-api-key': elevenKey,
+      'Accept': 'audio/mpeg',
+    },
+    body: JSON.stringify({
+      text: expandUnitsAndMeasuresToWords(text),
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.8,
+        style: 0.35,
+        use_speaker_boost: true,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`ElevenLabs TTS HTTP ${response.status}: ${errText}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
 export function maskApiKey(key: string | null): string {
   if (!key) return '';
   if (key.length <= 10) return 'sk_****';
@@ -558,12 +601,16 @@ export async function getVoicePreviewAudio(voiceId: string): Promise<Buffer> {
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
-  // 1. Check local files on disk and in seed directory
-  const seedDir = path.resolve(process.cwd(), 'server', 'seed_audios');
+  // Resolve preset id (e.g. 'daniel-varejo') to ElevenLabs voice id (e.g. 'dXQsuVXyCGkF7meZLeFk')
+  const localVoices = db.getVoices();
+  const matched = localVoices.find(v => v.id === voiceId || v.elevenVoiceId === voiceId);
+  const actualVoiceId = matched?.elevenVoiceId || voiceId;
+
+  // 1. Check local files on disk (prioritizing true ElevenLabs preview files)
   const candidateFiles = [
+    path.join(audioDir, `eleven_preview_${actualVoiceId}.mp3`),
+    path.join(audioDir, `eleven_${actualVoiceId}.mp3`),
     path.join(audioDir, `eleven_preview_${voiceId}.mp3`),
-    path.join(audioDir, `eleven_${voiceId}.mp3`),
-    path.join(audioDir, `voice_${voiceId}.mp3`),
   ];
 
   for (const file of candidateFiles) {
@@ -580,12 +627,12 @@ export async function getVoicePreviewAudio(voiceId: string): Promise<Buffer> {
   }
 
   // 2. Look up official ElevenLabs preview_url from map or by fetching voice
-  let previewUrl = elevenVoicePreviewsMap.get(voiceId);
+  let previewUrl = elevenVoicePreviewsMap.get(actualVoiceId) || elevenVoicePreviewsMap.get(voiceId);
   if (!previewUrl) {
     const key = getElevenLabsApiKey();
     if (key) {
       try {
-        const vRes = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
+        const vRes = await fetch(`https://api.elevenlabs.io/v1/voices/${actualVoiceId}`, {
           headers: { 'xi-api-key': key },
         });
         if (vRes.ok) {
@@ -593,11 +640,11 @@ export async function getVoicePreviewAudio(voiceId: string): Promise<Buffer> {
           if (vData.preview_url && typeof vData.preview_url === 'string') {
             const validUrl: string = vData.preview_url;
             previewUrl = validUrl;
-            elevenVoicePreviewsMap.set(voiceId, validUrl);
+            elevenVoicePreviewsMap.set(actualVoiceId, validUrl);
           }
         }
       } catch (err) {
-        console.warn(`[ElevenLabs] Não foi possível consultar detalhes da voz ${voiceId}:`, err);
+        console.warn(`[ElevenLabs] Não foi possível consultar detalhes da voz ${actualVoiceId}:`, err);
       }
     }
   }
@@ -605,15 +652,15 @@ export async function getVoicePreviewAudio(voiceId: string): Promise<Buffer> {
   // 3. Download and cache the real MP3 preview from ElevenLabs
   if (previewUrl) {
     try {
-      console.log(`[ElevenLabs] Baixando áudio oficial de prévia da voz ${voiceId}...`);
+      console.log(`[ElevenLabs] Baixando áudio oficial de prévia da voz ${actualVoiceId}...`);
       const resp = await fetch(previewUrl);
       if (resp.ok) {
         const arrayBuf = await resp.arrayBuffer();
         const buf = Buffer.from(arrayBuf);
         if (buf.length > 500) {
-          const cachePath = path.join(audioDir, `eleven_preview_${voiceId}.mp3`);
+          const cachePath = path.join(audioDir, `eleven_preview_${actualVoiceId}.mp3`);
           fs.writeFileSync(cachePath, buf);
-          console.log(`[ElevenLabs] Áudio de prévia salvo com sucesso: ${voiceId} (${buf.length} bytes)`);
+          console.log(`[ElevenLabs] Áudio de prévia salvo com sucesso: ${actualVoiceId} (${buf.length} bytes)`);
           return buf;
         }
       }

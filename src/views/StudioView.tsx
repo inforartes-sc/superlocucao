@@ -1240,7 +1240,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
                             e.stopPropagation();
                             handleTogglePreview(
                               `style-${style.id}`,
-                              `/api/samples/style/${style.id}.mp3?niche=${encodeURIComponent(effectiveNiche)}`
+                              `/api/samples/style/${style.id}.mp3?niche=${encodeURIComponent(effectiveNiche)}&v=eleven`
                             );
                           }}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
