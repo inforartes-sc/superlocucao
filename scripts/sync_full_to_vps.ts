@@ -155,10 +155,10 @@ async function main() {
   // 4. Auditoria de integridade das vozes comerciais
   console.log('\n🔍 4. Verificando integridade das locuções da página comercial na VPS:');
   const checkAudios = [
-    { file: 'aud-demo-1.mp3', name: 'Quarta da Carne (Daniel - Varejo Enérgico)' },
+    { file: 'aud-demo-1.mp3', name: 'Contrafilé Bovino (Daniel - Varejo Enérgico)' },
     { file: 'aud-demo-2.mp3', name: 'Super Fim de Semana (Rodrigo - Voz de Impacto)' },
     { file: 'aud-demo-3.mp3', name: 'Feirinha do Dia (Carolina - Vendedora Amigável)' },
-    { file: 'voice_marcos-institucional.mp3', name: 'Clube de Vantagens (Marcos - Institucional)' }
+    { file: 'voice_marcos-institucional.mp3', name: 'Clube de Vantagens (Marcio - Locutor Dinâmico)' }
   ];
 
   for (const item of checkAudios) {

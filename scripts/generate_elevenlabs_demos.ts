@@ -21,7 +21,7 @@ const ITEMS = [
   },
   {
     id: 'voice_marcos-institucional',
-    voiceId: 'a1ijbt2xmlhzaGXHewzV', // Augusto Vasconcelos
+    voiceId: 'plASsyS7JE6GCAvx9uIc', // Marcio - Viral Hook Narrator
     text: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
   },
   {

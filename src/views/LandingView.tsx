@@ -287,9 +287,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
       title: 'Clube de Vantagens — Ative seu CPF no Caixa',
       sector: 'Institucional & Loja',
       badge: '📢 Comunicado Loja',
-      voiceName: 'Marcos (Institucional)',
-      audioUrl: '/api/audio/voice_marcos-institucional.mp3?v=eleven',
-      durationSeconds: 22,
+      voiceName: 'Marcio (Locutor Dinâmico)',
+      audioUrl: '/api/audio/voice_marcos-institucional.mp3?v=marcio_plASsyS7JE6GCAvx9uIc',
+      durationSeconds: 10,
       script: 'Você já é cadastrado no nosso Clube de Vantagens? Informe seu CPF no caixa para ativar ofertas exclusivas direto no leitor. Cadastre-se gratuitamente no balcão de atendimento.',
     },
   ];
