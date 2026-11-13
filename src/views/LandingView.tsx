@@ -244,7 +244,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [countdown, setCountdown] = useState(15);
   const [musicVolume, setMusicVolume] = useState(0.70);
   const [spotCurrentTime, setSpotCurrentTime] = useState(0);
-  const [spotDuration, setSpotDuration] = useState(28);
+  const [spotDuration, setSpotDuration] = useState(15);
 
   const radioMusicRef = useRef<HTMLAudioElement | null>(null);
   const radioSpotRef = useRef<HTMLAudioElement | null>(null);
@@ -254,13 +254,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const radioDemoOffers = [
     {
       id: 'carne',
-      title: 'Quarta da Carne — Alcatra Friboi R$ 36,90 kg',
+      title: 'Oferta Relâmpago — Contrafilé Bovino R$ 39,90 kg',
       sector: 'Açougue & Carnes',
       badge: '🥩 Oferta Açougue',
       voiceName: 'Daniel (Varejo Enérgico)',
-      audioUrl: '/api/audio/aud-demo-1.mp3?v=eleven',
-      durationSeconds: 28,
-      script: 'Atenção clientes do Supermercado! Quarta da Carne com Alcatra Friboi por apenas trinta e seis reais e noventa centavos o quilo! Coxa e sobrecoxa Sadia só oito reais e noventa e nove centavos!',
+      audioUrl: '/api/audio/aud-demo-1.mp3?v=contrafile',
+      durationSeconds: 15,
+      script: 'Atenção clientes! Temos oferta relâmpago no nosso açougue: só pelos próximos 30 minutos, contrafilé bovino fresquinho por apenas trinta e nove reais e noventa centavos o quilo! Corra para o balcão do açougue e garanta o seu churrasco!',
     },
     {
       id: 'hortifruti',
@@ -337,6 +337,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     // Aplica o Auto-Ducking na música: diminui para 12% suavemente
     setIsDucking(true);
     setIsSpotSpeaking(true);
+    setSpotDuration(offer.durationSeconds);
     fadeMusicVolume(0.12, 350);
 
     const spotEl = radioSpotRef.current;
@@ -554,7 +555,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         ref={radioSpotRef}
         preload="auto"
         onTimeUpdate={() => setSpotCurrentTime(radioSpotRef.current?.currentTime || 0)}
-        onLoadedMetadata={() => setSpotDuration(radioSpotRef.current?.duration || 28)}
+        onLoadedMetadata={() => setSpotDuration(radioSpotRef.current?.duration || 15)}
         onEnded={handleSpotEnded}
       />
 

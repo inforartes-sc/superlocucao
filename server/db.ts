@@ -909,18 +909,18 @@ const DEFAULT_PROJECTS: Project[] = [
         id: 'aud-demo-1',
         projectId: 'proj-quarta-carne',
         scriptId: 'script-1',
-        title: 'Locução Completa — Quarta da Carne & Hortifrúti',
+        title: 'Locução — Oferta Relâmpago de Açougue (Contrafilé)',
         voiceId: 'daniel-varejo',
         voiceName: 'Daniel (Varejo Enérgico)',
         provider: 'elevenlabs',
         format: 'mp3',
-        durationSeconds: 28,
+        durationSeconds: 15,
         audioUrl: '/api/audio/aud-demo-1.mp3',
         downloadUrl: '/api/audio/aud-demo-1.mp3?download=1',
         status: 'ready',
         creditsUsed: 10,
         createdAt: '2026-10-15T14:05:00Z',
-        fileSizeBytes: 448000
+        fileSizeBytes: 361772
       }
     ],
     status: 'ready',
